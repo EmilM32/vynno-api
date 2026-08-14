@@ -6,18 +6,6 @@ This repository will be the **backend** for Vynno: persistence, auth, and the HT
 
 The frontend lives in a separate repo (`dev-time`). It currently runs against mock `/mock/v1`. Pointing it at this API is frontend Phase 5c.
 
-## How to use this folder (while it still lives in `dev-time`)
-
-`backend-docs/` is a **copy-ready kit**. It is not application code.
-
-1. Create a new git repository for the API.
-2. Copy **everything in this directory** to that repository’s root (`README.md`, `AGENTS.md`, `docs/`).
-3. After the copy, delete the “How to use this folder” section from the new README. The rest of this file is the API repo README.
-4. Finish Phase 0: accept or explicitly defer the Proposed ADRs (`0001` stack, `0008` auth, `0009` persistence).
-5. Do **not** scaffold code until Phase 0 exits. That is how the frontend started.
-
-This frontend repo can keep `backend-docs/` as a snapshot, or replace it with a link to the new repo once that exists.
-
 ## Scope of this repository
 
 **API only.**
