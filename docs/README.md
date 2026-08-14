@@ -1,6 +1,6 @@
 # Vynno API Documentation
 
-Planning and architecture docs for the **Vynno backend**. This repository implements the HTTP API, persistence, and (later) authentication. The SvelteKit UI lives in a separate frontend repository.
+Planning and architecture docs for the **Vynno backend**. This repository implements the HTTP API, persistence, and (later) authentication. The SvelteKit UI lives in a separate frontend repository ([`vynno`](https://github.com/EmilM32/vynno)).
 
 Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.md)).
 

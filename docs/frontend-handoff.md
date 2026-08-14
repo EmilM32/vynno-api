@@ -5,7 +5,7 @@
 
 How the SvelteKit app will attach to this API. This is not a second contract — [api-contract.md](./api-contract.md) is the wire format.
 
-The frontend repository is historically named `dev-time`. After this API exists, frontend **Phase 5c** is the swap.
+The frontend repository is [`vynno`](https://github.com/EmilM32/vynno). After this API exists, frontend **Phase 5c** is the swap.
 
 ---
 

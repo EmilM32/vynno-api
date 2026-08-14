@@ -36,6 +36,14 @@ This API repository should use the public name from day one.
 | Keep DevTime in the API | The product is not called that. |
 | Invent a third service name (`vynno-api` as the product) | The product is Vynno; this is its API. |
 
+## Amendment (2026-08-14)
+
+The frontend git repository is **vynno**, not `dev-time`.
+URL: https://github.com/EmilM32/vynno
+
+Cross-links in this repository use that name and URL.
+`DevTime` remains the historical product name only.
+
 ## Related
 
 - [../prd.md](../prd.md)

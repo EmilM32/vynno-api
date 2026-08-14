@@ -7,7 +7,7 @@
 
 ## Context
 
-Vynno needs a UI and, eventually, persistence, auth, and multi-device access. The frontend repository (`dev-time`) deliberately contains only the SvelteKit app. Mock `+server.ts` routes there are disposable and are not the system of record.
+Vynno needs a UI and, eventually, persistence, auth, and multi-device access. The frontend repository ([`vynno`](https://github.com/EmilM32/vynno)) deliberately contains only the SvelteKit app. Mock `+server.ts` routes there are disposable and are not the system of record.
 
 Coupling API, database, and UI in one repo now would have slowed the frontend and forced a stack choice before the contract existed. The contract now exists. The API still belongs in its own repository so stack, CI, and secrets stay independent.
 

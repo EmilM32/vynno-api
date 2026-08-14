@@ -4,13 +4,13 @@
 
 This repository will be the **backend** for Vynno: persistence, auth, and the HTTP JSON API the SvelteKit app already speaks.
 
-The frontend lives in a separate repo (`dev-time`). It currently runs against mock `/mock/v1`. Pointing it at this API is frontend Phase 5c.
+The frontend lives in a separate repo ([`vynno`](https://github.com/EmilM32/vynno)). It currently runs against mock `/mock/v1`. Pointing it at this API is frontend Phase 5c.
 
 ## Scope of this repository
 
 **API only.**
 
-| In this repo | Separate repo (`dev-time`) |
+| In this repo | Separate repo ([`vynno`](https://github.com/EmilM32/vynno)) |
 | --- | --- |
 | HTTP JSON API under `/v1` | SvelteKit UI, design system, i18n |
 | Database and durable writes | HTTP-fetched mock JSON until swap |

@@ -4,7 +4,7 @@
 
 Vynno (formerly DevTime) is a focus-time tracker. **This repository is the backend** — HTTP API, persistence, and (later) auth.
 
-The SvelteKit frontend is a **separate repository**. It already speaks the contract in [docs/api-contract.md](./docs/api-contract.md). Do not invent a parallel API.
+The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.com/EmilM32/vynno)). It already speaks the contract in [docs/api-contract.md](./docs/api-contract.md). Do not invent a parallel API.
 
 | In this repo | Separate (frontend) |
 | --- | --- |

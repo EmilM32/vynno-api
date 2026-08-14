@@ -21,7 +21,7 @@ The SPA is on Phase 5b (mock HTTP reads and writes). Phase 5c is a live origin. 
 
 - Docs only. No scaffold.
 - Do not invent endpoints or pick a stack in this phase.
-- After copy, the new repo must be self-contained (no relative links into `dev-time`).
+- After copy, the new repo must be self-contained (no relative links into the frontend repo (`vynno`)).
 
 ## Approach
 
@@ -41,7 +41,7 @@ The SPA is on Phase 5b (mock HTTP reads and writes). Phase 5c is a live origin. 
 | Scaffold before stack ADR | Premature framework lock-in | Phase 0 exit forbids code |
 | Inventing “helpful” endpoints | SPA cannot call them; dual APIs | Contract discipline in AGENTS.md |
 | Drift from frontend schemas | `invalid_response` in the SPA | Snapshot date + paired-change rule |
-| Copying the kit but leaving it in `dev-time` only | Two sources of truth | After copy, point the frontend `docs/README.md` at the new repo |
+| Copying the kit but leaving it in `vynno` only | Two sources of truth | After copy, point the frontend `docs/README.md` at the new repo |
 
 ## Out of scope
 

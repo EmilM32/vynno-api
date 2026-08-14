@@ -6,7 +6,7 @@
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
-**Provenance.** Copied from the frontend repo (`dev-time`) `docs/api-contract.md` as of the snapshot date. The **client executable source of truth** remains that repo’s `src/lib/api/schemas/` until this backend publishes its own schemas (or OpenAPI) and both sides agree.
+**Provenance.** Copied from the frontend repo ([`vynno`](https://github.com/EmilM32/vynno)) `docs/api-contract.md` as of the snapshot date. The **client executable source of truth** remains that repo’s `src/lib/api/schemas/` until this backend publishes its own schemas (or OpenAPI) and both sides agree.
 
 If this doc and the frontend schemas drift, stop and reconcile — do not “fix” only one side.
 
