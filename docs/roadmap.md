@@ -58,15 +58,17 @@ Plan: [plans/phase-1-scaffold.md](./plans/phase-1-scaffold.md).
 
 **Goals**
 
-- [ ] Persistence from ADR-0009; migrations.
-- [ ] Domain module + tests for [domain-model.md](./domain-model.md) (session and project rules).
-- [ ] HTTP handlers for every resource in [api-contract.md](./api-contract.md).
-- [ ] Error envelope and documented codes only.
-- [ ] Seed or bootstrap at least one profile and one active project so the SPA can start a session.
+- [x] Persistence from ADR-0009; migrations.
+- [x] Domain module + tests for [domain-model.md](./domain-model.md) (session and project rules).
+- [x] HTTP handlers for every resource in [api-contract.md](./api-contract.md).
+- [x] Error envelope and documented codes only.
+- [x] Seed or bootstrap at least one profile and one active project so the SPA can start a session.
 
 **Non-goals:** Auth, pagination, insights endpoints, log edit/delete.
 
 **Exit criteria:** Frontend can set `PUBLIC_API_BASE` at this origin `/v1` and complete Timer start/pause/resume/stop and project CRUD without UI changes. Process restart keeps the data.
+
+Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md).
 
 ---
 

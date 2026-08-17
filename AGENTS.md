@@ -36,15 +36,16 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 ```sh
 docker compose up -d          # local PostgreSQL 16
 cp .env.example .env          # ADDR + DATABASE_URL
-go run ./cmd/api              # listen on :8080 (needs DATABASE_URL)
+go run ./cmd/api              # migrate + seed + listen on :8080
 go test ./...
 gofmt -w .
 golangci-lint run ./...
+sqlc generate                 # after changing internal/store/queries or migrations
 ```
 
-Health check: `GET /healthz` → `{"status":"ok"}`. Not part of the SPA contract.
+Health check: `GET /healthz` → `{"status":"ok"}`. SPA contract is under `/v1`.
 
-Migrations (`goose`) land in Phase 2.
+Migrations run automatically at process start (goose).
 
 ### Docs
 

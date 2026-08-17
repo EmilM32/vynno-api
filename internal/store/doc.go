@@ -1,3 +1,2 @@
-// Package store is the PostgreSQL adapter (sqlc + goose).
-// Schema and queries land in Phase 2.
+// Package store is persistence: PostgreSQL (system of record) and an in-memory test double.
 package store

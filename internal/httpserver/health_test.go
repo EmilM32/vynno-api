@@ -12,7 +12,7 @@ import (
 func TestHealthz(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	r := NewRouter()
+	r := NewRouter(testService())
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/healthz", nil)
 	r.ServeHTTP(w, req)

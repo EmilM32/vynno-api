@@ -36,6 +36,6 @@ Also decided:
 
 ## Status
 
-Phase 0 (planning) and Phase 1 (scaffold) are done. Next: Phase 2 — implement the `/v1` contract.
+Phase 0–1 are done. Phase 2 implements `/v1` against PostgreSQL.
 
 See [roadmap.md](./roadmap.md).

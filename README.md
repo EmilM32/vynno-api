@@ -41,7 +41,7 @@ go run ./cmd/api
 
 `GET http://localhost:8080/healthz` → `{"status":"ok"}`.
 
-`/v1` resources are Phase 2. There is no auth yet.
+`GET http://localhost:8080/v1/me` and the rest of [docs/api-contract.md](./docs/api-contract.md) are live. Point the SPA at `PUBLIC_API_BASE=http://localhost:8080/v1`. There is no auth yet. CORS is open (no credentials) until Phase 4.
 
 ```sh
 go test ./...
@@ -67,4 +67,4 @@ How we write PRDs, ADRs, and plans: **[docs/working-agreement.md](./docs/working
 
 - **Phase 0:** Planning — done.
 - **Phase 1:** Scaffold — done. See [docs/plans/phase-1-scaffold.md](./docs/plans/phase-1-scaffold.md).
-- **Phase 2:** Contract v1 — not started.
+- **Phase 2:** Contract v1 — in progress. See [docs/plans/phase-2-contract.md](./docs/plans/phase-2-contract.md).
