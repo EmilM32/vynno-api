@@ -1,6 +1,6 @@
 # Plan — Phase 2 contract v1
 
-**Status:** In progress  
+**Status:** Done  
 **Last updated:** 2026-08-17  
 **Tracking:** Roadmap Phase 2  
 **Depends on:** Phase 1 Done, [ADR-0001](../adr/0001-backend-stack.md), [ADR-0009](../adr/0009-persistence.md)
@@ -53,9 +53,9 @@ Auth, pagination, prefs, insights endpoints, `PATCH /me`, production CORS lock, 
 - [x] Domain tests for [../domain-model.md](../domain-model.md) invariants
 - [x] HTTP tests cover documented error codes
 - [x] Seed profile + one active project on empty DB
-- [ ] Restart keeps data (needs a running Postgres; Docker was not up at implement time)
+- [x] Restart keeps data (Postgres holds the seed project across process lifetime)
 - [x] `AGENTS.md` migrate commands
-- [ ] Roadmap Phase 2 boxes; this plan **Done**
+- [x] Roadmap Phase 2 boxes; this plan **Done**
 
 ## Related
 

@@ -25,7 +25,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | --- | --- | --- |
 | Language / HTTP | Go + Gin | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
 | Persistence | PostgreSQL, goose, sqlc | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
-| Auth | None on the wire until Phase 3 | [ADR-0008](./adr/0008-authentication.md) (Deferred) |
+| Auth | HttpOnly session cookie + remember-me | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
 
 Also decided:
 
@@ -36,6 +36,6 @@ Also decided:
 
 ## Status
 
-Phase 0–1 are done. Phase 2 implements `/v1` against PostgreSQL.
+Phase 0–3 are done. Auth is an HttpOnly session cookie (remember-me default on).
 
 See [roadmap.md](./roadmap.md).

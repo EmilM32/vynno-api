@@ -136,9 +136,9 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| AUTH-1 | Decide mechanism ([ADR-0008](./adr/0008-authentication.md)) | P1 |
-| AUTH-2 | Unauthenticated access to writes (and likely reads) is rejected | P1 |
-| AUTH-3 | SPA can attach credentials in `ApiClient` only | P1 |
+| AUTH-1 | Decide mechanism ([ADR-0008](./adr/0008-authentication.md)) — HttpOnly cookie + remember-me | P1 |
+| AUTH-2 | Unauthenticated access to reads and writes is rejected (`unauthorized`) | P1 |
+| AUTH-3 | SPA attaches credentials in `ApiClient` only (`credentials: 'include'`) | P1 |
 | AUTH-4 | CORS / cookie / token choices documented in the auth ADR | P1 |
 
 ### 8.5 Platform
@@ -191,7 +191,7 @@ Canonical table: [open-questions.md](./open-questions.md). Highlights:
 | --- | --- | --- |
 | 1 | Language / framework | **Resolved:** Go + Gin — [ADR-0001](./adr/0001-backend-stack.md) |
 | 2 | Database | **Resolved:** PostgreSQL — [ADR-0009](./adr/0009-persistence.md) |
-| 3 | Auth mechanism | Deferred to Phase 3 — [ADR-0008](./adr/0008-authentication.md) |
+| 3 | Auth mechanism | **Resolved:** HttpOnly cookie — [ADR-0008](./adr/0008-authentication.md) |
 | 4 | Restrict `color` to the UI palette? | No — any `#rrggbb` |
 | 5 | Pagination | Not until history size requires it |
 

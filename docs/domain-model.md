@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-17
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -21,6 +21,7 @@ Inherited from the frontend domain model and from the mock engine the SPA alread
 | **Activity type** | Fixed category (Deep Work, Meeting, Coding, …). Optional on a session. |
 | **Tag** | Secondary string labels on a session. Distinct from project color. |
 | **Profile** | Display name, handle, optional avatar. Read-only in v1. |
+| **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active` or `paused`. |
 
 v1 does **not** have a Task table. “Recent tasks” on the client are reconstructed from recent sessions.
@@ -30,8 +31,9 @@ v1 does **not** have a Task table. “Recent tasks” on the client are reconstr
 ## 2. Entity relationship (conceptual)
 
 ```
-User (one; v1 has no multi-user ownership column)
+User* (many personal accounts; isolated; no teams)
  │
+ ├── username / password hash (not on the wire)
  ├── Profile
  │    ├── displayName
  │    ├── handle
@@ -170,7 +172,7 @@ Display labels (`Deep Work`, `Debug`) are a frontend i18n concern.
 | `handle` | string | Required, non-empty (client shows e.g. `@alexdev`) |
 | `avatarUrl` | string? | JSON `null` when absent |
 
-No `PATCH /me` in v1. Seed a single profile until auth exists.
+No `PATCH /me` in v1. Each account has its own profile. A bootstrap user is seeded when the database is empty.
 
 ### 5.5 Aggregates
 
@@ -194,6 +196,9 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `last_active_project` | Archive/delete of the last active project |
 | `project_has_sessions` | Hard-delete of a project that has sessions |
 | `invalid_transition` | Verb in a bad state (session or project) |
+| `unauthorized` | Missing, unknown, or expired session |
+| `invalid_credentials` | Login username/password do not match |
+| `username_in_use` | Register with a taken username |
 
 `invalid_json`, `invalid_response`, and `http_error` are transport/client codes. The server still returns the envelope for malformed JSON (`invalid_json` / `invalid_body` as appropriate).
 
@@ -204,7 +209,7 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 1. **One live session** — enforced on the server, not only in the SPA store.
 2. **Stopped sessions are immutable** until LOG-6 lands.
 3. **Duration precision** — milliseconds. Display formatting is the client.
-4. **No multi-user ownership fields** in v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)).
+4. **`user_id` is internal** — not on the wire. Accounts are isolated; there are no team workspaces ([ADR-0006](./adr/0006-single-user-tenancy.md)).
 5. **UTC on the wire.** Day grouping and local clocks are the client.
 6. **IDs are opaque.** The mock’s `proj-` / `sess-` prefixes are not a contract.
 

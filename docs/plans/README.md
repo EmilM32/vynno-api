@@ -8,4 +8,5 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | --- | --- | --- |
 | [phase-0-planning.md](./phase-0-planning.md) | Done | Roadmap Phase 0 |
 | [phase-1-scaffold.md](./phase-1-scaffold.md) | Done | Roadmap Phase 1 |
-| [phase-2-contract.md](./phase-2-contract.md) | In progress | Roadmap Phase 2 |
+| [phase-2-contract.md](./phase-2-contract.md) | Done | Roadmap Phase 2 |
+| [phase-3-auth.md](./phase-3-auth.md) | Done | Roadmap Phase 3 |

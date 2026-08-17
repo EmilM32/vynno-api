@@ -13,7 +13,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0005](./0005-session-lifecycle.md) | Session lifecycle | Accepted |
 | [0006](./0006-single-user-tenancy.md) | Single-user tenancy for v1 | Accepted |
 | [0007](./0007-product-name.md) | Public product name is Vynno | Accepted |
-| [0008](./0008-authentication.md) | Authentication | Deferred |
+| [0008](./0008-authentication.md) | Authentication | Accepted |
 | [0009](./0009-persistence.md) | Persistence | Accepted |
 
 ## Format

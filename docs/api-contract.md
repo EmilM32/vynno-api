@@ -2,7 +2,7 @@
 
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-17
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -24,7 +24,7 @@ If this doc and the frontend schemas drift, stop and reconcile — do not “fix
 | Absent optionals | JSON `null` (not omitted) |
 | IDs | Opaque strings |
 | Pagination | Not yet — `limit` query only |
-| Auth | Not specified (see [Out of scope](#out-of-scope)) |
+| Auth | HttpOnly session cookie (see [Auth](#auth)) |
 
 Creates return **`201`**. Other successful writes return **`200`** with the updated resource. `DELETE` returns **`204`** with an empty body.
 
@@ -47,6 +47,9 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `last_active_project` | 409 | Archive/delete of the last active project | `error_last_active_project` |
 | `project_has_sessions` | 409 | Hard-delete of a project that has logs | `projects_cannot_delete_has_sessions` |
 | `invalid_transition` | 409 | Pause/resume/stop (or archive/restore) in a bad state | fallback |
+| `unauthorized` | 401 | Missing, unknown, or expired session on a protected route | `error_unauthorized` |
+| `invalid_credentials` | 401 | Login username/password do not match | `error_invalid_credentials` |
+| `username_in_use` | 409 | Register with a taken username | fallback |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
@@ -81,13 +84,54 @@ These are product rules the API must enforce. Details: [domain-model.md](./domai
 
 ---
 
-## Resources
+## Auth
+
+Mechanism: [ADR-0008](./adr/0008-authentication.md).
+
+Login and register set an HttpOnly cookie `vynno_session`. The JSON body is `{ "profile": ProfileDto }` only — the session secret is not in the response.
+
+Protected routes accept **either**:
+
+1. Cookie `vynno_session=<token>` (what the SPA sends via `credentials: 'include'`), or
+2. `Authorization: Bearer <token>` (tests, curl, non-browser clients)
+
+Anything else on a protected route is `401 unauthorized`. A project or session id that belongs to another user is `404 not_found`.
+
+| Method | Path | Auth | Body | Success | Typical errors |
+| --- | --- | --- | --- | --- | --- |
+| POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `username_in_use` |
+| POST | `/auth/login` | no | `LoginDto` | `{ profile }` `200` + `Set-Cookie` | `invalid_body`, `invalid_credentials` |
+| POST | `/auth/logout` | yes | — | `204` + clear cookie | `unauthorized` |
+
+`RegisterDto`:
+
+```json
+{ "username": "alexdev", "password": "a-long-enough-secret", "displayName": "Alex Dev", "rememberMe": true }
+```
+
+`displayName` and `rememberMe` may be omitted. Omitted `displayName` becomes the username. Omitted `rememberMe` is `true`.
+
+`LoginDto`:
+
+```json
+{ "username": "alexdev", "password": "a-long-enough-secret", "rememberMe": true }
+```
+
+Username: trim, lowercase, `^[a-z0-9_]{3,32}$`. Password: 8–128 characters.
+
+`rememberMe: true` (default) sets cookie `Max-Age` to 30 days. `false` sets a session cookie (cleared when the browser quits). The server still expires the token after 30 days.
+
+Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is configured for HTTPS.
+
+CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
+
+Public: `POST /auth/login`, `POST /auth/register`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public.
 
 ### Profile
 
 | Method | Path | Body | Success | Errors |
 | --- | --- | --- | --- | --- |
-| GET | `/me` | — | `ProfileDto` | — |
+| GET | `/me` | — | `ProfileDto` | `unauthorized` |
 
 ```json
 {
@@ -206,7 +250,6 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 | Area | Client today |
 | --- | --- |
-| Auth / login / `Authorization` | None |
 | Profile edit | `GET /me` only |
 | Prefs (daily target, default project) | In-memory `prefsStore` |
 | Theme / locale | Device-local |
@@ -224,7 +267,7 @@ See [frontend-handoff.md](./frontend-handoff.md). Short version:
 
 1. Implement this contract.
 2. Frontend sets `PUBLIC_API_BASE=https://…/v1`.
-3. Add auth on the frontend `ApiClient` (Phase 3 / [ADR-0008](./adr/0008-authentication.md)).
+3. Frontend `ApiClient` sends `credentials: 'include'` (Phase 3 / [ADR-0008](./adr/0008-authentication.md)).
 4. Frontend deletes its mock tree.
 
 The SPA already uses `HttpTimeTrackingRepository` for every read and write. No view or store rewrite.

@@ -54,7 +54,7 @@ Plan: [plans/phase-1-scaffold.md](./plans/phase-1-scaffold.md).
 
 ---
 
-## Phase 2 — Contract v1 (current)
+## Phase 2 — Contract v1
 
 **Goals**
 
@@ -68,22 +68,24 @@ Plan: [plans/phase-1-scaffold.md](./plans/phase-1-scaffold.md).
 
 **Exit criteria:** Frontend can set `PUBLIC_API_BASE` at this origin `/v1` and complete Timer start/pause/resume/stop and project CRUD without UI changes. Process restart keeps the data.
 
-Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md).
+Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md) (Done).
 
 ---
 
-## Phase 3 — Auth
+## Phase 3 — Auth (current)
 
 **Depends on:** ADR-0008 Accepted; contract amendment if new routes or codes are required.
 
 **Goals**
 
-- [ ] Implement the chosen mechanism.
-- [ ] Reject unauthenticated writes (and reads, if that is the decision).
-- [ ] Document CORS / cookie / token setup for the SPA.
-- [ ] Frontend Phase 5c: attach credentials on `ApiClient`, delete `/mock/v1`.
+- [x] Implement the chosen mechanism.
+- [x] Reject unauthenticated writes (and reads, if that is the decision).
+- [x] Document CORS / cookie / token setup for the SPA.
+- [x] Frontend Phase 5c: attach credentials on `ApiClient`, delete `/mock/v1`.
 
-**Exit criteria:** Stub login is gone. Two browsers with different credentials do not share data (even if v1 only provisions one real user).
+**Exit criteria:** Stub login is gone. Two browsers with different credentials do not share data (even if v1 only provisions one real user). Remember-me keeps the session across a browser restart.
+
+Plan: [plans/phase-3-auth.md](./plans/phase-3-auth.md).
 
 ---
 
@@ -95,7 +97,7 @@ Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md).
 - [ ] Backups (and a restore drill).
 - [ ] Secrets via env / secret manager, not files in git.
 - [ ] Deploy target documented.
-- [ ] CORS locked to the SPA origin(s).
+- [ ] CORS locked to the SPA origin(s) (origins already required in Phase 3 for cookies; Phase 4 is production hardening).
 
 **Exit criteria:** A documented deploy path; data recoverable; the SPA talks to the deployed origin.
 
