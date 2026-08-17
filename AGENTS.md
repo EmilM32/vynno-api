@@ -35,7 +35,7 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 
 ```sh
 docker compose up -d          # local PostgreSQL 16
-cp .env.example .env          # ADDR, DATABASE_URL, BOOTSTRAP_*, SPA_ORIGIN, COOKIE_SECURE
+cp .env.example .env          # ADDR, DATABASE_URL, BOOTSTRAP_*, SPA_ORIGIN, PUBLIC_API_ORIGIN, COOKIE_SECURE
 go run ./cmd/api              # migrate + seed + listen on :8080
 go test ./...
 gofmt -w .

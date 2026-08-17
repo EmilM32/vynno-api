@@ -18,7 +18,10 @@ import (
 const testPassword = "test-pass-1"
 
 func testOpts() Options {
-	return Options{SPAOrigins: []string{"http://localhost:5173"}}
+	return Options{
+		SPAOrigins:      []string{"http://localhost:5173"},
+		PublicAPIOrigin: "http://localhost:8080",
+	}
 }
 
 func testRouter(t *testing.T) *gin.Engine {
@@ -113,6 +116,10 @@ func loginAs(t *testing.T, r http.Handler, username, password string) *http.Cook
 func TestUnauthenticatedRejected(t *testing.T) {
 	r := testRouter(t)
 	w := doJSON(t, r, http.MethodGet, "/v1/me", nil)
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": "X"})
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodDelete, "/v1/me/avatar", nil)
 	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{"projectId": uuid.NewString()})
 	assertCode(t, w, http.StatusUnauthorized, "unauthorized")

@@ -15,6 +15,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0007](./0007-product-name.md) | Public product name is Vynno | Accepted |
 | [0008](./0008-authentication.md) | Authentication | Accepted |
 | [0009](./0009-persistence.md) | Persistence | Accepted |
+| [0010](./0010-avatar-storage.md) | Avatar storage | Accepted |
 
 ## Format
 

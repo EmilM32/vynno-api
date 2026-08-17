@@ -81,7 +81,9 @@ The API is the information architecture. There is no second resource model.
 
 | Resource | Role |
 | --- | --- |
-| `GET /me` | Display profile (read-only in v1) |
+| `GET /me` | Display profile |
+| `PATCH /me` | Update display name |
+| `PUT` / `DELETE /me/avatar` | Upload or remove photo |
 | `/projects` | Work containers; archive / restore / hard delete |
 | `/sessions` | Timed intervals; start + verb actions |
 
@@ -99,7 +101,9 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | --- | --- | --- |
 | ME-1 | `GET /me` returns `ProfileDto` | P0 |
 | ME-2 | `displayName`, `handle` required; `avatarUrl` JSON `null` when absent | P0 |
-| ME-3 | `PATCH /me` | Later (not in contract) |
+| ME-3 | `PATCH /me` updates `displayName` | P1 |
+| ME-4 | `PUT /me/avatar` stores jpeg/png/webp ≤ 1 MiB and returns a loadable `avatarUrl` | P1 |
+| ME-5 | `DELETE /me/avatar` clears to `null` | P1 |
 
 ### 8.2 Projects
 
@@ -172,7 +176,7 @@ Core concepts:
 - **Project** — work container with color, optional code, archive flag
 - **Time session** — timed interval with `active` / `paused` / `stopped`
 - **Activity type** — optional fixed enum
-- **Profile** — display name and handle
+- **Profile** — display name, handle, optional avatar
 
 ## 11. Assumptions
 

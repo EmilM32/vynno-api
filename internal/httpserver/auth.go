@@ -44,7 +44,7 @@ func (s *Server) register(c *gin.Context) {
 		return
 	}
 	s.setSessionCookie(c, res.Token, res.RememberMe)
-	c.JSON(http.StatusCreated, authResponse{Profile: toProfileDTO(res.Profile)})
+	c.JSON(http.StatusCreated, authResponse{Profile: s.toProfileDTO(res.Profile)})
 }
 
 func (s *Server) login(c *gin.Context) {
@@ -63,7 +63,7 @@ func (s *Server) login(c *gin.Context) {
 		return
 	}
 	s.setSessionCookie(c, res.Token, res.RememberMe)
-	c.JSON(http.StatusOK, authResponse{Profile: toProfileDTO(res.Profile)})
+	c.JSON(http.StatusOK, authResponse{Profile: s.toProfileDTO(res.Profile)})
 }
 
 func (s *Server) logout(c *gin.Context) {

@@ -10,6 +10,13 @@ import (
 	"github.com/google/uuid"
 )
 
+type memAvatar struct {
+	id          uuid.UUID
+	userID      uuid.UUID
+	contentType string
+	bytes       []byte
+}
+
 type memAccount struct {
 	id           uuid.UUID
 	username     string
@@ -25,6 +32,7 @@ type Memory struct {
 	accounts map[uuid.UUID]*memAccount
 	byName   map[string]uuid.UUID
 	tokens   map[string]Token
+	avatars  map[uuid.UUID]memAvatar
 }
 
 func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project) *Memory {
@@ -42,8 +50,9 @@ func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project)
 				sessions: map[uuid.UUID]domain.Session{},
 			},
 		},
-		byName: map[string]uuid.UUID{},
-		tokens: map[string]Token{},
+		byName:  map[string]uuid.UUID{},
+		tokens:  map[string]Token{},
+		avatars: map[uuid.UUID]memAvatar{},
 	}
 }
 
@@ -71,6 +80,70 @@ func (m *Memory) CreateProfile(_ context.Context, userID uuid.UUID, p domain.Pro
 	}
 	a.profile = p
 	return nil
+}
+
+func (m *Memory) UpdateProfileDisplayName(_ context.Context, userID uuid.UUID, displayName string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	a.profile.DisplayName = displayName
+	return nil
+}
+
+func (m *Memory) ReplaceAvatar(_ context.Context, userID uuid.UUID, av domain.Avatar) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	id, err := uuid.Parse(av.ID)
+	if err != nil {
+		return domain.ErrInvalidBody("invalid id")
+	}
+	for existingID, row := range m.avatars {
+		if row.userID == userID {
+			delete(m.avatars, existingID)
+		}
+	}
+	data := append([]byte(nil), av.Bytes...)
+	m.avatars[id] = memAvatar{id: id, userID: userID, contentType: av.ContentType, bytes: data}
+	path := domain.AvatarPath(id.String())
+	a.profile.AvatarURL = &path
+	return nil
+}
+
+func (m *Memory) DeleteAvatarByUser(_ context.Context, userID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	for existingID, row := range m.avatars {
+		if row.userID == userID {
+			delete(m.avatars, existingID)
+		}
+	}
+	a.profile.AvatarURL = nil
+	return nil
+}
+
+func (m *Memory) GetAvatar(_ context.Context, id uuid.UUID) (domain.Avatar, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	row, ok := m.avatars[id]
+	if !ok {
+		return domain.Avatar{}, domain.ErrNotFound()
+	}
+	return domain.Avatar{
+		ID:          row.id.String(),
+		ContentType: row.contentType,
+		Bytes:       append([]byte(nil), row.bytes...),
+	}, nil
 }
 
 func (m *Memory) GetAccountByUsername(_ context.Context, username string) (Account, error) {

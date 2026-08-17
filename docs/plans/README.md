@@ -10,3 +10,4 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [phase-1-scaffold.md](./phase-1-scaffold.md) | Done | Roadmap Phase 1 |
 | [phase-2-contract.md](./phase-2-contract.md) | Done | Roadmap Phase 2 |
 | [phase-3-auth.md](./phase-3-auth.md) | Done | Roadmap Phase 3 |
+| [profile-avatar.md](./profile-avatar.md) | Accepted | ME-3 / ME-4 / ME-5 |

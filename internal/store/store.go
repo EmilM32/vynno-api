@@ -28,6 +28,10 @@ type Token struct {
 type Store interface {
 	GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error)
 	CreateProfile(ctx context.Context, userID uuid.UUID, p domain.Profile) error
+	UpdateProfileDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error
+	ReplaceAvatar(ctx context.Context, userID uuid.UUID, a domain.Avatar) error
+	DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error
+	GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, error)
 
 	GetAccountByUsername(ctx context.Context, username string) (Account, error)
 	GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error)

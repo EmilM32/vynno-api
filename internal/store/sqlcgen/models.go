@@ -20,6 +20,14 @@ type AuthToken struct {
 	ExpiresAt time.Time
 }
 
+type Avatar struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	ContentType string
+	Bytes       []byte
+	CreatedAt   time.Time
+}
+
 type Profile struct {
 	UserID      uuid.UUID
 	DisplayName string

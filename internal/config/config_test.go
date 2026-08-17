@@ -10,6 +10,7 @@ func requiredEnv(t *testing.T) {
 	t.Setenv("DATABASE_URL", "postgres://vynno:vynno@localhost:5432/vynno?sslmode=disable")
 	t.Setenv("BOOTSTRAP_PASSWORD", "local-only-password")
 	t.Setenv("SPA_ORIGIN", "http://localhost:5173")
+	t.Setenv("PUBLIC_API_ORIGIN", "http://localhost:8080")
 }
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
@@ -66,12 +67,25 @@ func TestLoadDefaultsAddr(t *testing.T) {
 	if cfg.CookieSecure {
 		t.Fatal("CookieSecure should default false")
 	}
+	if cfg.PublicAPIOrigin != "http://localhost:8080" {
+		t.Fatalf("PublicAPIOrigin = %q", cfg.PublicAPIOrigin)
+	}
+}
+
+func TestLoadRequiresPublicAPIOrigin(t *testing.T) {
+	requiredEnv(t)
+	if err := os.Unsetenv("PUBLIC_API_ORIGIN"); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := Load(); err == nil {
+		t.Fatal("expected an error when PUBLIC_API_ORIGIN is missing")
+	}
 }
 
 func TestLoadDotEnvFillsUnsetKeys(t *testing.T) {
 	dir := t.TempDir()
 	t.Chdir(dir)
-	content := "BOOTSTRAP_PASSWORD=from-file\nSPA_ORIGIN=http://localhost:5173\nDATABASE_URL=postgres://from-file\n"
+	content := "BOOTSTRAP_PASSWORD=from-file\nSPA_ORIGIN=http://localhost:5173\nDATABASE_URL=postgres://from-file\nPUBLIC_API_ORIGIN=http://localhost:8080\n"
 	if err := os.WriteFile(".env", []byte(content), 0o600); err != nil {
 		t.Fatal(err)
 	}

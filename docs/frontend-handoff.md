@@ -46,6 +46,10 @@ Paths are relative to `/v1`:
 | --- | --- |
 | POST | `/auth/login` , `/auth/register` , `/auth/logout` |
 | GET | `/me` |
+| PATCH | `/me` |
+| PUT | `/me/avatar` (multipart field `file`) |
+| DELETE | `/me/avatar` |
+| GET | `/avatars/:id` (public; no cookie) |
 | GET | `/projects` , `/projects?includeArchived=true` |
 | GET | `/projects/:id` |
 | POST | `/projects` |

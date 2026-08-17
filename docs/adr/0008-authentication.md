@@ -20,7 +20,7 @@ This ADR decides the mechanism. Login/register routes are in [../api-contract.md
 3. **Secondary transport:** `Authorization: Bearer <token>` for tests, curl, and non-browser clients. The SPA does not use this.
 4. **Remember me:** `rememberMe` on login/register (boolean, default **true**). True → cookie `Max-Age` 30 days. False → session cookie (cleared when the browser quits). Server `expires_at` is always 30 days.
 5. **Credentials:** `username` + `password`. Password hashed with bcrypt. Username is `^[a-z0-9_]{3,32}$` after trim+lowercase.
-6. **Public routes:** `GET /healthz`, `POST /v1/auth/login`, `POST /v1/auth/register`. Every other `/v1` resource requires a valid session (reads and writes).
+6. **Public routes:** `GET /healthz`, `POST /v1/auth/login`, `POST /v1/auth/register`, `GET /v1/avatars/:id`. Every other `/v1` resource requires a valid session (reads and writes).
 7. **Accounts:** many personal accounts, isolated by internal `user_id`. No roles, invites, or workspaces ([0006](./0006-single-user-tenancy.md)).
 8. **CORS:** lock to `SPA_ORIGIN` (comma-separated). `AllowCredentials: true`. `*` is incompatible with cookies.
 9. **CSRF:** `SameSite=Lax` + JSON `Content-Type` on mutating requests + reject mutating cookie requests whose `Origin` (or `Referer` if `Origin` is absent) is not in `SPA_ORIGIN`. Bearer-only requests skip the Origin check.
@@ -33,7 +33,7 @@ This ADR decides the mechanism. Login/register routes are in [../api-contract.md
 | Credential fields | `username`, `password`, optional `rememberMe` |
 | New routes | `POST /v1/auth/register`, `POST /v1/auth/login`, `POST /v1/auth/logout` |
 | CORS / cookie flags | `SPA_ORIGIN` allowlist, credentials on, flags in §9–10 |
-| What is public | Health + login + register. Everything else under `/v1` is authenticated. |
+| What is public | Health + login + register + `GET /v1/avatars/:id`. Everything else under `/v1` is authenticated. |
 
 Constraints still in force:
 
@@ -69,6 +69,10 @@ Constraints still in force:
 | Magic link / passwordless | Email infrastructure. Not for v1. |
 | OAuth-only (Google, GitHub) | Fine later; heavy for a single-user v1. |
 | Keep the stub forever | Rejected for any deployed API. |
+
+## Amendment (2026-08-17)
+
+`GET /v1/avatars/:id` is public. Cross-origin `<img src>` from the SPA cannot send the `SameSite=Lax` session cookie, so a cookie-gated image URL would never load. The path uses an unguessable UUID. Decision and [ADR-0010](./0010-avatar-storage.md).
 
 ## Related
 

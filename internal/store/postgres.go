@@ -43,6 +43,77 @@ func (p *Postgres) CreateProfile(ctx context.Context, userID uuid.UUID, profile 
 	})
 }
 
+func (p *Postgres) UpdateProfileDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error {
+	_, err := p.q.UpdateProfileDisplayName(ctx, sqlcgen.UpdateProfileDisplayNameParams{
+		UserID:      userID,
+		DisplayName: displayName,
+	})
+	return mapNotFound(err)
+}
+
+func (p *Postgres) ReplaceAvatar(ctx context.Context, userID uuid.UUID, av domain.Avatar) error {
+	id, err := uuid.Parse(av.ID)
+	if err != nil {
+		return domain.ErrInvalidBody("invalid id")
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := p.q.WithTx(tx)
+	if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := q.InsertAvatar(ctx, sqlcgen.InsertAvatarParams{
+		ID:          id,
+		UserID:      userID,
+		ContentType: av.ContentType,
+		Bytes:       av.Bytes,
+	}); err != nil {
+		return err
+	}
+	path := domain.AvatarPath(id.String())
+	if err := q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
+		UserID:    userID,
+		AvatarUrl: ptrNullString(&path),
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (p *Postgres) DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error {
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	q := p.q.WithTx(tx)
+	if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
+		return err
+	}
+	if err := q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
+		UserID:    userID,
+		AvatarUrl: sql.NullString{},
+	}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, error) {
+	row, err := p.q.GetAvatar(ctx, id)
+	if err != nil {
+		return domain.Avatar{}, mapNotFound(err)
+	}
+	return domain.Avatar{
+		ID:          row.ID.String(),
+		ContentType: row.ContentType,
+		Bytes:       row.Bytes,
+	}, nil
+}
+
 func (p *Postgres) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
 	row, err := p.q.GetUserByUsername(ctx, sql.NullString{String: username, Valid: true})
 	if err != nil {

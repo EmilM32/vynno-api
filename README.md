@@ -40,7 +40,7 @@ go run ./cmd/api       # loads .env from the working directory
 
 `GET http://localhost:8080/healthz` → `{"status":"ok"}`.
 
-`GET http://localhost:8080/healthz` is public. `/v1` requires a session after Phase 3: `POST /v1/auth/login` with the bootstrap username/password from `.env`. Point the SPA at `PUBLIC_API_BASE=http://localhost:8080/v1` and list that SPA origin in `SPA_ORIGIN`.
+`GET http://localhost:8080/healthz` is public. `/v1` requires a session after Phase 3 (`GET /v1/avatars/:id` is the public exception): `POST /v1/auth/login` with the bootstrap username/password from `.env`. Point the SPA at `PUBLIC_API_BASE=http://localhost:8080/v1` and list that SPA origin in `SPA_ORIGIN`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL.
 
 ```sh
 go test ./...

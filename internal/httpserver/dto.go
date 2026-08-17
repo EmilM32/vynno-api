@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
@@ -97,8 +98,20 @@ type startSessionBody struct {
 	TargetDurationMs *int64   `json:"targetDurationMs"`
 }
 
-func toProfileDTO(p domain.Profile) profileDTO {
-	return profileDTO{DisplayName: p.DisplayName, Handle: p.Handle, AvatarURL: p.AvatarURL}
+func (s *Server) toProfileDTO(p domain.Profile) profileDTO {
+	return profileDTO{DisplayName: p.DisplayName, Handle: p.Handle, AvatarURL: s.absoluteAvatarURL(p.AvatarURL)}
+}
+
+func (s *Server) absoluteAvatarURL(stored *string) *string {
+	if stored == nil || *stored == "" {
+		return nil
+	}
+	path := *stored
+	if strings.HasPrefix(path, "http://") || strings.HasPrefix(path, "https://") {
+		return stored
+	}
+	abs := strings.TrimRight(s.publicOrigin, "/") + path
+	return &abs
 }
 
 func toProjectDTO(p domain.Project) projectDTO {

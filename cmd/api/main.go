@@ -53,8 +53,9 @@ func main() {
 	}
 
 	r := httpserver.NewRouter(service.New(pg), httpserver.Options{
-		SPAOrigins:   cfg.SPAOrigins,
-		CookieSecure: cfg.CookieSecure,
+		SPAOrigins:      cfg.SPAOrigins,
+		CookieSecure:    cfg.CookieSecure,
+		PublicAPIOrigin: cfg.PublicAPIOrigin,
 	})
 	if err := r.Run(cfg.Addr); err != nil {
 		log.Fatal(err)

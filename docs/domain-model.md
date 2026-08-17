@@ -20,7 +20,7 @@ Inherited from the frontend domain model and from the mock engine the SPA alread
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | Fixed category (Deep Work, Meeting, Coding, …). Optional on a session. |
 | **Tag** | Secondary string labels on a session. Distinct from project color. |
-| **Profile** | Display name, handle, optional avatar. Read-only in v1. |
+| **Profile** | Display name, handle, optional avatar. Display name and avatar are writable after register. |
 | **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active` or `paused`. |
 
@@ -168,11 +168,20 @@ Display labels (`Deep Work`, `Debug`) are a frontend i18n concern.
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `displayName` | string | Required, non-empty |
-| `handle` | string | Required, non-empty (client shows e.g. `@alexdev`) |
-| `avatarUrl` | string? | JSON `null` when absent |
+| `displayName` | string | Required, trimmed, 1–80. Writable via `PATCH /me`. |
+| `handle` | string | Required, non-empty (client shows e.g. `@alexdev`). Derived from username; not user-editable. |
+| `avatarUrl` | string? | JSON `null` when absent. Absolute public URL when set. |
 
-No `PATCH /me` in v1. Each account has its own profile. A bootstrap user is seeded when the database is empty.
+Each account has its own profile. A bootstrap user is seeded when the database is empty.
+
+| Rule | Description |
+| --- | --- |
+| **Register** | Creates the profile with `avatarUrl` null. No photo on `POST /auth/register`. |
+| **Display name** | `PATCH /me`. Omit leaves it unchanged. Empty / null is `invalid_body`. |
+| **Handle** | `@` + username. Not accepted on `PATCH /me`. |
+| **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
+| **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
+| **Avatar GET** | `GET /avatars/:id` is public. Unknown id is `404 not_found`. Bytes are not on the profile row. |
 
 ### 5.5 Aggregates
 

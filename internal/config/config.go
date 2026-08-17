@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net/url"
 	"os"
 	"strings"
 )
@@ -16,10 +17,12 @@ type Config struct {
 	BootstrapPassword string
 	SPAOrigins        []string
 	CookieSecure      bool
+	PublicAPIOrigin   string
 }
 
 // Load reads process env. A local `.env` in the working directory is loaded first
-// for keys that are not already set. DATABASE_URL, BOOTSTRAP_PASSWORD, and SPA_ORIGIN are required.
+// for keys that are not already set. DATABASE_URL, BOOTSTRAP_PASSWORD, SPA_ORIGIN,
+// and PUBLIC_API_ORIGIN are required.
 func Load() (Config, error) {
 	if err := loadDotEnv(".env"); err != nil {
 		return Config{}, err
@@ -50,6 +53,11 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("SPA_ORIGIN is required")
 	}
 
+	publicOrigin, err := parsePublicOrigin(os.Getenv("PUBLIC_API_ORIGIN"))
+	if err != nil {
+		return Config{}, err
+	}
+
 	return Config{
 		Addr:              addr,
 		DatabaseURL:       databaseURL,
@@ -57,7 +65,20 @@ func Load() (Config, error) {
 		BootstrapPassword: password,
 		SPAOrigins:        origins,
 		CookieSecure:      boolEnv("COOKIE_SECURE"),
+		PublicAPIOrigin:   publicOrigin,
 	}, nil
+}
+
+func parsePublicOrigin(raw string) (string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return "", fmt.Errorf("PUBLIC_API_ORIGIN is required")
+	}
+	u, err := url.Parse(raw)
+	if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+		return "", fmt.Errorf("PUBLIC_API_ORIGIN must be an absolute http(s) origin")
+	}
+	return u.Scheme + "://" + u.Host, nil
 }
 
 func parseOrigins(raw string) []string {

@@ -111,8 +111,16 @@ Only via contract amendments. Candidates: [backlog.md](./backlog.md).
 - Prefs persistence
 - LOG-6 / LOG-7 (edit, delete, manual entry)
 - Insights aggregation endpoints
-- `PATCH /me`
 - Multi-user workspaces
+
+### Profile edit (ME-3 / ME-4 / ME-5)
+
+Plan: [plans/profile-avatar.md](./plans/profile-avatar.md).
+
+- [x] Contract amendment: `PATCH /me`, `PUT` / `DELETE /me/avatar`, public `GET /avatars/:id`
+- [x] ADR-0010 avatar storage (BYTEA + public URL)
+- [x] API + tests
+- [x] Frontend Settings pairing
 
 ---
 

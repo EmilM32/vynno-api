@@ -2,7 +2,8 @@
 
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-08-17
+**Last updated:** 2026-08-17  
+**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5)
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -125,13 +126,17 @@ Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is
 
 CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
 
-Public: `POST /auth/login`, `POST /auth/register`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public.
+Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public.
 
 ### Profile
 
-| Method | Path | Body | Success | Errors |
-| --- | --- | --- | --- | --- |
-| GET | `/me` | — | `ProfileDto` | `unauthorized` |
+| Method | Path | Auth | Body | Success | Errors |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/me` | yes | — | `ProfileDto` | `unauthorized` |
+| PATCH | `/me` | yes | `UpdateProfileDto` | `ProfileDto` `200` | `unauthorized`, `invalid_json`, `invalid_body` |
+| PUT | `/me/avatar` | yes | `multipart/form-data` field `file` | `ProfileDto` `200` | `unauthorized`, `invalid_body` |
+| DELETE | `/me/avatar` | yes | — | `ProfileDto` `200` | `unauthorized` |
+| GET | `/avatars/:id` | **no** | — | raw image bytes | `not_found` |
 
 ```json
 {
@@ -141,7 +146,29 @@ Public: `POST /auth/login`, `POST /auth/register`. Every other `/v1` resource re
 }
 ```
 
-Read-only in this stage. No `PATCH /me`.
+`avatarUrl` is JSON `null` when absent. When set it is an absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` the browser can load as `<img src>`. The stored value is the path only; the origin is prefixed at read time.
+
+`UpdateProfileDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`.
+
+```json
+{ "displayName": "Alex Dev" }
+```
+
+- `displayName`: trim; 1–80 characters. Omit = leave unchanged. `null` or `""` → `invalid_body`.
+- Do not send `handle` or `avatarUrl` on this body. Handle stays derived from the username. Avatar is only `PUT` / `DELETE /me/avatar`.
+
+`PUT /me/avatar`:
+
+- `Content-Type: multipart/form-data`
+- Field name: `file` (one part)
+- Detected type (magic bytes, not the client `Content-Type` or filename): `image/jpeg`, `image/png`, `image/webp`
+- Max decoded size: 1 MiB
+- Replace deletes the previous row (if any), inserts a new UUID, updates `avatarUrl`, returns `ProfileDto`
+- Missing part, empty file, unknown type, or oversize → `invalid_body`
+
+`DELETE /me/avatar` when already null is still `200` with `avatarUrl: null`.
+
+`GET /avatars/:id` is public (no cookie). Success is the raw bytes with `Content-Type` from the stored row and `Cache-Control: public, max-age=31536000, immutable`. Unknown id → `404` `{ "error": { "code": "not_found", "message": "…" } }`.
 
 ### Projects
 
@@ -250,7 +277,6 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 | Area | Client today |
 | --- | --- |
-| Profile edit | `GET /me` only |
 | Prefs (daily target, default project) | In-memory `prefsStore` |
 | Theme / locale | Device-local |
 | Insights / dashboard totals | Computed on the client from the session list |

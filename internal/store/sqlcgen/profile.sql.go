@@ -23,6 +23,16 @@ func (q *Queries) CountUsers(ctx context.Context) (int64, error) {
 	return column_1, err
 }
 
+const deleteAvatarByUser = `-- name: DeleteAvatarByUser :exec
+DELETE FROM avatars
+WHERE user_id = $1
+`
+
+func (q *Queries) DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, deleteAvatarByUser, userID)
+	return err
+}
+
 const firstUserID = `-- name: FirstUserID :one
 SELECT id FROM users ORDER BY id LIMIT 1
 `
@@ -32,6 +42,31 @@ func (q *Queries) FirstUserID(ctx context.Context) (uuid.UUID, error) {
 	var id uuid.UUID
 	err := row.Scan(&id)
 	return id, err
+}
+
+const getAvatar = `-- name: GetAvatar :one
+SELECT id, user_id, content_type, bytes
+FROM avatars
+WHERE id = $1
+`
+
+type GetAvatarRow struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	ContentType string
+	Bytes       []byte
+}
+
+func (q *Queries) GetAvatar(ctx context.Context, id uuid.UUID) (GetAvatarRow, error) {
+	row := q.db.QueryRowContext(ctx, getAvatar, id)
+	var i GetAvatarRow
+	err := row.Scan(
+		&i.ID,
+		&i.UserID,
+		&i.ContentType,
+		&i.Bytes,
+	)
+	return i, err
 }
 
 const getProfile = `-- name: GetProfile :one
@@ -79,6 +114,28 @@ func (q *Queries) GetUserByUsername(ctx context.Context, username sql.NullString
 	return i, err
 }
 
+const insertAvatar = `-- name: InsertAvatar :exec
+INSERT INTO avatars (id, user_id, content_type, bytes)
+VALUES ($1, $2, $3, $4)
+`
+
+type InsertAvatarParams struct {
+	ID          uuid.UUID
+	UserID      uuid.UUID
+	ContentType string
+	Bytes       []byte
+}
+
+func (q *Queries) InsertAvatar(ctx context.Context, arg InsertAvatarParams) error {
+	_, err := q.db.ExecContext(ctx, insertAvatar,
+		arg.ID,
+		arg.UserID,
+		arg.ContentType,
+		arg.Bytes,
+	)
+	return err
+}
+
 const insertProfile = `-- name: InsertProfile :exec
 INSERT INTO profiles (user_id, display_name, handle, avatar_url)
 VALUES ($1, $2, $3, $4)
@@ -116,6 +173,22 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 	return err
 }
 
+const setProfileAvatarURL = `-- name: SetProfileAvatarURL :exec
+UPDATE profiles
+SET avatar_url = $2
+WHERE user_id = $1
+`
+
+type SetProfileAvatarURLParams struct {
+	UserID    uuid.UUID
+	AvatarUrl sql.NullString
+}
+
+func (q *Queries) SetProfileAvatarURL(ctx context.Context, arg SetProfileAvatarURLParams) error {
+	_, err := q.db.ExecContext(ctx, setProfileAvatarURL, arg.UserID, arg.AvatarUrl)
+	return err
+}
+
 const setUserCredentials = `-- name: SetUserCredentials :exec
 UPDATE users
 SET username = $2, password_hash = $3
@@ -131,6 +204,31 @@ type SetUserCredentialsParams struct {
 func (q *Queries) SetUserCredentials(ctx context.Context, arg SetUserCredentialsParams) error {
 	_, err := q.db.ExecContext(ctx, setUserCredentials, arg.ID, arg.Username, arg.PasswordHash)
 	return err
+}
+
+const updateProfileDisplayName = `-- name: UpdateProfileDisplayName :one
+UPDATE profiles
+SET display_name = $2
+WHERE user_id = $1
+RETURNING display_name, handle, avatar_url
+`
+
+type UpdateProfileDisplayNameParams struct {
+	UserID      uuid.UUID
+	DisplayName string
+}
+
+type UpdateProfileDisplayNameRow struct {
+	DisplayName string
+	Handle      string
+	AvatarUrl   sql.NullString
+}
+
+func (q *Queries) UpdateProfileDisplayName(ctx context.Context, arg UpdateProfileDisplayNameParams) (UpdateProfileDisplayNameRow, error) {
+	row := q.db.QueryRowContext(ctx, updateProfileDisplayName, arg.UserID, arg.DisplayName)
+	var i UpdateProfileDisplayNameRow
+	err := row.Scan(&i.DisplayName, &i.Handle, &i.AvatarUrl)
+	return i, err
 }
 
 const usernameInUse = `-- name: UsernameInUse :one

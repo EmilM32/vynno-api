@@ -17,14 +17,16 @@ const (
 )
 
 type Options struct {
-	SPAOrigins   []string
-	CookieSecure bool
+	SPAOrigins      []string
+	CookieSecure    bool
+	PublicAPIOrigin string
 }
 
 type Server struct {
 	svc          *service.Service
 	spaOrigins   map[string]struct{}
 	cookieSecure bool
+	publicOrigin string
 }
 
 func NewRouter(svc *service.Service, opts Options) *gin.Engine {
@@ -37,12 +39,17 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		allowed[o] = struct{}{}
 	}
 
-	s := &Server{svc: svc, spaOrigins: allowed, cookieSecure: opts.CookieSecure}
+	publicOrigin := opts.PublicAPIOrigin
+	if publicOrigin == "" {
+		publicOrigin = "http://localhost:8080"
+	}
+	s := &Server{svc: svc, spaOrigins: allowed, cookieSecure: opts.CookieSecure, publicOrigin: publicOrigin}
 	r := gin.New()
+	r.MaxMultipartMemory = maxAvatarMultipart
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
-		AllowMethods:     []string{"GET", "POST", "PATCH", "DELETE", "OPTIONS"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
@@ -53,11 +60,15 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	v1 := r.Group("/v1")
 	v1.POST("/auth/register", s.register)
 	v1.POST("/auth/login", s.login)
+	v1.GET("/avatars/:id", s.getAvatar)
 
 	authed := v1.Group("")
 	authed.Use(s.requireAuth())
 	authed.POST("/auth/logout", s.logout)
 	authed.GET("/me", s.getMe)
+	authed.PATCH("/me", s.patchMe)
+	authed.PUT("/me/avatar", s.putMeAvatar)
+	authed.DELETE("/me/avatar", s.deleteMeAvatar)
 	authed.GET("/projects", s.listProjects)
 	authed.POST("/projects", s.createProject)
 	authed.GET("/projects/:id", s.getProject)

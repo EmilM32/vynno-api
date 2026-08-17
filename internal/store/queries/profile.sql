@@ -33,5 +33,29 @@ SELECT EXISTS(
 INSERT INTO profiles (user_id, display_name, handle, avatar_url)
 VALUES ($1, $2, $3, $4);
 
+-- name: UpdateProfileDisplayName :one
+UPDATE profiles
+SET display_name = $2
+WHERE user_id = $1
+RETURNING display_name, handle, avatar_url;
+
+-- name: SetProfileAvatarURL :exec
+UPDATE profiles
+SET avatar_url = $2
+WHERE user_id = $1;
+
+-- name: InsertAvatar :exec
+INSERT INTO avatars (id, user_id, content_type, bytes)
+VALUES ($1, $2, $3, $4);
+
+-- name: DeleteAvatarByUser :exec
+DELETE FROM avatars
+WHERE user_id = $1;
+
+-- name: GetAvatar :one
+SELECT id, user_id, content_type, bytes
+FROM avatars
+WHERE id = $1;
+
 -- name: FirstUserID :one
 SELECT id FROM users ORDER BY id LIMIT 1;

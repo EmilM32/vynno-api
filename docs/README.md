@@ -26,6 +26,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | Language / HTTP | Go + Gin | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
 | Persistence | PostgreSQL, goose, sqlc | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
 | Auth | HttpOnly session cookie + remember-me | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
+| Avatars | BYTEA + public `/v1/avatars/:id` | [ADR-0010](./adr/0010-avatar-storage.md) (Accepted) |
 
 Also decided:
 
