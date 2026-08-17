@@ -6,10 +6,12 @@ import (
 	"log"
 
 	"github.com/EmilM32/vynno-api/internal/config"
+	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/httpserver"
 	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/EmilM32/vynno-api/internal/store"
 	_ "github.com/jackc/pgx/v5/stdlib"
+	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -31,20 +33,29 @@ func main() {
 		log.Fatal(err)
 	}
 
-	pg := store.NewPostgres(db)
-	ctx := context.Background()
-	if err := pg.SeedEmpty(ctx, store.DefaultUserID(), store.DefaultProfile(), store.DefaultProject()); err != nil {
-		log.Fatal(err)
-	}
-	userID, ok, err := pg.FirstUserID(ctx)
+	username, err := domain.NormalizeUsername(cfg.BootstrapUsername)
 	if err != nil {
 		log.Fatal(err)
 	}
-	if !ok {
-		log.Fatal("no user after seed")
+	password, err := domain.NormalizePassword(cfg.BootstrapPassword)
+	if err != nil {
+		log.Fatal(err)
+	}
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	r := httpserver.NewRouter(service.New(pg, userID))
+	pg := store.NewPostgres(db)
+	ctx := context.Background()
+	if err := pg.Bootstrap(ctx, store.DefaultUserID(), username, string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
+		log.Fatal(err)
+	}
+
+	r := httpserver.NewRouter(service.New(pg), httpserver.Options{
+		SPAOrigins:   cfg.SPAOrigins,
+		CookieSecure: cfg.CookieSecure,
+	})
 	if err := r.Run(cfg.Addr); err != nil {
 		log.Fatal(err)
 	}

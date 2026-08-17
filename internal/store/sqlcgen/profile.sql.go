@@ -53,6 +53,32 @@ func (q *Queries) GetProfile(ctx context.Context, userID uuid.UUID) (GetProfileR
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, username, password_hash
+FROM users
+WHERE id = $1
+`
+
+func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByID, id)
+	var i User
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	return i, err
+}
+
+const getUserByUsername = `-- name: GetUserByUsername :one
+SELECT id, username, password_hash
+FROM users
+WHERE username = $1
+`
+
+func (q *Queries) GetUserByUsername(ctx context.Context, username sql.NullString) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
+	var i User
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	return i, err
+}
+
 const insertProfile = `-- name: InsertProfile :exec
 INSERT INTO profiles (user_id, display_name, handle, avatar_url)
 VALUES ($1, $2, $3, $4)
@@ -76,10 +102,51 @@ func (q *Queries) InsertProfile(ctx context.Context, arg InsertProfileParams) er
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id) VALUES ($1)
+INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)
 `
 
-func (q *Queries) InsertUser(ctx context.Context, id uuid.UUID) error {
-	_, err := q.db.ExecContext(ctx, insertUser, id)
+type InsertUserParams struct {
+	ID           uuid.UUID
+	Username     sql.NullString
+	PasswordHash sql.NullString
+}
+
+func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
+	_, err := q.db.ExecContext(ctx, insertUser, arg.ID, arg.Username, arg.PasswordHash)
 	return err
+}
+
+const setUserCredentials = `-- name: SetUserCredentials :exec
+UPDATE users
+SET username = $2, password_hash = $3
+WHERE id = $1
+`
+
+type SetUserCredentialsParams struct {
+	ID           uuid.UUID
+	Username     sql.NullString
+	PasswordHash sql.NullString
+}
+
+func (q *Queries) SetUserCredentials(ctx context.Context, arg SetUserCredentialsParams) error {
+	_, err := q.db.ExecContext(ctx, setUserCredentials, arg.ID, arg.Username, arg.PasswordHash)
+	return err
+}
+
+const usernameInUse = `-- name: UsernameInUse :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE username = $1 AND id <> $2
+)::boolean
+`
+
+type UsernameInUseParams struct {
+	Username sql.NullString
+	ID       uuid.UUID
+}
+
+func (q *Queries) UsernameInUse(ctx context.Context, arg UsernameInUseParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, usernameInUse, arg.Username, arg.ID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
 }

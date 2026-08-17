@@ -34,6 +34,76 @@ func (p *Postgres) GetProfile(ctx context.Context, userID uuid.UUID) (domain.Pro
 	}, nil
 }
 
+func (p *Postgres) CreateProfile(ctx context.Context, userID uuid.UUID, profile domain.Profile) error {
+	return p.q.InsertProfile(ctx, sqlcgen.InsertProfileParams{
+		UserID:      userID,
+		DisplayName: profile.DisplayName,
+		Handle:      profile.Handle,
+		AvatarUrl:   ptrNullString(profile.AvatarURL),
+	})
+}
+
+func (p *Postgres) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
+	row, err := p.q.GetUserByUsername(ctx, sql.NullString{String: username, Valid: true})
+	if err != nil {
+		return Account{}, mapNotFound(err)
+	}
+	return accountFromUser(row), nil
+}
+
+func (p *Postgres) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error) {
+	row, err := p.q.GetUserByID(ctx, id)
+	if err != nil {
+		return Account{}, mapNotFound(err)
+	}
+	return accountFromUser(row), nil
+}
+
+func (p *Postgres) CreateAccount(ctx context.Context, a Account) error {
+	err := p.q.InsertUser(ctx, sqlcgen.InsertUserParams{
+		ID:           a.ID,
+		Username:     sql.NullString{String: a.Username, Valid: a.Username != ""},
+		PasswordHash: sql.NullString{String: a.PasswordHash, Valid: a.PasswordHash != ""},
+	})
+	return mapUnique(err)
+}
+
+func (p *Postgres) SetAccountCredentials(ctx context.Context, id uuid.UUID, username, passwordHash string) error {
+	return mapUnique(p.q.SetUserCredentials(ctx, sqlcgen.SetUserCredentialsParams{
+		ID:           id,
+		Username:     sql.NullString{String: username, Valid: true},
+		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
+	}))
+}
+
+func (p *Postgres) UsernameTaken(ctx context.Context, username string, excludeID uuid.UUID) (bool, error) {
+	return p.q.UsernameInUse(ctx, sqlcgen.UsernameInUseParams{
+		Username: sql.NullString{String: username, Valid: true},
+		ID:       excludeID,
+	})
+}
+
+func (p *Postgres) CreateToken(ctx context.Context, tok Token) error {
+	return p.q.InsertAuthToken(ctx, sqlcgen.InsertAuthTokenParams{
+		ID:        tok.ID,
+		UserID:    tok.UserID,
+		TokenHash: tok.TokenHash,
+		ExpiresAt: tok.ExpiresAt,
+	})
+}
+
+func (p *Postgres) GetTokenByHash(ctx context.Context, hash string) (Token, error) {
+	row, err := p.q.GetAuthTokenByHash(ctx, hash)
+	if err != nil {
+		return Token{}, mapNotFound(err)
+	}
+	return Token{ID: row.ID, UserID: row.UserID, TokenHash: row.TokenHash, ExpiresAt: row.ExpiresAt}, nil
+}
+
+func (p *Postgres) DeleteTokenByHash(ctx context.Context, hash string) error {
+	return p.q.DeleteAuthTokenByHash(ctx, hash)
+}
+
 func (p *Postgres) ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {
 	rows, err := p.q.ListProjects(ctx, sqlcgen.ListProjectsParams{
 		UserID:          userID,
@@ -199,27 +269,47 @@ func (p *Postgres) FirstUserID(ctx context.Context) (uuid.UUID, bool, error) {
 	return id, true, nil
 }
 
-func (p *Postgres) SeedEmpty(ctx context.Context, userID uuid.UUID, profile domain.Profile, project domain.Project) error {
-	n, err := p.q.CountUsers(ctx)
+func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error {
+	existing, err := p.q.GetUserByID(ctx, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		n, err := p.q.CountUsers(ctx)
+		if err != nil {
+			return err
+		}
+		if n > 0 {
+			return nil
+		}
+		if err := p.CreateAccount(ctx, Account{ID: userID, Username: username, PasswordHash: passwordHash}); err != nil {
+			return err
+		}
+		if err := p.CreateProfile(ctx, userID, profile); err != nil {
+			return err
+		}
+		_, err = p.CreateProject(ctx, userID, project)
+		return err
+	}
 	if err != nil {
 		return err
 	}
-	if n > 0 {
+	if existing.PasswordHash.Valid && existing.PasswordHash.String != "" {
 		return nil
 	}
-	if err := p.q.InsertUser(ctx, userID); err != nil {
-		return err
+	return p.SetAccountCredentials(ctx, userID, username, passwordHash)
+}
+
+func accountFromUser(row sqlcgen.User) Account {
+	return Account{
+		ID:           row.ID,
+		Username:     nullStringValue(row.Username),
+		PasswordHash: nullStringValue(row.PasswordHash),
 	}
-	if err := p.q.InsertProfile(ctx, sqlcgen.InsertProfileParams{
-		UserID:      userID,
-		DisplayName: profile.DisplayName,
-		Handle:      profile.Handle,
-		AvatarUrl:   ptrNullString(profile.AvatarURL),
-	}); err != nil {
-		return err
+}
+
+func nullStringValue(s sql.NullString) string {
+	if !s.Valid {
+		return ""
 	}
-	_, err = p.CreateProject(ctx, userID, project)
-	return err
+	return s.String
 }
 
 func insertSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.InsertSessionParams, error) {
@@ -292,6 +382,8 @@ func mapUnique(err error) error {
 			return domain.ErrCodeInUse()
 		case "sessions_one_live_per_user":
 			return domain.ErrSessionAlreadyActive()
+		case "users_username_key":
+			return domain.ErrUsernameInUse()
 		}
 		return domain.ErrCodeInUse()
 	}

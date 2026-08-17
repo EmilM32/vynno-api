@@ -3,14 +3,41 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/google/uuid"
 )
 
+// Account is a login identity. Username and hash are never on the wire.
+type Account struct {
+	ID           uuid.UUID
+	Username     string
+	PasswordHash string
+}
+
+// Token is a hashed session. The raw secret is not stored.
+type Token struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	ExpiresAt time.Time
+}
+
 // Store is the persistence port. Postgres is the system of record; Memory is a test double.
 type Store interface {
 	GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error)
+	CreateProfile(ctx context.Context, userID uuid.UUID, p domain.Profile) error
+
+	GetAccountByUsername(ctx context.Context, username string) (Account, error)
+	GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error)
+	CreateAccount(ctx context.Context, a Account) error
+	SetAccountCredentials(ctx context.Context, id uuid.UUID, username, passwordHash string) error
+	UsernameTaken(ctx context.Context, username string, excludeID uuid.UUID) (bool, error)
+
+	CreateToken(ctx context.Context, tok Token) error
+	GetTokenByHash(ctx context.Context, hash string) (Token, error)
+	DeleteTokenByHash(ctx context.Context, hash string) error
 
 	ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error)
 	GetProject(ctx context.Context, userID, id uuid.UUID) (domain.Project, error)
@@ -28,7 +55,7 @@ type Store interface {
 	UpdateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
 
 	FirstUserID(ctx context.Context) (uuid.UUID, bool, error)
-	SeedEmpty(ctx context.Context, userID uuid.UUID, profile domain.Profile, project domain.Project) error
+	Bootstrap(ctx context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error
 }
 
 func encodeTags(tags []string) (json.RawMessage, error) {

@@ -2,6 +2,7 @@ package httpserver
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -11,17 +12,32 @@ import (
 	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
-func testService() *service.Service {
-	user := store.DefaultUserID()
-	mem := store.NewMemory(user, store.DefaultProfile(), store.DefaultProject())
-	return service.New(mem, user)
+const testPassword = "test-pass-1"
+
+func testOpts() Options {
+	return Options{SPAOrigins: []string{"http://localhost:5173"}}
 }
 
-func doJSON(t *testing.T, r http.Handler, method, path string, body any) *httptest.ResponseRecorder {
+func testRouter(t *testing.T) *gin.Engine {
 	t.Helper()
 	gin.SetMode(gin.TestMode)
+	user := store.DefaultUserID()
+	mem := store.NewMemory(user, store.DefaultProfile(), store.DefaultProject())
+	hash, err := bcrypt.GenerateFromPassword([]byte(testPassword), bcrypt.DefaultCost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := mem.Bootstrap(context.Background(), user, "alexdev", string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
+		t.Fatal(err)
+	}
+	return NewRouter(service.New(mem), testOpts())
+}
+
+func doJSON(t *testing.T, r http.Handler, method, path string, body any, opts ...reqOpt) *httptest.ResponseRecorder {
+	t.Helper()
 	var buf *bytes.Buffer
 	if body != nil {
 		b, err := json.Marshal(body)
@@ -36,15 +52,78 @@ func doJSON(t *testing.T, r http.Handler, method, path string, body any) *httpte
 	if body != nil {
 		req.Header.Set("Content-Type", "application/json")
 	}
+	for _, opt := range opts {
+		opt(req)
+	}
 	w := httptest.NewRecorder()
 	r.ServeHTTP(w, req)
 	return w
 }
 
-func TestMeAndProjectsAndSessions(t *testing.T) {
-	r := NewRouter(testService())
+type reqOpt func(*http.Request)
 
+func withCookie(c *http.Cookie) reqOpt {
+	return func(r *http.Request) {
+		if c != nil {
+			r.AddCookie(c)
+		}
+	}
+}
+
+func withBearer(token string) reqOpt {
+	return func(r *http.Request) {
+		r.Header.Set("Authorization", "Bearer "+token)
+	}
+}
+
+func withOrigin(origin string) reqOpt {
+	return func(r *http.Request) {
+		r.Header.Set("Origin", origin)
+	}
+}
+
+func withReferer(ref string) reqOpt {
+	return func(r *http.Request) {
+		r.Header.Set("Referer", ref)
+	}
+}
+
+func loginCookie(t *testing.T, r http.Handler) *http.Cookie {
+	t.Helper()
+	return loginAs(t, r, "alexdev", testPassword)
+}
+
+func loginAs(t *testing.T, r http.Handler, username, password string) *http.Cookie {
+	t.Helper()
+	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
+		"username": username, "password": password,
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("login = %d %s", w.Code, w.Body.String())
+	}
+	for _, c := range w.Result().Cookies() {
+		if c.Name == sessionCookie {
+			return c
+		}
+	}
+	t.Fatal("missing session cookie")
+	return nil
+}
+
+func TestUnauthenticatedRejected(t *testing.T) {
+	r := testRouter(t)
 	w := doJSON(t, r, http.MethodGet, "/v1/me", nil)
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{"projectId": uuid.NewString()})
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+}
+
+func TestMeAndProjectsAndSessions(t *testing.T) {
+	r := testRouter(t)
+	ck := loginCookie(t, r)
+	auth := withCookie(ck)
+
+	w := doJSON(t, r, http.MethodGet, "/v1/me", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /me = %d %s", w.Code, w.Body.String())
 	}
@@ -59,7 +138,7 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 		t.Fatalf("avatarUrl should be null")
 	}
 
-	w = doJSON(t, r, http.MethodGet, "/v1/projects", nil)
+	w = doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("GET /projects = %d %s", w.Code, w.Body.String())
 	}
@@ -74,7 +153,7 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 
 	w = doJSON(t, r, http.MethodPost, "/v1/projects", map[string]any{
 		"name": "Tools", "color": "#22c55e", "code": "tool",
-	})
+	}, auth)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("POST /projects = %d %s", w.Code, w.Body.String())
 	}
@@ -88,15 +167,15 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 
 	w = doJSON(t, r, http.MethodPost, "/v1/projects", map[string]any{
 		"name": "Dup", "color": "#000000", "code": "TOOL",
-	})
+	}, auth)
 	assertCode(t, w, http.StatusConflict, "code_in_use")
 
-	w = doJSON(t, r, http.MethodGet, "/v1/sessions/active", nil)
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions/active", nil, auth)
 	assertCode(t, w, http.StatusNotFound, "session_not_active")
 
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
 		"projectId": seedID, "note": "  ",
-	})
+	}, auth)
 	if w.Code != http.StatusCreated {
 		t.Fatalf("POST /sessions = %d %s", w.Code, w.Body.String())
 	}
@@ -110,30 +189,30 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
 		"projectId": seedID, "note": "second",
-	})
+	}, auth)
 	assertCode(t, w, http.StatusConflict, "session_already_active")
 
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("pause = %d %s", w.Code, w.Body.String())
 	}
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil, auth)
 	assertCode(t, w, http.StatusConflict, "invalid_transition")
 
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/resume", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/resume", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("resume = %d %s", w.Code, w.Body.String())
 	}
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/stop", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/stop", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("stop = %d %s", w.Code, w.Body.String())
 	}
 
-	w = doJSON(t, r, http.MethodPost, "/v1/projects/"+seedID+"/archive", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/projects/"+seedID+"/archive", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("archive seed = %d %s", w.Code, w.Body.String())
 	}
-	w = doJSON(t, r, http.MethodGet, "/v1/projects", nil)
+	w = doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
 	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
 		t.Fatal(err)
 	}
@@ -143,19 +222,19 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
 		"projectId": seedID, "note": "on archived",
-	})
+	}, auth)
 	assertCode(t, w, http.StatusConflict, "project_archived")
 
-	w = doJSON(t, r, http.MethodDelete, "/v1/projects/"+seedID, nil)
+	w = doJSON(t, r, http.MethodDelete, "/v1/projects/"+seedID, nil, auth)
 	assertCode(t, w, http.StatusConflict, "project_has_sessions")
 
-	w = doJSON(t, r, http.MethodPost, "/v1/projects/"+created.ID+"/archive", nil)
+	w = doJSON(t, r, http.MethodPost, "/v1/projects/"+created.ID+"/archive", nil, auth)
 	assertCode(t, w, http.StatusConflict, "last_active_project")
 
-	w = doJSON(t, r, http.MethodGet, "/v1/sessions?status=nope", nil)
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?status=nope", nil, auth)
 	assertCode(t, w, http.StatusBadRequest, "invalid_query")
 
-	w = doJSON(t, r, http.MethodGet, "/v1/projects/"+uuid.NewString(), nil)
+	w = doJSON(t, r, http.MethodGet, "/v1/projects/"+uuid.NewString(), nil, auth)
 	assertCode(t, w, http.StatusNotFound, "not_found")
 }
 

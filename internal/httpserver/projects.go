@@ -16,7 +16,7 @@ func (s *Server) listProjects(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	items, err := s.svc.ListProjects(c.Request.Context(), include)
+	items, err := s.userSvc(c).ListProjects(c.Request.Context(), include)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -34,7 +34,7 @@ func (s *Server) getProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	p, err := s.svc.GetProject(c.Request.Context(), id)
+	p, err := s.userSvc(c).GetProject(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -48,7 +48,7 @@ func (s *Server) createProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	p, err := s.svc.CreateProject(c.Request.Context(), service.CreateProjectInput{
+	p, err := s.userSvc(c).CreateProject(c.Request.Context(), service.CreateProjectInput{
 		Name: body.Name, Color: body.Color, Code: body.Code,
 	})
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *Server) updateProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	p, err := s.svc.UpdateProject(c.Request.Context(), id, service.UpdateProjectInput{
+	p, err := s.userSvc(c).UpdateProject(c.Request.Context(), id, service.UpdateProjectInput{
 		Name: body.Name, Color: body.Color, Code: body.Code, CodeSet: body.CodeSet,
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func (s *Server) deleteProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	if err := s.svc.DeleteProject(c.Request.Context(), id); err != nil {
+	if err := s.userSvc(c).DeleteProject(c.Request.Context(), id); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -98,7 +98,7 @@ func (s *Server) archiveProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	p, err := s.svc.ArchiveProject(c.Request.Context(), id)
+	p, err := s.userSvc(c).ArchiveProject(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -112,7 +112,7 @@ func (s *Server) restoreProject(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	p, err := s.svc.RestoreProject(c.Request.Context(), id)
+	p, err := s.userSvc(c).RestoreProject(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -126,7 +126,7 @@ func (s *Server) projectSessionCount(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	n, err := s.svc.ProjectSessionCount(c.Request.Context(), id)
+	n, err := s.userSvc(c).ProjectSessionCount(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return

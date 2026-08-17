@@ -12,6 +12,14 @@ import (
 	"github.com/google/uuid"
 )
 
+type AuthToken struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	TokenHash string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+}
+
 type Profile struct {
 	UserID      uuid.UUID
 	DisplayName string
@@ -48,5 +56,7 @@ type Session struct {
 }
 
 type User struct {
-	ID uuid.UUID
+	ID           uuid.UUID
+	Username     sql.NullString
+	PasswordHash sql.NullString
 }

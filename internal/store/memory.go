@@ -10,13 +10,21 @@ import (
 	"github.com/google/uuid"
 )
 
-// Memory is an in-memory Store for tests.
+type memAccount struct {
+	id           uuid.UUID
+	username     string
+	passwordHash string
+	profile      domain.Profile
+	projects     map[uuid.UUID]domain.Project
+	sessions     map[uuid.UUID]domain.Session
+}
+
+// Memory is an in-memory Store for tests. Data is scoped by user.
 type Memory struct {
 	mu       sync.Mutex
-	profile  domain.Profile
-	userID   uuid.UUID
-	projects map[uuid.UUID]domain.Project
-	sessions map[uuid.UUID]domain.Session
+	accounts map[uuid.UUID]*memAccount
+	byName   map[string]uuid.UUID
+	tokens   map[string]Token
 }
 
 func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project) *Memory {
@@ -26,24 +34,149 @@ func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project)
 		project.ID = pid.String()
 	}
 	return &Memory{
-		userID:   userID,
-		profile:  profile,
-		projects: map[uuid.UUID]domain.Project{pid: project},
-		sessions: map[uuid.UUID]domain.Session{},
+		accounts: map[uuid.UUID]*memAccount{
+			userID: {
+				id:       userID,
+				profile:  profile,
+				projects: map[uuid.UUID]domain.Project{pid: project},
+				sessions: map[uuid.UUID]domain.Session{},
+			},
+		},
+		byName: map[string]uuid.UUID{},
+		tokens: map[string]Token{},
 	}
 }
 
-func (m *Memory) GetProfile(_ context.Context, _ uuid.UUID) (domain.Profile, error) {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	return m.profile, nil
+func (m *Memory) account(userID uuid.UUID) (*memAccount, bool) {
+	a, ok := m.accounts[userID]
+	return a, ok
 }
 
-func (m *Memory) ListProjects(_ context.Context, _ uuid.UUID, includeArchived bool) ([]domain.Project, error) {
+func (m *Memory) GetProfile(_ context.Context, userID uuid.UUID) (domain.Profile, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	out := make([]domain.Project, 0, len(m.projects))
-	for _, p := range m.projects {
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Profile{}, domain.ErrNotFound()
+	}
+	return a.profile, nil
+}
+
+func (m *Memory) CreateProfile(_ context.Context, userID uuid.UUID, p domain.Profile) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	a.profile = p
+	return nil
+}
+
+func (m *Memory) GetAccountByUsername(_ context.Context, username string) (Account, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok := m.byName[username]
+	if !ok {
+		return Account{}, domain.ErrNotFound()
+	}
+	a := m.accounts[id]
+	return Account{ID: a.id, Username: a.username, PasswordHash: a.passwordHash}, nil
+}
+
+func (m *Memory) GetAccountByID(_ context.Context, id uuid.UUID) (Account, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(id)
+	if !ok {
+		return Account{}, domain.ErrNotFound()
+	}
+	return Account{ID: a.id, Username: a.username, PasswordHash: a.passwordHash}, nil
+}
+
+func (m *Memory) CreateAccount(_ context.Context, acc Account) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if acc.Username != "" {
+		if _, taken := m.byName[acc.Username]; taken {
+			return domain.ErrUsernameInUse()
+		}
+	}
+	if _, exists := m.accounts[acc.ID]; exists {
+		return domain.ErrUsernameInUse()
+	}
+	m.accounts[acc.ID] = &memAccount{
+		id:           acc.ID,
+		username:     acc.Username,
+		passwordHash: acc.PasswordHash,
+		projects:     map[uuid.UUID]domain.Project{},
+		sessions:     map[uuid.UUID]domain.Session{},
+	}
+	if acc.Username != "" {
+		m.byName[acc.Username] = acc.ID
+	}
+	return nil
+}
+
+func (m *Memory) SetAccountCredentials(_ context.Context, id uuid.UUID, username, passwordHash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(id)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	if other, taken := m.byName[username]; taken && other != id {
+		return domain.ErrUsernameInUse()
+	}
+	if a.username != "" && a.username != username {
+		delete(m.byName, a.username)
+	}
+	a.username = username
+	a.passwordHash = passwordHash
+	m.byName[username] = id
+	return nil
+}
+
+func (m *Memory) UsernameTaken(_ context.Context, username string, excludeID uuid.UUID) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	id, ok := m.byName[username]
+	return ok && id != excludeID, nil
+}
+
+func (m *Memory) CreateToken(_ context.Context, tok Token) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.tokens[tok.TokenHash] = tok
+	return nil
+}
+
+func (m *Memory) GetTokenByHash(_ context.Context, hash string) (Token, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	tok, ok := m.tokens[hash]
+	if !ok {
+		return Token{}, domain.ErrNotFound()
+	}
+	return tok, nil
+}
+
+func (m *Memory) DeleteTokenByHash(_ context.Context, hash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.tokens, hash)
+	return nil
+}
+
+func (m *Memory) ListProjects(_ context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return nil, domain.ErrNotFound()
+	}
+	out := make([]domain.Project, 0, len(a.projects))
+	for _, p := range a.projects {
 		if p.Archived && !includeArchived {
 			continue
 		}
@@ -53,62 +186,82 @@ func (m *Memory) ListProjects(_ context.Context, _ uuid.UUID, includeArchived bo
 	return out, nil
 }
 
-func (m *Memory) GetProject(_ context.Context, _, id uuid.UUID) (domain.Project, error) {
+func (m *Memory) GetProject(_ context.Context, userID, id uuid.UUID) (domain.Project, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	p, ok := m.projects[id]
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Project{}, domain.ErrNotFound()
+	}
+	p, ok := a.projects[id]
 	if !ok {
 		return domain.Project{}, domain.ErrNotFound()
 	}
 	return cloneProject(p), nil
 }
 
-func (m *Memory) CreateProject(_ context.Context, _ uuid.UUID, p domain.Project) (domain.Project, error) {
+func (m *Memory) CreateProject(_ context.Context, userID uuid.UUID, p domain.Project) (domain.Project, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Project{}, domain.ErrNotFound()
+	}
 	id, err := uuid.Parse(p.ID)
 	if err != nil {
 		return domain.Project{}, domain.ErrInvalidBody("invalid id")
 	}
-	if p.Code != nil && m.codeTaken(*p.Code, uuid.Nil) {
+	if p.Code != nil && m.codeTaken(a, *p.Code, uuid.Nil) {
 		return domain.Project{}, domain.ErrCodeInUse()
 	}
-	m.projects[id] = cloneProject(p)
+	a.projects[id] = cloneProject(p)
 	return cloneProject(p), nil
 }
 
-func (m *Memory) UpdateProject(_ context.Context, _ uuid.UUID, p domain.Project) (domain.Project, error) {
+func (m *Memory) UpdateProject(_ context.Context, userID uuid.UUID, p domain.Project) (domain.Project, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Project{}, domain.ErrNotFound()
+	}
 	id, err := uuid.Parse(p.ID)
 	if err != nil {
 		return domain.Project{}, domain.ErrNotFound()
 	}
-	if _, ok := m.projects[id]; !ok {
+	if _, ok := a.projects[id]; !ok {
 		return domain.Project{}, domain.ErrNotFound()
 	}
-	if p.Code != nil && m.codeTaken(*p.Code, id) {
+	if p.Code != nil && m.codeTaken(a, *p.Code, id) {
 		return domain.Project{}, domain.ErrCodeInUse()
 	}
-	m.projects[id] = cloneProject(p)
+	a.projects[id] = cloneProject(p)
 	return cloneProject(p), nil
 }
 
-func (m *Memory) DeleteProject(_ context.Context, _, id uuid.UUID) error {
+func (m *Memory) DeleteProject(_ context.Context, userID, id uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if _, ok := m.projects[id]; !ok {
+	a, ok := m.account(userID)
+	if !ok {
 		return domain.ErrNotFound()
 	}
-	delete(m.projects, id)
+	if _, ok := a.projects[id]; !ok {
+		return domain.ErrNotFound()
+	}
+	delete(a.projects, id)
 	return nil
 }
 
-func (m *Memory) CountActiveProjects(_ context.Context, _ uuid.UUID) (int, error) {
+func (m *Memory) CountActiveProjects(_ context.Context, userID uuid.UUID) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return 0, domain.ErrNotFound()
+	}
 	n := 0
-	for _, p := range m.projects {
+	for _, p := range a.projects {
 		if !p.Archived {
 			n++
 		}
@@ -116,12 +269,16 @@ func (m *Memory) CountActiveProjects(_ context.Context, _ uuid.UUID) (int, error
 	return n, nil
 }
 
-func (m *Memory) CountProjectSessions(_ context.Context, _, projectID uuid.UUID) (int, error) {
+func (m *Memory) CountProjectSessions(_ context.Context, userID, projectID uuid.UUID) (int, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return 0, domain.ErrNotFound()
+	}
 	n := 0
 	want := projectID.String()
-	for _, s := range m.sessions {
+	for _, s := range a.sessions {
 		if s.ProjectID == want {
 			n++
 		}
@@ -129,15 +286,19 @@ func (m *Memory) CountProjectSessions(_ context.Context, _, projectID uuid.UUID)
 	return n, nil
 }
 
-func (m *Memory) CodeInUse(_ context.Context, _ uuid.UUID, code string, excludeID uuid.UUID) (bool, error) {
+func (m *Memory) CodeInUse(_ context.Context, userID uuid.UUID, code string, excludeID uuid.UUID) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	return m.codeTaken(code, excludeID), nil
+	a, ok := m.account(userID)
+	if !ok {
+		return false, domain.ErrNotFound()
+	}
+	return m.codeTaken(a, code, excludeID), nil
 }
 
-func (m *Memory) codeTaken(code string, excludeID uuid.UUID) bool {
+func (m *Memory) codeTaken(a *memAccount, code string, excludeID uuid.UUID) bool {
 	want := strings.ToUpper(code)
-	for id, p := range m.projects {
+	for id, p := range a.projects {
 		if id == excludeID || p.Code == nil {
 			continue
 		}
@@ -148,15 +309,19 @@ func (m *Memory) codeTaken(code string, excludeID uuid.UUID) bool {
 	return false
 }
 
-func (m *Memory) ListSessions(_ context.Context, _ uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
+func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return nil, domain.ErrNotFound()
+	}
 	allow := map[string]bool{}
 	for _, s := range statuses {
 		allow[s] = true
 	}
-	out := make([]domain.Session, 0, len(m.sessions))
-	for _, s := range m.sessions {
+	out := make([]domain.Session, 0, len(a.sessions))
+	for _, s := range a.sessions {
 		if len(allow) > 0 && !allow[s.Status] {
 			continue
 		}
@@ -169,20 +334,28 @@ func (m *Memory) ListSessions(_ context.Context, _ uuid.UUID, statuses []string,
 	return out, nil
 }
 
-func (m *Memory) GetSession(_ context.Context, _, id uuid.UUID) (domain.Session, error) {
+func (m *Memory) GetSession(_ context.Context, userID, id uuid.UUID) (domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	s, ok := m.sessions[id]
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Session{}, domain.ErrNotFound()
+	}
+	s, ok := a.sessions[id]
 	if !ok {
 		return domain.Session{}, domain.ErrNotFound()
 	}
 	return cloneSession(s), nil
 }
 
-func (m *Memory) GetLiveSession(_ context.Context, _ uuid.UUID) (domain.Session, bool, error) {
+func (m *Memory) GetLiveSession(_ context.Context, userID uuid.UUID) (domain.Session, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for _, s := range m.sessions {
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Session{}, false, domain.ErrNotFound()
+	}
+	for _, s := range a.sessions {
 		if domain.IsLiveStatus(s.Status) {
 			return cloneSession(s), true, nil
 		}
@@ -190,11 +363,15 @@ func (m *Memory) GetLiveSession(_ context.Context, _ uuid.UUID) (domain.Session,
 	return domain.Session{}, false, nil
 }
 
-func (m *Memory) CreateSession(_ context.Context, _ uuid.UUID, s domain.Session) (domain.Session, error) {
+func (m *Memory) CreateSession(_ context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Session{}, domain.ErrNotFound()
+	}
 	if domain.IsLiveStatus(s.Status) {
-		for _, existing := range m.sessions {
+		for _, existing := range a.sessions {
 			if domain.IsLiveStatus(existing.Status) {
 				return domain.Session{}, domain.ErrSessionAlreadyActive()
 			}
@@ -204,29 +381,73 @@ func (m *Memory) CreateSession(_ context.Context, _ uuid.UUID, s domain.Session)
 	if err != nil {
 		return domain.Session{}, domain.ErrInvalidBody("invalid id")
 	}
-	m.sessions[id] = cloneSession(s)
+	a.sessions[id] = cloneSession(s)
 	return cloneSession(s), nil
 }
 
-func (m *Memory) UpdateSession(_ context.Context, _ uuid.UUID, s domain.Session) (domain.Session, error) {
+func (m *Memory) UpdateSession(_ context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Session{}, domain.ErrNotFound()
+	}
 	id, err := uuid.Parse(s.ID)
 	if err != nil {
 		return domain.Session{}, domain.ErrNotFound()
 	}
-	if _, ok := m.sessions[id]; !ok {
+	if _, ok := a.sessions[id]; !ok {
 		return domain.Session{}, domain.ErrNotFound()
 	}
-	m.sessions[id] = cloneSession(s)
+	a.sessions[id] = cloneSession(s)
 	return cloneSession(s), nil
 }
 
 func (m *Memory) FirstUserID(_ context.Context) (uuid.UUID, bool, error) {
-	return m.userID, true, nil
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for id := range m.accounts {
+		return id, true, nil
+	}
+	return uuid.Nil, false, nil
 }
 
-func (m *Memory) SeedEmpty(_ context.Context, _ uuid.UUID, _ domain.Profile, _ domain.Project) error {
+func (m *Memory) Bootstrap(_ context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if a, ok := m.accounts[userID]; ok {
+		if a.passwordHash != "" {
+			return nil
+		}
+		if username != "" {
+			if other, taken := m.byName[username]; taken && other != userID {
+				return domain.ErrUsernameInUse()
+			}
+			a.username = username
+			a.passwordHash = passwordHash
+			m.byName[username] = userID
+		}
+		return nil
+	}
+	if len(m.accounts) > 0 {
+		return nil
+	}
+	pid, err := uuid.Parse(project.ID)
+	if err != nil {
+		pid = uuid.New()
+		project.ID = pid.String()
+	}
+	m.accounts[userID] = &memAccount{
+		id:           userID,
+		username:     username,
+		passwordHash: passwordHash,
+		profile:      profile,
+		projects:     map[uuid.UUID]domain.Project{pid: project},
+		sessions:     map[uuid.UUID]domain.Session{},
+	}
+	if username != "" {
+		m.byName[username] = userID
+	}
 	return nil
 }
 

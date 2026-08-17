@@ -14,11 +14,16 @@ type Service struct {
 	NewID func() uuid.UUID
 }
 
-func New(st store.Store, user uuid.UUID) *Service {
+func New(st store.Store) *Service {
 	return &Service{
 		Store: st,
-		User:  user,
 		Now:   func() time.Time { return time.Now().UTC() },
 		NewID: uuid.New,
 	}
+}
+
+func (s *Service) ForUser(user uuid.UUID) *Service {
+	cp := *s
+	cp.User = user
+	return &cp
 }

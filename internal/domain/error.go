@@ -14,6 +14,9 @@ const (
 	CodeLastActiveProject    = "last_active_project"
 	CodeProjectHasSessions   = "project_has_sessions"
 	CodeInvalidTransition    = "invalid_transition"
+	CodeUnauthorized         = "unauthorized"
+	CodeInvalidCredentials   = "invalid_credentials"
+	CodeUsernameInUse        = "username_in_use"
 )
 
 // Error is a contract error code plus a log/DevTools message.
@@ -83,4 +86,16 @@ func ErrProjectHasSessions() *Error {
 
 func ErrInvalidTransition() *Error {
 	return NewError(CodeInvalidTransition, "This action is not valid in the current state.")
+}
+
+func ErrUnauthorized() *Error {
+	return NewError(CodeUnauthorized, "Authentication required.")
+}
+
+func ErrInvalidCredentials() *Error {
+	return NewError(CodeInvalidCredentials, "Username or password is incorrect.")
+}
+
+func ErrUsernameInUse() *Error {
+	return NewError(CodeUsernameInUse, "That username is already in use.")
 }

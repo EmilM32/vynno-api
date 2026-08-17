@@ -23,7 +23,7 @@ func (s *Server) listSessions(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	items, err := s.svc.ListSessions(c.Request.Context(), statuses, limit)
+	items, err := s.userSvc(c).ListSessions(c.Request.Context(), statuses, limit)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -41,7 +41,7 @@ func (s *Server) getSession(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	sess, err := s.svc.GetSession(c.Request.Context(), id)
+	sess, err := s.userSvc(c).GetSession(c.Request.Context(), id)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -50,7 +50,7 @@ func (s *Server) getSession(c *gin.Context) {
 }
 
 func (s *Server) getActiveSession(c *gin.Context) {
-	sess, err := s.svc.GetActiveSession(c.Request.Context())
+	sess, err := s.userSvc(c).GetActiveSession(c.Request.Context())
 	if err != nil {
 		writeError(c, err)
 		return
@@ -68,7 +68,7 @@ func (s *Server) startSession(c *gin.Context) {
 		writeError(c, domain.ErrInvalidBody("projectId is required."))
 		return
 	}
-	sess, err := s.svc.StartSession(c.Request.Context(), service.StartSessionInput{
+	sess, err := s.userSvc(c).StartSession(c.Request.Context(), service.StartSessionInput{
 		ProjectID:        body.ProjectID,
 		Note:             body.Note,
 		TicketID:         body.TicketID,
@@ -84,15 +84,15 @@ func (s *Server) startSession(c *gin.Context) {
 }
 
 func (s *Server) pauseSession(c *gin.Context) {
-	s.sessionVerb(c, s.svc.PauseSession)
+	s.sessionVerb(c, s.userSvc(c).PauseSession)
 }
 
 func (s *Server) resumeSession(c *gin.Context) {
-	s.sessionVerb(c, s.svc.ResumeSession)
+	s.sessionVerb(c, s.userSvc(c).ResumeSession)
 }
 
 func (s *Server) stopSession(c *gin.Context) {
-	s.sessionVerb(c, s.svc.StopSession)
+	s.sessionVerb(c, s.userSvc(c).StopSession)
 }
 
 func (s *Server) sessionVerb(c *gin.Context, fn func(context.Context, uuid.UUID) (domain.Session, error)) {
