@@ -1,14 +1,14 @@
 # Open questions — Vynno API
 
-**Last updated:** 2026-08-14
+**Last updated:** 2026-08-17
 
 Undecided items and the **default we ship with** until an ADR or PRD update says otherwise. When a question is resolved, move the outcome into an ADR (or the PRD) and mark the row resolved — do not delete the history.
 
 | # | Question | Default until decided | Resolves via |
 | --- | --- | --- | --- |
-| 1 | Language / HTTP framework | No default — must choose before scaffold | [ADR-0001](./adr/0001-backend-stack.md) |
-| 2 | Database engine | No default — must choose before durable Phase 2 | [ADR-0009](./adr/0009-persistence.md) |
-| 3 | Auth mechanism | No auth on the wire until Phase 3 | [ADR-0008](./adr/0008-authentication.md) |
+| 1 | Language / HTTP framework | **Resolved:** Go + Gin. Hand-written validation, `go test`, `gofmt` + `golangci-lint`. | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
+| 2 | Database engine | **Resolved:** PostgreSQL, goose, sqlc, `pgx`, local Docker Compose. | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
+| 3 | Auth mechanism | No auth on the wire until Phase 3. Cookie vs bearer still open. | [ADR-0008](./adr/0008-authentication.md) (Deferred) |
 | 4 | Hosting / deploy target | Local process first; production host in Phase 4 | New ADR or 0001 amendment |
 | 5 | Restrict project `color` to the SPA palette? | **No** — accept any `#rrggbb` | Amend [ADR-0004](./adr/0004-project-lifecycle.md) if we tighten |
 | 6 | Empty session note | Store `"Untitled session"` (match the mock) | Already in [ADR-0005](./adr/0005-session-lifecycle.md) |

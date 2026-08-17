@@ -19,9 +19,34 @@ The frontend lives in a separate repo ([`vynno`](https://github.com/EmilM32/vynn
 
 ## Stack
 
-**Not chosen.** Accept [ADR-0001](./docs/adr/0001-backend-stack.md) and [ADR-0009](./docs/adr/0009-persistence.md) before scaffolding.
+| Layer | Choice |
+| --- | --- |
+| Language | Go |
+| HTTP | Gin |
+| Database | PostgreSQL (goose + sqlc, local Docker Compose) |
+| Auth | None on the wire until Phase 3 ([ADR-0008](./docs/adr/0008-authentication.md) Deferred) |
 
-Until then: no framework, ORM, or cloud vendor in this repo.
+Decisions: [ADR-0001](./docs/adr/0001-backend-stack.md), [ADR-0009](./docs/adr/0009-persistence.md).
+
+## Run locally
+
+Requires Go 1.26+ and Docker (for Postgres).
+
+```sh
+docker compose up -d
+cp .env.example .env
+set -a && source .env && set +a
+go run ./cmd/api
+```
+
+`GET http://localhost:8080/healthz` → `{"status":"ok"}`.
+
+`/v1` resources are Phase 2. There is no auth yet.
+
+```sh
+go test ./...
+golangci-lint run ./...
+```
 
 ## Documentation
 
@@ -40,5 +65,6 @@ How we write PRDs, ADRs, and plans: **[docs/working-agreement.md](./docs/working
 
 ## Status
 
-- **Phase 0:** Planning — this kit. Stack, persistence, and auth direction still Proposed.
-- **Phase 1+:** Not started. Depends on Phase 0 exit.
+- **Phase 0:** Planning — done.
+- **Phase 1:** Scaffold — done. See [docs/plans/phase-1-scaffold.md](./docs/plans/phase-1-scaffold.md).
+- **Phase 2:** Contract v1 — not started.

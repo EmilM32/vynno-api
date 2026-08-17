@@ -1,6 +1,6 @@
 # ADR-0009: Persistence
 
-**Status:** Proposed  
+**Status:** Accepted  
 **Date:** 2026-08-14  
 **Deciders:** Project owner
 
@@ -8,17 +8,22 @@
 
 The frontend mock is an in-memory workspace keyed by a request header. Reload reseeds fixtures. That is the opposite of what this repository is for.
 
-We need durable storage for projects, sessions, and a profile so a process restart and a second device see the same data. Engine, hosting, and migration tool are still open. Stack ([ADR-0001](./0001-backend-stack.md)) may constrain the client library, but the data rules do not.
+We need durable storage for projects, sessions, and a profile so a process restart and a second device see the same data. Stack ([ADR-0001](./0001-backend-stack.md)) is Go. Engine, hosting, and migration tool were still open.
 
 ## Decision
 
-**Undecided.** Accept this ADR by filling the table. Phase 2 cannot ship without it. An in-memory store is allowed **only** as a test double.
+An in-memory store is allowed **only** as a test double.
 
 | Topic | Choice |
 | --- | --- |
-| Engine | _TBD_ (PostgreSQL, SQLite, …) |
-| Migration tool | _TBD_ |
-| Where it runs | _TBD_ (local file, managed DB, …) |
+| Engine | PostgreSQL |
+| Driver | `pgx` via `database/sql` |
+| Queries | `sqlc` generating Go from SQL. No GORM / Ent as the source of truth. |
+| Migration tool | goose (plain SQL files) |
+| Where it runs | Local Docker Compose (PostgreSQL 16). App reads `DATABASE_URL`. Production host is a Phase 4 ADR. |
+| IDs | UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes. |
+
+Schema may include an internal `user_id` so Phase 3 auth is a migration, not a rewrite ([ADR-0006](./0006-single-user-tenancy.md)). That column is not exposed on the wire in v1.
 
 Constraints the choice must satisfy:
 
@@ -26,31 +31,29 @@ Constraints the choice must satisfy:
 2. Domain invariants are enforced in application code (and/or DB constraints that match them). Do not rely on the HTTP layer alone.
 3. Wire DTOs stay as specified; column names may differ.
 4. Single-user v1, but avoid a process-wide singleton ([ADR-0006](./0006-single-user-tenancy.md)).
-5. Backups are possible (Phase 4).
+5. Backups are possible (Phase 4): `pg_dump` + a restore drill.
 
 ## Consequences
 
-### Positive (once accepted)
+### Positive
 
 - Phase 2 can implement the contract against a real store.
-- Tests can use a disposable database or a faithful fake.
+- Production-shaped locally and in CI (Compose + a Postgres service).
+- SQL migrations stay reviewable. sqlc keeps queries typed.
 
 ### Negative / tradeoffs
 
-- SQLite is simpler to run locally and weaker for multi-instance later.
-- Postgres is more moving parts on a laptop.
-- Leaving this Proposed blocks a durable Phase 2.
+- Postgres is more moving parts on a laptop than a SQLite file. Compose + a CI service is the mitigation from Phase 1.
+- Tests that need durability require a running Postgres (or a later testcontainer). Domain tests do not.
 
 ## Alternatives considered
 
-Fill “Why not” when choosing.
-
 | Option | Why not |
 | --- | --- |
-| PostgreSQL | Standard for a small API; needs a running server. Not chosen yet. |
-| SQLite (file) | Zero ops for single-user; harder multi-instance. Not chosen yet. |
+| SQLite (file) | Zero ops for single-user; harder multi-instance. Owner chose Postgres for a production-shaped store from day one. |
 | In-memory only | Rejected as the system of record. Tests only. |
-| Document store | Session/project rules are relational enough; extra novelty. Not chosen yet. |
+| Document store | Session/project rules are relational enough; extra novelty. |
+| GORM / Ent as source of truth | Hides migrations; easier to drift from the contract. |
 | Frontend-only IndexedDB | Rejected by frontend ADR-0002 / 0004; this repo exists so we do not do that. |
 
 ## Related
@@ -59,3 +62,4 @@ Fill “Why not” when choosing.
 - [0006-single-user-tenancy.md](./0006-single-user-tenancy.md)
 - [../domain-model.md](../domain-model.md)
 - [../plans/phase-0-planning.md](../plans/phase-0-planning.md)
+- [../plans/phase-1-scaffold.md](../plans/phase-1-scaffold.md)

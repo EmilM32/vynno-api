@@ -6,6 +6,5 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 
 | Plan | Status | Tracking |
 | --- | --- | --- |
-| [phase-0-planning.md](./phase-0-planning.md) | In progress | Roadmap Phase 0 |
-
-When Phase 1 starts, add `phase-1-scaffold.md` (or skip it if ADR-0001 plus the roadmap row is enough).
+| [phase-0-planning.md](./phase-0-planning.md) | Done | Roadmap Phase 0 |
+| [phase-1-scaffold.md](./phase-1-scaffold.md) | Done | Roadmap Phase 1 |

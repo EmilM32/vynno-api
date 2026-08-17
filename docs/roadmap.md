@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-14  
+**Last updated:** 2026-08-17  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -19,20 +19,20 @@
 
 ---
 
-## Phase 0 — Planning (current)
+## Phase 0 — Planning
 
 **Done when:**
 
 - [x] `docs/` published (PRD, domain, contract, roadmap, ADRs, working agreement)
 - [x] Root README and `AGENTS.md` point at docs
 - [x] Inherited decisions recorded (repo split, contract, project/session rules, single-user, name)
-- [ ] [ADR-0001](./adr/0001-backend-stack.md) Accepted (or explicitly deferred with a default — not applicable; stack must be chosen)
-- [ ] [ADR-0009](./adr/0009-persistence.md) Accepted
-- [ ] [ADR-0008](./adr/0008-authentication.md) Accepted **or** explicitly deferred to Phase 3 with the default “no auth on the wire until then”
+- [x] [ADR-0001](./adr/0001-backend-stack.md) Accepted (Go + Gin)
+- [x] [ADR-0009](./adr/0009-persistence.md) Accepted (PostgreSQL + goose)
+- [x] [ADR-0008](./adr/0008-authentication.md) Deferred to Phase 3 with the default “no auth on the wire until then”
 
 **Exit criteria:** Product and architecture clear enough to scaffold without re-litigating the contract. Stack and persistence are chosen. Auth has a direction (implement in Phase 3 is a valid direction).
 
-Plan: [plans/phase-0-planning.md](./plans/phase-0-planning.md).
+Plan: [plans/phase-0-planning.md](./plans/phase-0-planning.md) (Done).
 
 ---
 
@@ -40,19 +40,21 @@ Plan: [plans/phase-0-planning.md](./plans/phase-0-planning.md).
 
 **Goals**
 
-- [ ] Initialize the runtime chosen in ADR-0001.
-- [ ] Lint, format, test runner, CI skeleton.
-- [ ] Config / env loading (no secrets in git).
-- [ ] Health endpoint (path is an implementation detail; not part of the SPA contract).
-- [ ] Fill `AGENTS.md` “Stack conventions” and “Useful commands”.
+- [x] Initialize the runtime chosen in ADR-0001.
+- [x] Lint, format, test runner, CI skeleton.
+- [x] Config / env loading (no secrets in git).
+- [x] Health endpoint (path is an implementation detail; not part of the SPA contract).
+- [x] Fill `AGENTS.md` “Stack conventions” and “Useful commands”.
 
 **Non-goals:** Domain tables, auth, implementing `/v1` resources.
 
 **Exit criteria:** `dev` / `test` / `lint` documented and green on an empty app.
 
+Plan: [plans/phase-1-scaffold.md](./plans/phase-1-scaffold.md).
+
 ---
 
-## Phase 2 — Contract v1
+## Phase 2 — Contract v1 (current)
 
 **Goals**
 

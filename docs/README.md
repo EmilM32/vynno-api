@@ -19,11 +19,15 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | [adr/](./adr/) | Architecture Decision Records |
 | [plans/](./plans/) | Implementation plans for a phase or feature |
 
-## Stack (not decided)
+## Stack
 
-Language, framework, and database are **Proposed**. See [ADR-0001](./adr/0001-backend-stack.md) and [ADR-0009](./adr/0009-persistence.md). Do not scaffold until Phase 0 exits.
+| Layer | Choice | ADR |
+| --- | --- | --- |
+| Language / HTTP | Go + Gin | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
+| Persistence | PostgreSQL, goose, sqlc | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
+| Auth | None on the wire until Phase 3 | [ADR-0008](./adr/0008-authentication.md) (Deferred) |
 
-What is already decided:
+Also decided:
 
 - Separate repository from the frontend — [ADR-0002](./adr/0002-separate-repository.md)
 - HTTP JSON contract (`/v1`) — [ADR-0003](./adr/0003-http-json-contract.md)
@@ -32,6 +36,6 @@ What is already decided:
 
 ## Status
 
-Phase 0 (planning) is in progress. This kit is the Phase 0 deliverable. Next: accept Proposed ADRs, then scaffold.
+Phase 0 (planning) and Phase 1 (scaffold) are done. Next: Phase 2 — implement the `/v1` contract.
 
-See [roadmap.md](./roadmap.md) and [plans/phase-0-planning.md](./plans/phase-0-planning.md).
+See [roadmap.md](./roadmap.md).

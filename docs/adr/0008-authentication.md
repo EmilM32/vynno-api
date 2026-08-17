@@ -1,6 +1,6 @@
 # ADR-0008: Authentication
 
-**Status:** Proposed  
+**Status:** Deferred  
 **Date:** 2026-08-14  
 **Deciders:** Project owner
 
@@ -14,17 +14,19 @@ This ADR decides the mechanism. It does not add login/register routes to the con
 
 ## Decision
 
-**Undecided.** Accept this ADR by choosing a mechanism and listing the contract amendments (if any). Do not implement auth until then.
+**Deferred to Phase 3.** No auth on the wire until then. Phase 0–2 ship an unauthenticated local API (same as the mock, minus `X-Mock-Workspace`).
+
+Do not implement auth, CORS credential flags, or login routes until this ADR is Accepted.
 
 | Topic | Choice |
 | --- | --- |
-| Mechanism | _TBD_ (session cookie, bearer token, …) |
-| Credential fields | _TBD_ (email/password, magic link, …) |
+| Mechanism | _TBD in Phase 3_ (session cookie, bearer token, …) |
+| Credential fields | _TBD in Phase 3_ |
 | New routes | _TBD_ — amend [../api-contract.md](../api-contract.md) first |
-| CORS / cookie flags | _TBD_ |
-| What is public | _TBD_ (likely nothing once auth ships) |
+| CORS / cookie flags | _TBD in Phase 3_ (Gin + `gin-contrib/cors`) |
+| What is public | Everything, until Phase 3. After Phase 3: likely nothing. |
 
-Constraints the choice must satisfy:
+Constraints the choice must satisfy (when Accepted):
 
 1. The SPA can attach credentials in `ApiClient` only — no per-view auth code.
 2. Unauthenticated writes (and likely reads) fail with a documented code after Phase 3.
@@ -33,26 +35,24 @@ Constraints the choice must satisfy:
 
 ## Consequences
 
-### Positive (once accepted)
+### Positive
 
-- Frontend can drop the stub login.
-- Multi-device becomes meaningful.
+- Phase 0 can exit. Phase 1–2 are unblocked.
+- Frontend can talk to a local `/v1` the same way it talks to `/mock/v1`.
 
 ### Negative / tradeoffs
 
-- Any cookie vs header choice affects CORS and local HTTPS.
-- Leaving this Proposed does **not** block Phase 2. It **does** block production and frontend Phase 5c.
+- A public unauthenticated write API is not acceptable for production. Phase 3 blocks deploy and frontend Phase 5c.
+- Cookie vs bearer is still open; CORS work waits with it.
 
 ## Alternatives considered
 
-Fill “Why not” when choosing.
-
 | Option | Why not |
 | --- | --- |
-| HTTP-only session cookie | Simple for a first-party SPA; needs CORS + CSRF story. Not chosen yet. |
-| Bearer access token (JWT or opaque) | Easy to attach on `ApiClient`; refresh/storage to design. Not chosen yet. |
-| Magic link / passwordless | Nice UX; more email infrastructure. Not chosen yet. |
-| OAuth-only (Google, GitHub) | Fine later; heavy for a single-user v1. Not chosen yet. |
+| Accept a mechanism now (HTTP-only session cookie) | Simple for a first-party SPA; needs CORS + CSRF. Does not unblock Phase 1–2. Owner deferred. |
+| Accept a mechanism now (bearer token) | Easy to attach on `ApiClient`; refresh/storage to design. Owner deferred. |
+| Magic link / passwordless | Nice UX; more email infrastructure. Not for v1. |
+| OAuth-only (Google, GitHub) | Fine later; heavy for a single-user v1. |
 | Keep the stub forever | Rejected for any deployed API. |
 
 ## Related
@@ -61,3 +61,4 @@ Fill “Why not” when choosing.
 - [../prd.md](../prd.md) §8.4
 - [0006-single-user-tenancy.md](./0006-single-user-tenancy.md)
 - [../api-contract.md](../api-contract.md) (Out of scope)
+- [../roadmap.md](../roadmap.md) Phase 3

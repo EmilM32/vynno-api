@@ -23,11 +23,28 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 
 ### Stack conventions
 
-Fill this section when ADR-0001 is Accepted. Until then there is no application code.
+- Language: Go. Module: `github.com/EmilM32/vynno-api`.
+- HTTP: Gin. Handlers live in `internal/httpserver`. Domain rules live in `internal/domain` and must not import Gin or the database driver.
+- Validation is hand-written. Do not treat Gin `binding` tags as the source of truth for contract or lifecycle errors.
+- Persistence (Phase 2): PostgreSQL, goose SQL migrations, sqlc, `pgx` via `database/sql`. Local DB is Docker Compose. App reads `DATABASE_URL`.
+- Wire format is [docs/api-contract.md](./docs/api-contract.md). No extra endpoints, fields, or error codes.
+- Auth is Deferred ([docs/adr/0008-authentication.md](./docs/adr/0008-authentication.md)). Do not add login routes or credential middleware until that ADR is Accepted.
+- IDs are UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes.
 
 ### Useful commands
 
-Fill this section at scaffold (Phase 1). Typical set: install, dev server, test, lint, migrate.
+```sh
+docker compose up -d          # local PostgreSQL 16
+cp .env.example .env          # ADDR + DATABASE_URL
+go run ./cmd/api              # listen on :8080 (needs DATABASE_URL)
+go test ./...
+gofmt -w .
+golangci-lint run ./...
+```
+
+Health check: `GET /healthz` → `{"status":"ok"}`. Not part of the SPA contract.
+
+Migrations (`goose`) land in Phase 2.
 
 ### Docs
 

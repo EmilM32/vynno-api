@@ -1,7 +1,7 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-14  
+**Last updated:** 2026-08-17  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, later auth)
 
@@ -189,9 +189,9 @@ Canonical table: [open-questions.md](./open-questions.md). Highlights:
 
 | # | Question | Default for now |
 | --- | --- | --- |
-| 1 | Language / framework | Open — [ADR-0001](./adr/0001-backend-stack.md) |
-| 2 | Database | Open — [ADR-0009](./adr/0009-persistence.md) |
-| 3 | Auth mechanism | Open — [ADR-0008](./adr/0008-authentication.md) |
+| 1 | Language / framework | **Resolved:** Go + Gin — [ADR-0001](./adr/0001-backend-stack.md) |
+| 2 | Database | **Resolved:** PostgreSQL — [ADR-0009](./adr/0009-persistence.md) |
+| 3 | Auth mechanism | Deferred to Phase 3 — [ADR-0008](./adr/0008-authentication.md) |
 | 4 | Restrict `color` to the UI palette? | No — any `#rrggbb` |
 | 5 | Pagination | Not until history size requires it |
 

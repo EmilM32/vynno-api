@@ -1,7 +1,7 @@
 # Plan — Phase 0 planning
 
-**Status:** In progress  
-**Last updated:** 2026-08-14  
+**Status:** Done  
+**Last updated:** 2026-08-17  
 **Tracking:** Roadmap Phase 0  
 **Depends on:** nothing — this is the first plan
 
@@ -56,11 +56,11 @@ The SPA is on Phase 5b (mock HTTP reads and writes). Phase 5c is a live origin. 
 - [x] Working agreement + ADR and plan templates
 - [x] Inherited ADRs 0002–0007 Accepted
 - [x] Proposed ADRs 0001, 0008, 0009 written (not pre-decided)
-- [ ] Kit copied to a new git repository
-- [ ] ADR-0001 Accepted
-- [ ] ADR-0009 Accepted
-- [ ] ADR-0008 Accepted or explicitly deferred to Phase 3
-- [ ] Roadmap Phase 0 boxes complete; this plan marked **Done**
+- [x] Kit copied to a new git repository
+- [x] ADR-0001 Accepted
+- [x] ADR-0009 Accepted
+- [x] ADR-0008 Accepted or explicitly deferred to Phase 3
+- [x] Roadmap Phase 0 boxes complete; this plan marked **Done**
 
 ## Related
 
