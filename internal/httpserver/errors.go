@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
@@ -25,6 +26,11 @@ func writeError(c *gin.Context, err error) {
 		c.JSON(statusFor(de.Code), errorEnvelope{Error: errorBody{Code: de.Code, Message: de.Message}})
 		return
 	}
+	slog.Error("handler",
+		"err", err,
+		"method", c.Request.Method,
+		"path", c.Request.URL.Path,
+	)
 	c.JSON(http.StatusInternalServerError, errorEnvelope{Error: errorBody{
 		Code:    domain.CodeInvalidBody,
 		Message: "Internal server error.",

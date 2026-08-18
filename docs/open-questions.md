@@ -1,6 +1,6 @@
 # Open questions — Vynno API
 
-**Last updated:** 2026-08-17
+**Last updated:** 2026-08-18
 
 Undecided items and the **default we ship with** until an ADR or PRD update says otherwise. When a question is resolved, move the outcome into an ADR (or the PRD) and mark the row resolved — do not delete the history.
 
@@ -9,7 +9,7 @@ Undecided items and the **default we ship with** until an ADR or PRD update says
 | 1 | Language / HTTP framework | **Resolved:** Go + Gin. Hand-written validation, `go test`, `gofmt` + `golangci-lint`. | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
 | 2 | Database engine | **Resolved:** PostgreSQL, goose, sqlc, `pgx`, local Docker Compose. | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
 | 3 | Auth mechanism | **Resolved:** HttpOnly cookie `vynno_session`, remember-me default on, optional Bearer for curl/tests. | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
-| 4 | Hosting / deploy target | Local process first; production host in Phase 4 | New ADR or 0001 amendment |
+| 4 | Hosting / deploy target | **Resolved:** owner’s machine; compiled binary + Compose Postgres. Cloud later is an amendment. | [ADR-0011](./adr/0011-local-production-host.md) (Accepted) |
 | 5 | Restrict project `color` to the SPA palette? | **No** — accept any `#rrggbb` | Amend [ADR-0004](./adr/0004-project-lifecycle.md) if we tighten |
 | 6 | Empty session note | Store `"Untitled session"` (match the mock) | Already in [ADR-0005](./adr/0005-session-lifecycle.md) |
 | 7 | Insights on the server? | **No** — client aggregates from `GET /sessions` | Contract amendment |

@@ -170,4 +170,9 @@ func TestHealthzUnauthenticated(t *testing.T) {
 	if !strings.Contains(w.Body.String(), `"ok"`) {
 		t.Fatalf("body %s", w.Body.String())
 	}
+
+	w = doJSON(t, r, http.MethodGet, "/readyz", nil)
+	if w.Code != http.StatusOK {
+		t.Fatalf("readyz = %d %s", w.Code, w.Body.String())
+	}
 }

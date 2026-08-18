@@ -1,9 +1,9 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-17  
+**Last updated:** 2026-08-18  
 **Product name:** Vynno (formerly DevTime)  
-**Repository scope:** Backend only (HTTP API, persistence, later auth)
+**Repository scope:** Backend only (HTTP API, persistence, auth)
 
 The frontend PRD remains the product-facing document for screens and UX. This PRD covers what the **API repository** must do so that product works with real data.
 
@@ -198,6 +198,7 @@ Canonical table: [open-questions.md](./open-questions.md). Highlights:
 | 3 | Auth mechanism | **Resolved:** HttpOnly cookie — [ADR-0008](./adr/0008-authentication.md) |
 | 4 | Restrict `color` to the UI palette? | No — any `#rrggbb` |
 | 5 | Pagination | Not until history size requires it |
+| Hosting | **Resolved:** owner’s machine — [ADR-0011](./adr/0011-local-production-host.md) |
 
 ## 13. Related documents
 

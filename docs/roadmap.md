@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-17  
+**Last updated:** 2026-08-18  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -72,7 +72,7 @@ Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md) (Done).
 
 ---
 
-## Phase 3 — Auth (current)
+## Phase 3 — Auth
 
 **Depends on:** ADR-0008 Accepted; contract amendment if new routes or codes are required.
 
@@ -85,21 +85,38 @@ Plan: [plans/phase-2-contract.md](./plans/phase-2-contract.md) (Done).
 
 **Exit criteria:** Stub login is gone. Two browsers with different credentials do not share data (even if v1 only provisions one real user). Remember-me keeps the session across a browser restart.
 
-Plan: [plans/phase-3-auth.md](./plans/phase-3-auth.md).
+Plan: [plans/phase-3-auth.md](./plans/phase-3-auth.md) (Done).
 
 ---
 
 ## Phase 4 — Production
 
+**Depends on:** [ADR-0011](./adr/0011-local-production-host.md) Accepted.
+
 **Goals**
 
-- [ ] Request logging and error reporting.
-- [ ] Backups (and a restore drill).
-- [ ] Secrets via env / secret manager, not files in git.
-- [ ] Deploy target documented.
-- [ ] CORS locked to the SPA origin(s) (origins already required in Phase 3 for cookies; Phase 4 is production hardening).
+- [x] Request logging and error reporting.
+- [x] Backups (and a restore drill).
+- [x] Secrets via env (gitignored `.env`; no cloud secret manager until there is a cloud host).
+- [x] Deploy target documented (owner’s machine: binary + Compose Postgres).
+- [x] CORS locked to the SPA origin(s) (done in Phase 3; Phase 4 only confirms loopback + `COOKIE_SECURE=false`).
 
-**Exit criteria:** A documented deploy path; data recoverable; the SPA talks to the deployed origin.
+**Exit criteria:** A documented local-prod path; data recoverable with `pg_dump`; the SPA on this machine talks to the running binary.
+
+Plan: [plans/phase-4-production.md](./plans/phase-4-production.md) (Done).
+
+---
+
+## Shipped after Phase 3
+
+### Profile edit (ME-3 / ME-4 / ME-5)
+
+Plan: [plans/profile-avatar.md](./plans/profile-avatar.md) (Done).
+
+- [x] Contract amendment: `PATCH /me`, `PUT` / `DELETE /me/avatar`, public `GET /avatars/:id`
+- [x] ADR-0010 avatar storage (BYTEA + public URL)
+- [x] API + tests
+- [x] Frontend Settings pairing
 
 ---
 
@@ -112,15 +129,6 @@ Only via contract amendments. Candidates: [backlog.md](./backlog.md).
 - LOG-6 / LOG-7 (edit, delete, manual entry)
 - Insights aggregation endpoints
 - Multi-user workspaces
-
-### Profile edit (ME-3 / ME-4 / ME-5)
-
-Plan: [plans/profile-avatar.md](./plans/profile-avatar.md).
-
-- [x] Contract amendment: `PATCH /me`, `PUT` / `DELETE /me/avatar`, public `GET /avatars/:id`
-- [x] ADR-0010 avatar storage (BYTEA + public URL)
-- [x] API + tests
-- [x] Frontend Settings pairing
 
 ---
 
@@ -135,5 +143,6 @@ Use this roadmap as the checklist. Split Phase 1+ into issues later if useful; n
 - [prd.md](./prd.md)
 - [backlog.md](./backlog.md)
 - [plans/phase-0-planning.md](./plans/phase-0-planning.md)
+- [plans/phase-4-production.md](./plans/phase-4-production.md)
 - [adr/0001-backend-stack.md](./adr/0001-backend-stack.md)
-- [adr/0002-separate-repository.md](./adr/0002-separate-repository.md)
+- [adr/0011-local-production-host.md](./adr/0011-local-production-host.md)

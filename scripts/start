@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+	cat <<'EOF'
+Start Postgres (Docker Compose) and the API binary.
+
+  scripts/start           run in the foreground
+  scripts/start --detach  background; pid in var/api.pid, logs in logs/api.log
+EOF
+}
+
+DETACH=0
+for arg in "$@"; do
+	case "$arg" in
+	--detach | -d) DETACH=1 ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+require_env_file
+
+if pid="$(api_pid)"; then
+	die "already running (pid $pid); scripts/stop first"
+fi
+
+ensure_postgres
+"$ROOT/scripts/build"
+
+export GIN_MODE=release
+export LOG_FORMAT="${LOG_FORMAT:-json}"
+
+if [[ "$DETACH" -eq 1 ]]; then
+	mkdir -p "$ROOT/logs" "$ROOT/var"
+	nohup "$ROOT/bin/vynno-api" >>"$ROOT/logs/api.log" 2>&1 &
+	echo $! >"$PIDFILE"
+	echo "started pid $!  log $ROOT/logs/api.log"
+	exit 0
+fi
+
+exec "$ROOT/bin/vynno-api"

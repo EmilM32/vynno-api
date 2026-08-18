@@ -8,7 +8,7 @@
 
 The API repository does not exist yet. The frontend already speaks a stack-agnostic HTTP JSON contract ([ADR-0003](./0003-http-json-contract.md)). We need a language, HTTP framework, and module layout before Phase 1 scaffold.
 
-This ADR does **not** choose a database ([ADR-0009](./0009-persistence.md)) or an auth mechanism ([ADR-0008](./0008-authentication.md)). Those are separate decisions. Hosting (VPS, Fly, Cloud Run, …) can be a later amendment or its own ADR.
+This ADR does **not** choose a database ([ADR-0009](./0009-persistence.md)) or an auth mechanism ([ADR-0008](./0008-authentication.md)). Those are separate decisions. Hosting for v1 is the owner’s machine ([ADR-0011](./0011-local-production-host.md)). A public cloud host would be a later amendment.
 
 ## Decision
 
@@ -51,6 +51,10 @@ internal/config/    # env loading, no secrets in git
 - `gin.Context` is farther from `net/http` than chi. Handlers stay thin so domain tests do not need Gin.
 - Gin struct-tag binding is easy to overuse. Contract codes (`invalid_body`, `last_active_project`, pause accounting) stay in domain code.
 - CORS / CSRF / JWT come from `gin-contrib` and third-party packages, assembled in Phase 3–4 — not in Phase 1.
+
+## Amendment (2026-08-18)
+
+v1 production host is the owner’s machine: compiled `bin/vynno-api` + Compose Postgres. Decision: [0011](./0011-local-production-host.md).
 
 ## Alternatives considered
 

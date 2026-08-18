@@ -70,6 +70,22 @@ func TestLoadDefaultsAddr(t *testing.T) {
 	if cfg.PublicAPIOrigin != "http://localhost:8080" {
 		t.Fatalf("PublicAPIOrigin = %q", cfg.PublicAPIOrigin)
 	}
+	if cfg.LogFormat != "text" {
+		t.Fatalf("LogFormat = %q, want text", cfg.LogFormat)
+	}
+}
+
+func TestLoadLogFormatJSON(t *testing.T) {
+	requiredEnv(t)
+	t.Setenv("LOG_FORMAT", "json")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.LogFormat != "json" {
+		t.Fatalf("LogFormat = %q, want json", cfg.LogFormat)
+	}
 }
 
 func TestLoadRequiresPublicAPIOrigin(t *testing.T) {

@@ -1,5 +1,8 @@
 .env
 bin/
+backups/
+logs/
+var/
 dist/
 coverage.out
 *.exe

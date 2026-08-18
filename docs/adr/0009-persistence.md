@@ -20,7 +20,7 @@ An in-memory store is allowed **only** as a test double.
 | Driver | `pgx` via `database/sql` |
 | Queries | `sqlc` generating Go from SQL. No GORM / Ent as the source of truth. |
 | Migration tool | goose (plain SQL files) |
-| Where it runs | Local Docker Compose (PostgreSQL 16). App reads `DATABASE_URL`. Production host is a Phase 4 ADR. |
+| Where it runs | Local Docker Compose (PostgreSQL 16). App reads `DATABASE_URL`. v1 production is the same Compose Postgres on the owner’s machine ([ADR-0011](./0011-local-production-host.md)). |
 | IDs | UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes. |
 
 Schema may include an internal `user_id` so Phase 3 auth is a migration, not a rewrite ([ADR-0006](./0006-single-user-tenancy.md)). That column is not exposed on the wire in v1.
@@ -31,7 +31,7 @@ Constraints the choice must satisfy:
 2. Domain invariants are enforced in application code (and/or DB constraints that match them). Do not rely on the HTTP layer alone.
 3. Wire DTOs stay as specified; column names may differ.
 4. Single-user v1, but avoid a process-wide singleton ([ADR-0006](./0006-single-user-tenancy.md)).
-5. Backups are possible (Phase 4): `pg_dump` + a restore drill.
+5. Backups are possible (Phase 4 / [ADR-0011](./0011-local-production-host.md)): `pg_dump` + a restore drill.
 
 ## Consequences
 
@@ -45,6 +45,10 @@ Constraints the choice must satisfy:
 
 - Postgres is more moving parts on a laptop than a SQLite file. Compose + a CI service is the mitigation from Phase 1.
 - Tests that need durability require a running Postgres (or a later testcontainer). Domain tests do not.
+
+## Amendment (2026-08-18)
+
+The production host is no longer TBD. [ADR-0011](./0011-local-production-host.md) keeps this Compose Postgres as the system of record on the owner’s machine.
 
 ## Alternatives considered
 

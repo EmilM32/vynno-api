@@ -1,6 +1,6 @@
 # Vynno API Documentation
 
-Planning and architecture docs for the **Vynno backend**. This repository implements the HTTP API, persistence, and (later) authentication. The SvelteKit UI lives in a separate frontend repository ([`vynno`](https://github.com/EmilM32/vynno)).
+Planning and architecture docs for the **Vynno backend**. This repository implements the HTTP API, persistence, and authentication. The SvelteKit UI lives in a separate frontend repository ([`vynno`](https://github.com/EmilM32/vynno)).
 
 Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.md)).
 
@@ -27,6 +27,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | Persistence | PostgreSQL, goose, sqlc | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
 | Auth | HttpOnly session cookie + remember-me | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
 | Avatars | BYTEA + public `/v1/avatars/:id` | [ADR-0010](./adr/0010-avatar-storage.md) (Accepted) |
+| Host | Owner’s machine; binary + Compose Postgres | [ADR-0011](./adr/0011-local-production-host.md) (Accepted) |
 
 Also decided:
 
@@ -37,6 +38,6 @@ Also decided:
 
 ## Status
 
-Phase 0–3 are done. Auth is an HttpOnly session cookie (remember-me default on).
+Phase 0–4 and profile/avatar are done. Phase 5 is later (contract amendments).
 
 See [roadmap.md](./roadmap.md).

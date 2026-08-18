@@ -1,7 +1,7 @@
 # Backlog — Vynno API
 
-**Last updated:** 2026-08-17  
-**Context:** Work we are deliberately **not** doing in the current phase. Do not pull these into Phase 3 without a contract amendment and a roadmap change.
+**Last updated:** 2026-08-18  
+**Context:** Work we are deliberately **not** doing now. Phase 4 (local production) is done. Do not pull these in without a contract amendment and a roadmap change.
 
 IDs that start with frontend requirement codes (`LOG-6`, …) are the same items as in the frontend PRD / P2 backlog. They imply API work only when the SPA is ready to call new endpoints.
 

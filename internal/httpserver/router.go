@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"net/http"
 	"time"
 
@@ -20,6 +21,7 @@ type Options struct {
 	SPAOrigins      []string
 	CookieSecure    bool
 	PublicAPIOrigin string
+	Ready           func(context.Context) error
 }
 
 type Server struct {
@@ -27,6 +29,7 @@ type Server struct {
 	spaOrigins   map[string]struct{}
 	cookieSecure bool
 	publicOrigin string
+	ready        func(context.Context) error
 }
 
 func NewRouter(svc *service.Service, opts Options) *gin.Engine {
@@ -43,9 +46,13 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	if publicOrigin == "" {
 		publicOrigin = "http://localhost:8080"
 	}
-	s := &Server{svc: svc, spaOrigins: allowed, cookieSecure: opts.CookieSecure, publicOrigin: publicOrigin}
+	s := &Server{
+		svc: svc, spaOrigins: allowed, cookieSecure: opts.CookieSecure,
+		publicOrigin: publicOrigin, ready: opts.Ready,
+	}
 	r := gin.New()
 	r.MaxMultipartMemory = maxAvatarMultipart
+	r.Use(requestLog())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     origins,
@@ -56,6 +63,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	}))
 	_ = r.SetTrustedProxies(nil)
 	r.GET("/healthz", handleHealth)
+	r.GET("/readyz", s.handleReady)
 
 	v1 := r.Group("/v1")
 	v1.POST("/auth/register", s.register)

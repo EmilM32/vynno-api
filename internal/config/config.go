@@ -18,11 +18,12 @@ type Config struct {
 	SPAOrigins        []string
 	CookieSecure      bool
 	PublicAPIOrigin   string
+	LogFormat         string
 }
 
 // Load reads process env. A local `.env` in the working directory is loaded first
 // for keys that are not already set. DATABASE_URL, BOOTSTRAP_PASSWORD, SPA_ORIGIN,
-// and PUBLIC_API_ORIGIN are required.
+// and PUBLIC_API_ORIGIN are required. LOG_FORMAT is "text" or "json" (default text).
 func Load() (Config, error) {
 	if err := loadDotEnv(".env"); err != nil {
 		return Config{}, err
@@ -66,7 +67,17 @@ func Load() (Config, error) {
 		SPAOrigins:        origins,
 		CookieSecure:      boolEnv("COOKIE_SECURE"),
 		PublicAPIOrigin:   publicOrigin,
+		LogFormat:         parseLogFormat(os.Getenv("LOG_FORMAT")),
 	}, nil
+}
+
+func parseLogFormat(raw string) string {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "json":
+		return "json"
+	default:
+		return "text"
+	}
 }
 
 func parsePublicOrigin(raw string) (string, error) {
