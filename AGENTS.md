@@ -39,6 +39,7 @@ cp .env.example .env          # ADDR, DATABASE_URL, BOOTSTRAP_*, SPA_ORIGIN, PUB
 go run ./cmd/api              # migrate + seed + listen on :8080
 ./scripts/start               # release binary + Compose (daily driver)
 ./scripts/backup              # pg_dump into backups/
+./scripts/setup               # git config core.hooksPath .githooks (pre-push runs go test ./...)
 go test ./...
 gofmt -w .
 golangci-lint run ./...

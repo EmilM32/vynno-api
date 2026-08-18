@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+git -C "$ROOT" config core.hooksPath .githooks
+echo "pre-push hook active (go test ./... on git push)"

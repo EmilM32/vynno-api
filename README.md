@@ -58,7 +58,10 @@ Do **not** run `docker compose down -v` — that deletes the database volume.
 ```sh
 go test ./...
 golangci-lint run ./...
+./scripts/setup            # git config core.hooksPath .githooks
 ```
+
+`git push` then runs `go test ./...`. Skip with `git push --no-verify`.
 
 ## Documentation
 
