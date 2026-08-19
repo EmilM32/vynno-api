@@ -5,13 +5,13 @@ set -euo pipefail
 
 usage() {
 	cat <<'EOF'
-Wipe application tables and restore the bootstrap account (alexdev + Identity).
-Stops the API first. Does not drop the database or goose history.
+Wipe vynno_dev application tables and restore the bootstrap account (alexdev + Identity).
+Does not touch database vynno or the production API.
 
   scripts/reset
   scripts/reset --yes
 
-This is the local-prod volume. scripts/backup first if the rows matter.
+Stop scripts/dev first if it is running against vynno_dev.
 EOF
 }
 
@@ -29,10 +29,11 @@ for arg in "$@"; do
 	esac
 done
 
-require_env_file
+load_env
+require_dev_database_url
 
 if [[ "$YES" -ne 1 && -t 0 ]]; then
-	printf 'Wipe vynno application data and restore bootstrap? [y/N] '
+	printf 'Wipe database vynno_dev and restore bootstrap? [y/N] '
 	read -r ans
 	case "$ans" in
 	y | Y | yes | YES) ;;
@@ -40,10 +41,10 @@ if [[ "$YES" -ne 1 && -t 0 ]]; then
 	esac
 fi
 
-stop_api
 ensure_postgres
+export DATABASE_URL="$DEV_DATABASE_URL"
 (
 	cd "$ROOT"
 	go run ./cmd/devdata reset
 )
-echo "start the API with scripts/start or go run ./cmd/api"
+echo "playground is vynno_dev; start it with scripts/dev"

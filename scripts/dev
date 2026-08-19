@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+	cat <<'EOF'
+Run the API with go run against vynno_dev (does not use the release binary).
+
+  scripts/dev
+
+Listens on DEV_ADDR (default 127.0.0.1:8081). Foreground; Ctrl-C stops it.
+Does not touch database vynno or the production process on :8080.
+EOF
+}
+
+for arg in "$@"; do
+	case "$arg" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+load_env
+require_dev_database_url
+ensure_postgres
+
+export DATABASE_URL="$DEV_DATABASE_URL"
+export ADDR="${DEV_ADDR:-127.0.0.1:8081}"
+unset GIN_MODE || true
+
+cd "$ROOT"
+exec go run ./cmd/api

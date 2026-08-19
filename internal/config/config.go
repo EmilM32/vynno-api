@@ -22,8 +22,9 @@ type Config struct {
 }
 
 // Load reads process env. A local `.env` in the working directory is loaded first
-// for keys that are not already set. DATABASE_URL, BOOTSTRAP_PASSWORD, SPA_ORIGIN,
-// and PUBLIC_API_ORIGIN are required. LOG_FORMAT is "text" or "json" (default text).
+// for keys that are not already set. DATABASE_URL, SPA_ORIGIN, and
+// PUBLIC_API_ORIGIN are required. BOOTSTRAP_PASSWORD is optional here (playground
+// seed/reset require it in cmd/devdata). LOG_FORMAT is "text" or "json" (default text).
 func Load() (Config, error) {
 	if err := loadDotEnv(".env"); err != nil {
 		return Config{}, err
@@ -45,9 +46,6 @@ func Load() (Config, error) {
 	}
 
 	password := os.Getenv("BOOTSTRAP_PASSWORD")
-	if password == "" {
-		return Config{}, fmt.Errorf("BOOTSTRAP_PASSWORD is required")
-	}
 
 	origins := parseOrigins(os.Getenv("SPA_ORIGIN"))
 	if len(origins) == 0 {

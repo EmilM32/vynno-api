@@ -34,13 +34,16 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 ### Useful commands
 
 ```sh
-docker compose up -d          # local PostgreSQL 16
-cp .env.example .env          # ADDR, DATABASE_URL, BOOTSTRAP_*, SPA_ORIGIN, PUBLIC_API_ORIGIN, COOKIE_SECURE
-go run ./cmd/api              # migrate + seed + listen on :8080
-./scripts/start               # release binary + Compose (daily driver)
-./scripts/backup              # pg_dump into backups/
-./scripts/reset               # wipe app tables → bootstrap alexdev + Identity
-./scripts/seed                # wipe → 3 demo users with production-like history
+cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_API_ORIGIN
+./scripts/build               # bin/vynno-api
+./scripts/start               # daily driver; does not rebuild; database vynno
+./scripts/start --detach
+./scripts/stop                # API only
+./scripts/stop --postgres     # API + Compose stop (keeps the volume)
+./scripts/dev                 # go run on :8081 → vynno_dev
+./scripts/backup              # pg_dump vynno into backups/
+./scripts/reset               # wipe vynno_dev → alexdev + Identity
+./scripts/seed                # wipe vynno_dev → 3 demo users
 ./scripts/setup               # git config core.hooksPath .githooks (pre-push runs go test ./...)
 go test ./...
 gofmt -w .

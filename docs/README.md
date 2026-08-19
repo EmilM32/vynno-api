@@ -13,6 +13,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | [domain-model.md](./domain-model.md) | Entities, relationships, server-enforced rules |
 | [api-contract.md](./api-contract.md) | REST + JSON DTO contract the SPA already speaks |
 | [frontend-handoff.md](./frontend-handoff.md) | How the frontend swaps from `/mock/v1` to this API |
+| [local-production.md](./local-production.md) | Daily driver on this machine (binary + Compose) |
 | [roadmap.md](./roadmap.md) | Phased backend delivery plan |
 | [backlog.md](./backlog.md) | Deferred work (do not pull into the current phase) |
 | [open-questions.md](./open-questions.md) | Undecided items with defaults |

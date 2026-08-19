@@ -25,13 +25,17 @@ func TestLoadRequiresDatabaseURL(t *testing.T) {
 	}
 }
 
-func TestLoadRequiresBootstrapPassword(t *testing.T) {
+func TestLoadAllowsEmptyBootstrapPassword(t *testing.T) {
 	requiredEnv(t)
 	if err := os.Unsetenv("BOOTSTRAP_PASSWORD"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Load(); err == nil {
-		t.Fatal("expected an error when BOOTSTRAP_PASSWORD is missing")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.BootstrapPassword != "" {
+		t.Fatalf("BootstrapPassword = %q, want empty", cfg.BootstrapPassword)
 	}
 }
 

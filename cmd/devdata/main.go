@@ -30,6 +30,12 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
+	if err := devdata.RequireDevDatabase(cfg.DatabaseURL); err != nil {
+		return err
+	}
+	if cfg.BootstrapPassword == "" {
+		return fmt.Errorf("BOOTSTRAP_PASSWORD is required for seed/reset")
+	}
 	username, err := domain.NormalizeUsername(cfg.BootstrapUsername)
 	if err != nil {
 		return fmt.Errorf("bootstrap username: %w", err)

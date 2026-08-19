@@ -3,7 +3,33 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+usage() {
+	cat <<'EOF'
+Stop the API process. Postgres stays up unless --postgres.
+
+  scripts/stop            stop the detached API
+  scripts/stop --postgres also docker compose stop (named volume kept)
+EOF
+}
+
+STOP_PG=0
+for arg in "$@"; do
+	case "$arg" in
+	--postgres) STOP_PG=1 ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
 stop_api
-# Stop the container; keep the named volume.
-"${COMPOSE[@]}" stop
-echo "stopped"
+if [[ "$STOP_PG" -eq 1 ]]; then
+	"${COMPOSE[@]}" stop
+	echo "stopped API and Postgres (volume kept)"
+	exit 0
+fi
+echo "stopped API (Postgres still up)"

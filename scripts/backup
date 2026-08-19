@@ -3,8 +3,9 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
+# Production database vynno only. Does not dump vynno_dev.
 ensure_postgres
 mkdir -p "$ROOT/backups"
 out="$ROOT/backups/vynno-$(date +%Y%m%d-%H%M%S).sql"
-"${COMPOSE[@]}" exec -T postgres pg_dump -U vynno --no-owner --no-acl vynno >"$out"
+"${COMPOSE[@]}" exec -T postgres pg_dump -U vynno --no-owner --no-acl "$PROD_DB" >"$out"
 echo "$out"

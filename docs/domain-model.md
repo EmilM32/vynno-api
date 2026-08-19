@@ -172,7 +172,7 @@ Display labels (`Deep Work`, `Debug`) are a frontend i18n concern.
 | `handle` | string | Required, non-empty (client shows e.g. `@alexdev`). Derived from username; not user-editable. |
 | `avatarUrl` | string? | JSON `null` when absent. Absolute public URL when set. |
 
-Each account has its own profile. A bootstrap user is seeded when the database is empty.
+Each account has its own profile. A fresh production database has no users; the first account is `POST /auth/register`. `scripts/reset` / `scripts/seed` are operator-only against `vynno_dev`.
 
 | Rule | Description |
 | --- | --- |

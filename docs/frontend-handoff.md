@@ -1,7 +1,7 @@
 # Frontend handoff
 
 **Status:** Draft  
-**Last updated:** 2026-08-18
+**Last updated:** 2026-08-19
 
 How the SvelteKit app attaches to this API. This is not a second contract — [api-contract.md](./api-contract.md) is the wire format.
 
@@ -36,7 +36,11 @@ The SPA already:
 5. Treats `401 unauthorized` as sign-out (clears the username cache, redirects to `/login`).
 6. Has deleted `src/routes/mock/v1/`, `$lib/api/fixtures/`, and `$lib/api/mock/`.
 
-The API process must list the SPA origin in `SPA_ORIGIN` (comma-separated). Cookies will not be stored if CORS is `*`. On the owner’s machine that is the Vite / preview origin; see [ADR-0011](./adr/0011-local-production-host.md).
+The API process must list the SPA origin in `SPA_ORIGIN` (comma-separated). Cookies will not be stored if CORS is `*`. On the owner’s machine that is the Vite origin (`:5173`), the Playwright preview (`:4173`), and the local production Node server (`http://localhost:3000`); see [ADR-0011](./adr/0011-local-production-host.md) and [local-production.md](./local-production.md).
+
+A fresh production database has no users. First daily login is the SPA **register** tab (`POST /v1/auth/register`), not a bootstrap account. Seed users (`alexdev` / `maya` / `rio`) exist only on `vynno_dev`.
+
+Playwright still defaults to `API_ORIGIN` (`:8080`). While the daily binary is on that port, set `E2E_API_BASE=http://localhost:8081/v1` and run `vynno-api` `scripts/dev`, or e2e will register throwaway users into production. Do not change committed `API_ORIGIN` — that is the production BFF.
 
 ---
 
@@ -83,7 +87,7 @@ Do not add these to “complete” the API. They are client-local or deferred.
 | Insights KPIs, donut, weekly bars | Computed from the session list |
 | Command palette, nav chrome | Pure UI |
 | `X-Mock-Workspace` | Mock isolation only; never send to this API |
-| Register / forgot-password UI | Later screen; `POST /auth/register` exists for tests and curl |
+| Forgot-password UI | Later screen |
 
 ---
 

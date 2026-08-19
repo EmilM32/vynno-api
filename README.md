@@ -31,29 +31,32 @@ Decisions: [ADR-0001](./docs/adr/0001-backend-stack.md), [ADR-0009](./docs/adr/0
 
 ## Run locally
 
-Requires Go 1.26+ and Docker (for Postgres).
+Requires Go 1.26+ and Docker (for Postgres). Daily driver: **[docs/local-production.md](./docs/local-production.md)**.
 
 ```sh
-cp .env.example .env   # then set BOOTSTRAP_PASSWORD if you want something other than the local default
-docker compose up -d
-go run ./cmd/api       # loads .env from the working directory
-```
-
-Daily driver (release binary + Compose Postgres):
-
-```sh
-./scripts/start           # foreground; Ctrl-C stops the API
-./scripts/start --detach  # background; logs/api.log
-./scripts/stop            # stop detached API + Postgres (keeps the volume)
+cp .env.example .env
+./scripts/build
+./scripts/start              # foreground; does not rebuild
+./scripts/start --detach     # pid in var/api.pid, logs in logs/api.log
+./scripts/stop               # API only; Postgres stays up
+./scripts/stop --postgres    # API + Compose stop (named volume kept)
 ./scripts/backup
 ./scripts/restore backups/vynno-YYYYMMDD-HHMMSS.sql
-./scripts/reset              # wipe → bootstrap alexdev + Identity
-./scripts/seed               # wipe → 3 demo accounts with history
 ```
 
-`reset` and `seed` are destructive (same confirm / `--yes` as `restore`). They stop the API and leave the schema. `scripts/backup` first if the rows matter. Neither restarts the API.
+`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`http://localhost:3000`). Database `vynno` is daily history. Do **not** run `docker compose down -v`.
 
-Demo logins after `scripts/seed`:
+Playground (database `vynno_dev` only):
+
+```sh
+./scripts/dev                # go run on 127.0.0.1:8081
+./scripts/reset              # wipe vynno_dev → alexdev + Identity
+./scripts/seed               # wipe vynno_dev → 3 demo accounts with history
+```
+
+`reset` and `seed` are destructive (same confirm / `--yes` as `restore`). They refuse database `vynno` and do not stop the production API.
+
+Demo logins after `scripts/seed` (playground only):
 
 | Username | Password | Notes |
 | --- | --- | --- |
@@ -61,11 +64,9 @@ Demo logins after `scripts/seed`:
 | `maya` | `SEED_PASSWORD` (default `local-dev-password`) | Contractor, idle |
 | `rio` | same as Maya | Short history |
 
-Do **not** run `docker compose down -v` — that deletes the database volume.
+`GET http://127.0.0.1:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
 
-`GET http://localhost:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
-
-`/v1` requires a session (`GET /v1/avatars/:id` is the public exception): `POST /v1/auth/login` with the bootstrap username/password from `.env`. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1` (or `PUBLIC_API_BASE=http://localhost:8080/v1`). Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP.
+`/v1` requires a session (`GET /v1/avatars/:id` is the public exception). Production: `POST /v1/auth/register` then login. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`.
 
 ```sh
 go test ./...

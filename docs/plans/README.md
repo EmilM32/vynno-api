@@ -12,4 +12,5 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [phase-3-auth.md](./phase-3-auth.md) | Done | Roadmap Phase 3 |
 | [phase-4-production.md](./phase-4-production.md) | Done | Roadmap Phase 4 |
 | [profile-avatar.md](./profile-avatar.md) | Done | ME-3 / ME-4 / ME-5 |
-| [dev-data.md](./dev-data.md) | Done | Operator reset + demo seed |
+| [dev-data.md](./dev-data.md) | Done | Operator reset + demo seed (`vynno_dev`) |
+| [local-prod-runtime.md](./local-prod-runtime.md) | Done | Build ≠ start; two databases |

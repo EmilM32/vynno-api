@@ -12,12 +12,10 @@ import (
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/config"
-	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/httpserver"
 	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/EmilM32/vynno-api/internal/store"
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"golang.org/x/crypto/bcrypt"
 )
 
 func main() {
@@ -44,30 +42,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	username, err := domain.NormalizeUsername(cfg.BootstrapUsername)
-	if err != nil {
-		slog.Error("bootstrap username", "err", err)
-		os.Exit(1)
-	}
-	password, err := domain.NormalizePassword(cfg.BootstrapPassword)
-	if err != nil {
-		slog.Error("bootstrap password", "err", err)
-		os.Exit(1)
-	}
-	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
-	if err != nil {
-		slog.Error("bootstrap hash", "err", err)
-		os.Exit(1)
-	}
-
-	pg := store.NewPostgres(db)
-	ctx := context.Background()
-	if err := pg.Bootstrap(ctx, store.DefaultUserID(), username, string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
-		slog.Error("bootstrap", "err", err)
-		os.Exit(1)
-	}
-
-	r := httpserver.NewRouter(service.New(pg), httpserver.Options{
+	r := httpserver.NewRouter(service.New(store.NewPostgres(db)), httpserver.Options{
 		SPAOrigins:      cfg.SPAOrigins,
 		CookieSecure:    cfg.CookieSecure,
 		PublicAPIOrigin: cfg.PublicAPIOrigin,

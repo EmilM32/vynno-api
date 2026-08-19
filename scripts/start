@@ -5,10 +5,12 @@ set -euo pipefail
 
 usage() {
 	cat <<'EOF'
-Start Postgres (Docker Compose) and the API binary.
+Start Postgres (Docker Compose) and the API binary. Does not build.
 
   scripts/start           run in the foreground
   scripts/start --detach  background; pid in var/api.pid, logs in logs/api.log
+
+Run scripts/build first when the binary is missing or stale.
 EOF
 }
 
@@ -26,17 +28,21 @@ for arg in "$@"; do
 	esac
 done
 
-require_env_file
+load_env
+require_var DATABASE_URL
+require_prod_database
+require_build
 
 if pid="$(api_pid)"; then
 	die "already running (pid $pid); scripts/stop first"
 fi
 
 ensure_postgres
-"$ROOT/scripts/build"
 
 export GIN_MODE=release
-export LOG_FORMAT="${LOG_FORMAT:-json}"
+export LOG_FORMAT=json
+
+cd "$ROOT"
 
 if [[ "$DETACH" -eq 1 ]]; then
 	mkdir -p "$ROOT/logs" "$ROOT/var"

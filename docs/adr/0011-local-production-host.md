@@ -18,7 +18,7 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 2. **PostgreSQL stays in Docker Compose** — the same `postgres` service as local development. Durable data is the Compose named volume. Do not `docker compose down -v` on that machine.
 3. **The API is a compiled host binary** (`bin/vynno-api` from `./cmd/api`). It is not containerized in this decision. `scripts/start` builds it, starts Compose, waits for Postgres, and runs the process.
 4. **Secrets stay in a gitignored `.env`.** There is no cloud secret manager until there is a cloud host. `.env.example` remains the documented shape, not production values.
-5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** Loopback HTTP means `COOKIE_SECURE=false`. Production origins are the local SPA (Vite / preview) listed in `SPA_ORIGIN`.
+5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** Loopback HTTP means `COOKIE_SECURE=false`. Production origins are the local SPA (Vite, preview, and adapter-node `http://localhost:3000`) listed in `SPA_ORIGIN`.
 6. **Backups are `pg_dump` through Compose** (`scripts/backup`, `scripts/restore`). Avatars are BYTEA, so they are in the dump. A restore drill is part of shipping this decision.
 7. **Observability is structured logs on stdout** (JSON when `LOG_FORMAT=json`). No third-party error service. Unexpected handler errors are logged; the client still sees the contract envelope.
 8. **`GET /healthz` is process liveness** (no DB). **`GET /readyz` pings Postgres.** Both are implementation details, not SPA contract resources.
@@ -50,11 +50,21 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 | SQLite file to drop Compose | Rejected by [ADR-0009](./0009-persistence.md). |
 | Skip backups because it is “just local” | Disk and volume mistakes still lose history. |
 
+## Amendment (2026-08-19)
+
+1. **Build and start are separate.** `scripts/build` writes `bin/vynno-api`. `scripts/start` does not rebuild; a missing binary is an error. Same split as the SPA.
+2. **One Compose Postgres, two databases** on the named volume: `vynno` (daily binary, backup, restore) and `vynno_dev` (`scripts/dev`, `scripts/seed`, `scripts/reset`). Seed/reset refuse any other database name. `docker compose down -v` still wipes both and stays forbidden.
+3. **The API process does not bootstrap accounts.** A fresh `vynno` has schema only. The first daily user is `POST /v1/auth/register` from the SPA. `BOOTSTRAP_*` is playground-only (`cmd/devdata`).
+4. **Loopback bind.** Production `ADDR` is `127.0.0.1:8080`. Dev is `127.0.0.1:8081` so the daily binary and `go run` can run together. Register stays public (clause 9); loopback is the exposure control, matching the SPA.
+5. **`scripts/stop` stops the API only.** `--postgres` also `docker compose stop` (volume kept).
+
 ## Related
 
 - [0001-backend-stack.md](./0001-backend-stack.md)
 - [0008-authentication.md](./0008-authentication.md)
 - [0009-persistence.md](./0009-persistence.md)
 - [../plans/phase-4-production.md](../plans/phase-4-production.md)
+- [../plans/local-prod-runtime.md](../plans/local-prod-runtime.md)
+- [../local-production.md](../local-production.md)
 - [../roadmap.md](../roadmap.md) Phase 4
 - [../open-questions.md](../open-questions.md) #4

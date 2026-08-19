@@ -122,9 +122,17 @@ Plan: [plans/profile-avatar.md](./plans/profile-avatar.md) (Done).
 
 Plan: [plans/dev-data.md](./plans/dev-data.md).
 
-- [x] `scripts/reset` — wipe app tables, restore bootstrap `alexdev` + Identity
-- [x] `scripts/seed` — wipe, load three isolated accounts with production-like history
+- [x] `scripts/reset` — wipe `vynno_dev`, restore bootstrap `alexdev` + Identity
+- [x] `scripts/seed` — wipe `vynno_dev`, load three isolated accounts with production-like history
 - [x] Generator lives in `internal/devdata`; not imported by `cmd/api`
+
+### Local production runtime
+
+Plan: [plans/local-prod-runtime.md](./plans/local-prod-runtime.md).
+
+- [x] `scripts/build` vs `scripts/start` (start does not rebuild)
+- [x] Databases `vynno` (daily) and `vynno_dev` (seed / reset / `scripts/dev`)
+- [x] `cmd/api` does not bootstrap accounts; first user is SPA register
 
 ---
 

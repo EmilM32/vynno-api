@@ -20,7 +20,7 @@ Undecided items and the **default we ship with** until an ADR or PRD update says
 | 12 | Must every session have a project? | **Yes** | [domain-model.md](./domain-model.md) |
 | 13 | Auto-stop previous session on start? | **No** | [ADR-0005](./adr/0005-session-lifecycle.md) |
 | 14 | Shared DTO package with the frontend? | **No** — dual docs until we extract one | New ADR |
-| 15 | Seed data for a fresh database | **Resolved:** empty-db bootstrap is still one profile + one active project (`cmd/api`). Rich multi-user history is an explicit `scripts/seed` ([plans/dev-data.md](./plans/dev-data.md)). | Phase 2 bootstrap + operator tooling |
+| 15 | Seed data for a fresh database | **Resolved:** production `vynno` starts empty; the first user is `POST /v1/auth/register`. Playground history is `scripts/seed` / `scripts/reset` against `vynno_dev` only ([plans/dev-data.md](./plans/dev-data.md), [plans/local-prod-runtime.md](./plans/local-prod-runtime.md)). | Operator tooling |
 
 Rows 6, 8, 9, 11–13 already have defaults that are Accepted behavior. They stay here so Phase 0 does not re-ask them.
 
