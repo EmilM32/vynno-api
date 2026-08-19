@@ -35,6 +35,16 @@ type Memory struct {
 	avatars  map[uuid.UUID]memAvatar
 }
 
+// NewEmptyMemory is an in-memory Store with no accounts. Used by operator-tooling tests.
+func NewEmptyMemory() *Memory {
+	return &Memory{
+		accounts: map[uuid.UUID]*memAccount{},
+		byName:   map[string]uuid.UUID{},
+		tokens:   map[string]Token{},
+		avatars:  map[uuid.UUID]memAvatar{},
+	}
+}
+
 func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project) *Memory {
 	pid, err := uuid.Parse(project.ID)
 	if err != nil {

@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+	cat <<'EOF'
+Wipe application tables and restore the bootstrap account (alexdev + Identity).
+Stops the API first. Does not drop the database or goose history.
+
+  scripts/reset
+  scripts/reset --yes
+
+This is the local-prod volume. scripts/backup first if the rows matter.
+EOF
+}
+
+YES=0
+for arg in "$@"; do
+	case "$arg" in
+	--yes | -y) YES=1 ;;
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+require_env_file
+
+if [[ "$YES" -ne 1 && -t 0 ]]; then
+	printf 'Wipe vynno application data and restore bootstrap? [y/N] '
+	read -r ans
+	case "$ans" in
+	y | Y | yes | YES) ;;
+	*) die "aborted" ;;
+	esac
+fi
+
+stop_api
+ensure_postgres
+(
+	cd "$ROOT"
+	go run ./cmd/devdata reset
+)
+echo "start the API with scripts/start or go run ./cmd/api"

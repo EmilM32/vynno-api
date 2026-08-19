@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-18  
+**Last updated:** 2026-08-19  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -117,6 +117,14 @@ Plan: [plans/profile-avatar.md](./plans/profile-avatar.md) (Done).
 - [x] ADR-0010 avatar storage (BYTEA + public URL)
 - [x] API + tests
 - [x] Frontend Settings pairing
+
+### Local reset and demo dataset
+
+Plan: [plans/dev-data.md](./plans/dev-data.md).
+
+- [x] `scripts/reset` — wipe app tables, restore bootstrap `alexdev` + Identity
+- [x] `scripts/seed` — wipe, load three isolated accounts with production-like history
+- [x] Generator lives in `internal/devdata`; not imported by `cmd/api`
 
 ---
 

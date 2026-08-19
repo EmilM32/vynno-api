@@ -47,7 +47,19 @@ Daily driver (release binary + Compose Postgres):
 ./scripts/stop            # stop detached API + Postgres (keeps the volume)
 ./scripts/backup
 ./scripts/restore backups/vynno-YYYYMMDD-HHMMSS.sql
+./scripts/reset              # wipe → bootstrap alexdev + Identity
+./scripts/seed               # wipe → 3 demo accounts with history
 ```
+
+`reset` and `seed` are destructive (same confirm / `--yes` as `restore`). They stop the API and leave the schema. `scripts/backup` first if the rows matter. Neither restarts the API.
+
+Demo logins after `scripts/seed`:
+
+| Username | Password | Notes |
+| --- | --- | --- |
+| `alexdev` | `BOOTSTRAP_PASSWORD` from `.env` | Power user, live session, ~10 weeks of logs |
+| `maya` | `SEED_PASSWORD` (default `local-dev-password`) | Contractor, idle |
+| `rio` | same as Maya | Short history |
 
 Do **not** run `docker compose down -v` — that deletes the database volume.
 
