@@ -263,6 +263,80 @@ func (p *Postgres) CodeInUse(ctx context.Context, userID uuid.UUID, code string,
 	})
 }
 
+func (p *Postgres) ListActivityTypes(ctx context.Context, userID uuid.UUID) ([]domain.ActivityType, error) {
+	rows, err := p.q.ListActivityTypes(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.ActivityType, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, activityTypeFromList(r))
+	}
+	return out, nil
+}
+
+func (p *Postgres) GetActivityType(ctx context.Context, userID, id uuid.UUID) (domain.ActivityType, error) {
+	row, err := p.q.GetActivityType(ctx, sqlcgen.GetActivityTypeParams{UserID: userID, ID: id})
+	if err != nil {
+		return domain.ActivityType{}, mapNotFound(err)
+	}
+	return activityTypeFromGet(row), nil
+}
+
+func (p *Postgres) CreateActivityType(ctx context.Context, userID uuid.UUID, a domain.ActivityType) (domain.ActivityType, error) {
+	id, err := uuid.Parse(a.ID)
+	if err != nil {
+		return domain.ActivityType{}, domain.ErrInvalidBody("invalid id")
+	}
+	row, err := p.q.InsertActivityType(ctx, sqlcgen.InsertActivityTypeParams{
+		ID:     id,
+		UserID: userID,
+		Name:   a.Name,
+		Color:  a.Color,
+	})
+	if err != nil {
+		return domain.ActivityType{}, mapUnique(err)
+	}
+	return activityTypeFromInsert(row), nil
+}
+
+func (p *Postgres) UpdateActivityType(ctx context.Context, userID uuid.UUID, a domain.ActivityType) (domain.ActivityType, error) {
+	id, err := uuid.Parse(a.ID)
+	if err != nil {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	row, err := p.q.UpdateActivityType(ctx, sqlcgen.UpdateActivityTypeParams{
+		UserID: userID,
+		ID:     id,
+		Name:   a.Name,
+		Color:  a.Color,
+	})
+	if err != nil {
+		return domain.ActivityType{}, mapUnique(mapNotFound(err))
+	}
+	return activityTypeFromUpdate(row), nil
+}
+
+func (p *Postgres) DeleteActivityType(ctx context.Context, userID, id uuid.UUID) error {
+	return p.q.DeleteActivityType(ctx, sqlcgen.DeleteActivityTypeParams{UserID: userID, ID: id})
+}
+
+func (p *Postgres) CountActivityTypeSessions(ctx context.Context, userID, activityTypeID uuid.UUID) (int, error) {
+	n, err := p.q.CountActivityTypeSessions(ctx, sqlcgen.CountActivityTypeSessionsParams{
+		UserID:         userID,
+		ActivityTypeID: &activityTypeID,
+	})
+	return int(n), err
+}
+
+func (p *Postgres) ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, name string, excludeID uuid.UUID) (bool, error) {
+	return p.q.ActivityTypeNameInUse(ctx, sqlcgen.ActivityTypeNameInUseParams{
+		UserID:    userID,
+		Name:      name,
+		ExcludeID: excludeID,
+	})
+}
+
 func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
 	want := map[string]bool{}
 	for _, s := range statuses {
@@ -402,7 +476,7 @@ func insertSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.InsertSess
 		ProjectID:        pid,
 		Note:             s.Note,
 		TicketID:         ptrNullString(s.TicketID),
-		ActivityType:     ptrNullString(s.ActivityType),
+		ActivityTypeID:   uuidPtrFromString(s.ActivityTypeID),
 		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
@@ -427,7 +501,7 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 		ID:               id,
 		Note:             s.Note,
 		TicketID:         ptrNullString(s.TicketID),
-		ActivityType:     ptrNullString(s.ActivityType),
+		ActivityTypeID:   uuidPtrFromString(s.ActivityTypeID),
 		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
@@ -451,6 +525,8 @@ func mapUnique(err error) error {
 		switch pgErr.ConstraintName {
 		case "projects_user_code_uidx":
 			return domain.ErrCodeInUse()
+		case "activity_types_user_name_uidx":
+			return domain.ErrNameInUse()
 		case "sessions_one_live_per_user":
 			return domain.ErrSessionAlreadyActive()
 		case "users_username_key":
@@ -549,13 +625,13 @@ func projectFromUpdate(r sqlcgen.UpdateProjectRow) domain.Project {
 	}
 }
 
-func sessionFromRow(id, projectID uuid.UUID, note string, ticket, activity sql.NullString, tags []byte, status string, started time.Time, ended, pausedAt sql.NullTime, pausedMs int64, target sql.NullInt64) domain.Session {
+func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString, activityID *uuid.UUID, tags []byte, status string, started time.Time, ended, pausedAt sql.NullTime, pausedMs int64, target sql.NullInt64) domain.Session {
 	return domain.Session{
 		ID:               id.String(),
 		ProjectID:        projectID.String(),
 		Note:             note,
 		TicketID:         nullStringPtr(ticket),
-		ActivityType:     nullStringPtr(activity),
+		ActivityTypeID:   uuidPtrString(activityID),
 		Tags:             decodeTags(tags),
 		Status:           status,
 		StartedAt:        started,
@@ -567,21 +643,56 @@ func sessionFromRow(id, projectID uuid.UUID, note string, ticket, activity sql.N
 }
 
 func sessionFromGet(r sqlcgen.GetSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityType, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromList(r sqlcgen.ListSessionsRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityType, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromLive(r sqlcgen.GetLiveSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityType, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromInsert(r sqlcgen.InsertSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityType, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromUpdate(r sqlcgen.UpdateSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityType, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+}
+
+func uuidPtrFromString(s *string) *uuid.UUID {
+	if s == nil || *s == "" {
+		return nil
+	}
+	id, err := uuid.Parse(*s)
+	if err != nil {
+		return nil
+	}
+	return &id
+}
+
+func uuidPtrString(id *uuid.UUID) *string {
+	if id == nil {
+		return nil
+	}
+	v := id.String()
+	return &v
+}
+
+func activityTypeFromGet(r sqlcgen.GetActivityTypeRow) domain.ActivityType {
+	return domain.ActivityType{ID: r.ID.String(), Name: r.Name, Color: r.Color}
+}
+
+func activityTypeFromList(r sqlcgen.ListActivityTypesRow) domain.ActivityType {
+	return domain.ActivityType{ID: r.ID.String(), Name: r.Name, Color: r.Color}
+}
+
+func activityTypeFromInsert(r sqlcgen.InsertActivityTypeRow) domain.ActivityType {
+	return domain.ActivityType{ID: r.ID.String(), Name: r.Name, Color: r.Color}
+}
+
+func activityTypeFromUpdate(r sqlcgen.UpdateActivityTypeRow) domain.ActivityType {
+	return domain.ActivityType{ID: r.ID.String(), Name: r.Name, Color: r.Color}
 }

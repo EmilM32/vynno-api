@@ -1,7 +1,7 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-18  
+**Last updated:** 2026-08-20  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, auth)
 
@@ -85,6 +85,7 @@ The API is the information architecture. There is no second resource model.
 | `PATCH /me` | Update display name |
 | `PUT` / `DELETE /me/avatar` | Upload or remove photo |
 | `/projects` | Work containers; archive / restore / hard delete |
+| `/activity-types` | User-owned activity dictionary (display name + token color) |
 | `/sessions` | Timed intervals; start + verb actions |
 
 Primary navigation in the SPA (Timer, Dashboard, Logs, Insights, Projects, Settings) is **not** mirrored as endpoints. Dashboard and Insights read the session list and aggregate on the client.
@@ -135,6 +136,17 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | SES-9 | Restart-from-recent is a new `POST /sessions`, not a resume of a stopped row | P0 |
 | SES-10 | Edit or delete a stopped session | P2 (LOG-6; needs contract amendment) |
 | SES-11 | Manual time entry without running the timer | P2 (LOG-7; needs contract amendment) |
+| SES-12 | `activityTypeId` is an optional FK to a user-owned activity type | P1 |
+
+### 8.6 Activity types
+
+| ID | Requirement | Priority |
+| --- | --- | --- |
+| ACT-1 | `GET /activity-types` returns `{ items }` sorted by name | P1 |
+| ACT-2 | `POST /activity-types` → `201`; `name` is a display label; `color` is a token | P1 |
+| ACT-3 | `PATCH /activity-types/:id` updates name and/or color | P1 |
+| ACT-4 | `DELETE /activity-types/:id` → `204` only when zero sessions reference it | P1 |
+| ACT-5 | Register does not seed types; list may be empty | P1 |
 
 ### 8.4 Auth
 
@@ -175,7 +187,7 @@ Core concepts:
 
 - **Project** — work container with color, optional code, archive flag
 - **Time session** — timed interval with `active` / `paused` / `stopped`
-- **Activity type** — optional fixed enum
+- **Activity type** — optional user-owned dictionary row (display name + token color)
 - **Profile** — display name, handle, optional avatar
 
 ## 11. Assumptions
@@ -183,7 +195,7 @@ Core concepts:
 1. Product name is **Vynno** ([ADR-0007](./adr/0007-product-name.md)).
 2. Single concurrent live session (running or paused).
 3. Single-user product for v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)).
-4. Activity types are a fixed enum (extendable later via contract amendment).
+4. Activity types are a per-user dictionary ([ADR-0012](./adr/0012-activity-types.md)). Display name stored as typed. Empty on register.
 5. Insights, prefs, theme, and locale stay on the client until the contract says otherwise.
 6. The frontend mock is disposable and is **not** the system of record.
 

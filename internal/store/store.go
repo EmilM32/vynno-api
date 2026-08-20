@@ -52,6 +52,14 @@ type Store interface {
 	CountProjectSessions(ctx context.Context, userID, projectID uuid.UUID) (int, error)
 	CodeInUse(ctx context.Context, userID uuid.UUID, code string, excludeID uuid.UUID) (bool, error)
 
+	ListActivityTypes(ctx context.Context, userID uuid.UUID) ([]domain.ActivityType, error)
+	GetActivityType(ctx context.Context, userID, id uuid.UUID) (domain.ActivityType, error)
+	CreateActivityType(ctx context.Context, userID uuid.UUID, a domain.ActivityType) (domain.ActivityType, error)
+	UpdateActivityType(ctx context.Context, userID uuid.UUID, a domain.ActivityType) (domain.ActivityType, error)
+	DeleteActivityType(ctx context.Context, userID, id uuid.UUID) error
+	CountActivityTypeSessions(ctx context.Context, userID, activityTypeID uuid.UUID) (int, error)
+	ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, name string, excludeID uuid.UUID) (bool, error)
+
 	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error)
 	GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error)
 	GetLiveSession(ctx context.Context, userID uuid.UUID) (domain.Session, bool, error)

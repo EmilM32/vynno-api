@@ -12,6 +12,15 @@ import (
 	"github.com/google/uuid"
 )
 
+type ActivityType struct {
+	ID        uuid.UUID
+	UserID    uuid.UUID
+	Name      string
+	Color     string
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
 type AuthToken struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
@@ -53,7 +62,6 @@ type Session struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -61,6 +69,7 @@ type Session struct {
 	PausedMs         int64
 	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
+	ActivityTypeID   *uuid.UUID
 }
 
 type User struct {

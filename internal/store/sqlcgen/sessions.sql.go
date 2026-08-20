@@ -15,7 +15,7 @@ import (
 )
 
 const getLiveSession = `-- name: GetLiveSession :one
-SELECT id, project_id, note, ticket_id, activity_type, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1 AND status IN ('active', 'paused')
@@ -26,7 +26,7 @@ type GetLiveSessionRow struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -44,7 +44,7 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 		&i.ProjectID,
 		&i.Note,
 		&i.TicketID,
-		&i.ActivityType,
+		&i.ActivityTypeID,
 		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
@@ -57,7 +57,7 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, project_id, note, ticket_id, activity_type, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1 AND id = $2
@@ -73,7 +73,7 @@ type GetSessionRow struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -91,7 +91,7 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 		&i.ProjectID,
 		&i.Note,
 		&i.TicketID,
-		&i.ActivityType,
+		&i.ActivityTypeID,
 		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
@@ -105,13 +105,13 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 
 const insertSession = `-- name: InsertSession :one
 INSERT INTO sessions (
-    id, user_id, project_id, note, ticket_id, activity_type, tags, status,
+    id, user_id, project_id, note, ticket_id, activity_type_id, tags, status,
     started_at, ended_at, paused_ms, paused_at, target_duration_ms
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8,
     $9, $10, $11, $12, $13
 )
-RETURNING id, project_id, note, ticket_id, activity_type, tags, status,
+RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms
 `
 
@@ -121,7 +121,7 @@ type InsertSessionParams struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -136,7 +136,7 @@ type InsertSessionRow struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -153,7 +153,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		arg.ProjectID,
 		arg.Note,
 		arg.TicketID,
-		arg.ActivityType,
+		arg.ActivityTypeID,
 		arg.Tags,
 		arg.Status,
 		arg.StartedAt,
@@ -168,7 +168,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		&i.ProjectID,
 		&i.Note,
 		&i.TicketID,
-		&i.ActivityType,
+		&i.ActivityTypeID,
 		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
@@ -181,7 +181,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, project_id, note, ticket_id, activity_type, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1
@@ -209,7 +209,7 @@ type ListSessionsRow struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -240,7 +240,7 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 			&i.ProjectID,
 			&i.Note,
 			&i.TicketID,
-			&i.ActivityType,
+			&i.ActivityTypeID,
 			&i.Tags,
 			&i.Status,
 			&i.StartedAt,
@@ -266,7 +266,7 @@ const updateSession = `-- name: UpdateSession :one
 UPDATE sessions
 SET note = $3,
     ticket_id = $4,
-    activity_type = $5,
+    activity_type_id = $5,
     tags = $6,
     status = $7,
     started_at = $8,
@@ -275,7 +275,7 @@ SET note = $3,
     paused_at = $11,
     target_duration_ms = $12
 WHERE user_id = $1 AND id = $2
-RETURNING id, project_id, note, ticket_id, activity_type, tags, status,
+RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms
 `
 
@@ -284,7 +284,7 @@ type UpdateSessionParams struct {
 	ID               uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -299,7 +299,7 @@ type UpdateSessionRow struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	ActivityType     sql.NullString
+	ActivityTypeID   *uuid.UUID
 	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
@@ -315,7 +315,7 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		arg.ID,
 		arg.Note,
 		arg.TicketID,
-		arg.ActivityType,
+		arg.ActivityTypeID,
 		arg.Tags,
 		arg.Status,
 		arg.StartedAt,
@@ -330,7 +330,7 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		&i.ProjectID,
 		&i.Note,
 		&i.TicketID,
-		&i.ActivityType,
+		&i.ActivityTypeID,
 		&i.Tags,
 		&i.Status,
 		&i.StartedAt,

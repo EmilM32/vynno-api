@@ -15,6 +15,7 @@ TRUNCATE TABLE
 	auth_tokens,
 	avatars,
 	sessions,
+	activity_types,
 	projects,
 	profiles,
 	users
@@ -49,6 +50,11 @@ func Apply(ctx context.Context, s store.Store, ds Dataset) error {
 		for _, p := range acc.Projects {
 			if _, err := s.CreateProject(ctx, acc.ID, p); err != nil {
 				return fmt.Errorf("project %s/%s: %w", acc.Username, p.Name, err)
+			}
+		}
+		for _, a := range acc.ActivityTypes {
+			if _, err := s.CreateActivityType(ctx, acc.ID, a); err != nil {
+				return fmt.Errorf("activity type %s/%s: %w", acc.Username, a.Name, err)
 			}
 		}
 		for _, sess := range acc.Sessions {

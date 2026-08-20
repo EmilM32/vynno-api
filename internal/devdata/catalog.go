@@ -26,13 +26,14 @@ type Dataset struct {
 
 // Account is one isolated login plus its projects and sessions.
 type Account struct {
-	ID       uuid.UUID
-	Username string
-	Password string
-	Blurb    string
-	Profile  domain.Profile
-	Projects []domain.Project
-	Sessions []domain.Session
+	ID            uuid.UUID
+	Username      string
+	Password      string
+	Blurb         string
+	Profile       domain.Profile
+	Projects      []domain.Project
+	ActivityTypes []domain.ActivityType
+	Sessions      []domain.Session
 }
 
 type persona struct {

@@ -12,7 +12,7 @@ type StartSessionInput struct {
 	ProjectID        string
 	Note             string
 	TicketID         *string
-	ActivityType     *string
+	ActivityTypeID   *string
 	Tags             []string
 	TargetDurationMs *int64
 }
@@ -41,7 +41,7 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 	if err != nil {
 		return domain.Session{}, domain.ErrNotFound()
 	}
-	activity, err := domain.NormalizeActivityType(in.ActivityType)
+	activityID, err := s.resolveActivityTypeID(ctx, in.ActivityTypeID)
 	if err != nil {
 		return domain.Session{}, err
 	}
@@ -71,7 +71,7 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 		projectID.String(),
 		in.Note,
 		in.TicketID,
-		activity,
+		activityID,
 		in.Tags,
 		target,
 		s.Now(),
@@ -101,4 +101,20 @@ func (s *Service) applyTransition(ctx context.Context, id uuid.UUID, fn func(dom
 		return domain.Session{}, err
 	}
 	return s.Store.UpdateSession(ctx, s.User, next)
+}
+
+func (s *Service) resolveActivityTypeID(ctx context.Context, raw *string) (*string, error) {
+	id := domain.NormalizeOptionalString(raw)
+	if id == nil {
+		return nil, nil
+	}
+	parsed, err := uuid.Parse(*id)
+	if err != nil {
+		return nil, domain.ErrNotFound()
+	}
+	if _, err := s.Store.GetActivityType(ctx, s.User, parsed); err != nil {
+		return nil, err
+	}
+	v := parsed.String()
+	return &v, nil
 }

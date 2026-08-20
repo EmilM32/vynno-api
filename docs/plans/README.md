@@ -14,3 +14,4 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [profile-avatar.md](./profile-avatar.md) | Done | ME-3 / ME-4 / ME-5 |
 | [dev-data.md](./dev-data.md) | Done | Operator reset + demo seed (`vynno_dev`) |
 | [local-prod-runtime.md](./local-prod-runtime.md) | Done | Build ≠ start; two databases |
+| [activity-types.md](./activity-types.md) | Done | User-defined activity types |

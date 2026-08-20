@@ -14,17 +14,6 @@ const (
 	StatusStopped = "stopped"
 )
 
-var ActivityTypes = []string{
-	"deep_work",
-	"meeting",
-	"maintenance",
-	"coding",
-	"debugging",
-	"docs",
-	"research",
-	"other",
-}
-
 var SessionStatuses = []string{StatusActive, StatusPaused, StatusStopped}
 
 // Session is the server-side time session (not the wire DTO).
@@ -33,7 +22,7 @@ type Session struct {
 	ProjectID        string
 	Note             string
 	TicketID         *string
-	ActivityType     *string
+	ActivityTypeID   *string
 	Tags             []string
 	Status           string
 	StartedAt        time.Time
@@ -60,20 +49,6 @@ func NormalizeOptionalString(s *string) *string {
 		return nil
 	}
 	return &t
-}
-
-func NormalizeActivityType(v *string) (*string, error) {
-	if v == nil {
-		return nil, nil
-	}
-	t := strings.TrimSpace(*v)
-	if t == "" {
-		return nil, nil
-	}
-	if !slices.Contains(ActivityTypes, t) {
-		return nil, ErrInvalidBody("activityType is not a known value.")
-	}
-	return &t, nil
 }
 
 func NormalizeTags(tags []string) []string {
@@ -109,13 +84,13 @@ func ValidStatusFilter(s string) bool {
 }
 
 // StartSession builds a new active session at now.
-func StartSession(id, projectID, note string, ticketID, activityType *string, tags []string, target *int64, now time.Time) Session {
+func StartSession(id, projectID, note string, ticketID, activityTypeID *string, tags []string, target *int64, now time.Time) Session {
 	return Session{
 		ID:               id,
 		ProjectID:        projectID,
 		Note:             NormalizeNote(note),
 		TicketID:         NormalizeOptionalString(ticketID),
-		ActivityType:     activityType,
+		ActivityTypeID:   activityTypeID,
 		Tags:             NormalizeTags(tags),
 		Status:           StatusActive,
 		StartedAt:        now.UTC(),

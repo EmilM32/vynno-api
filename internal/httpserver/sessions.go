@@ -72,7 +72,7 @@ func (s *Server) startSession(c *gin.Context) {
 		ProjectID:        body.ProjectID,
 		Note:             body.Note,
 		TicketID:         body.TicketID,
-		ActivityType:     body.ActivityType,
+		ActivityTypeID:   body.ActivityTypeID,
 		Tags:             body.Tags,
 		TargetDurationMs: body.TargetDurationMs,
 	})

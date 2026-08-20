@@ -30,7 +30,7 @@ type sessionDTO struct {
 	ProjectID        string   `json:"projectId"`
 	Note             string   `json:"note"`
 	TicketID         *string  `json:"ticketId"`
-	ActivityType     *string  `json:"activityType"`
+	ActivityTypeID   *string  `json:"activityTypeId"`
 	Tags             []string `json:"tags"`
 	Status           string   `json:"status"`
 	StartedAt        string   `json:"startedAt"`
@@ -93,9 +93,47 @@ type startSessionBody struct {
 	ProjectID        string   `json:"projectId"`
 	Note             string   `json:"note"`
 	TicketID         *string  `json:"ticketId"`
-	ActivityType     *string  `json:"activityType"`
+	ActivityTypeID   *string  `json:"activityTypeId"`
 	Tags             []string `json:"tags"`
 	TargetDurationMs *int64   `json:"targetDurationMs"`
+}
+
+type activityTypeDTO struct {
+	ID    string `json:"id"`
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+type createActivityTypeBody struct {
+	Name  string `json:"name"`
+	Color string `json:"color"`
+}
+
+type updateActivityTypeBody struct {
+	Name  *string
+	Color *string
+}
+
+func (u *updateActivityTypeBody) UnmarshalJSON(b []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if v, ok := raw["name"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return err
+		}
+		u.Name = &s
+	}
+	if v, ok := raw["color"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return err
+		}
+		u.Color = &s
+	}
+	return nil
 }
 
 func (s *Server) toProfileDTO(p domain.Profile) profileDTO {
@@ -112,6 +150,10 @@ func (s *Server) absoluteAvatarURL(stored *string) *string {
 	}
 	abs := strings.TrimRight(s.publicOrigin, "/") + path
 	return &abs
+}
+
+func toActivityTypeDTO(a domain.ActivityType) activityTypeDTO {
+	return activityTypeDTO{ID: a.ID, Name: a.Name, Color: a.Color}
 }
 
 func toProjectDTO(p domain.Project) projectDTO {
@@ -131,7 +173,7 @@ func toSessionDTO(s domain.Session) sessionDTO {
 		ProjectID:        s.ProjectID,
 		Note:             s.Note,
 		TicketID:         s.TicketID,
-		ActivityType:     s.ActivityType,
+		ActivityTypeID:   s.ActivityTypeID,
 		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        formatTime(s.StartedAt),

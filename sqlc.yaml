@@ -16,3 +16,8 @@ sql:
             go_type: "time.Time"
           - db_type: "jsonb"
             go_type: "encoding/json.RawMessage"
+          - column: "sessions.activity_type_id"
+            go_type:
+              import: "github.com/google/uuid"
+              type: "UUID"
+              pointer: true

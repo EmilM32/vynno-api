@@ -3,20 +3,22 @@ package domain
 import "fmt"
 
 const (
-	CodeNotFound             = "not_found"
-	CodeInvalidBody          = "invalid_body"
-	CodeInvalidQuery         = "invalid_query"
-	CodeInvalidJSON          = "invalid_json"
-	CodeSessionNotActive     = "session_not_active"
-	CodeSessionAlreadyActive = "session_already_active"
-	CodeProjectArchived      = "project_archived"
-	CodeCodeInUse            = "code_in_use"
-	CodeLastActiveProject    = "last_active_project"
-	CodeProjectHasSessions   = "project_has_sessions"
-	CodeInvalidTransition    = "invalid_transition"
-	CodeUnauthorized         = "unauthorized"
-	CodeInvalidCredentials   = "invalid_credentials"
-	CodeUsernameInUse        = "username_in_use"
+	CodeNotFound                = "not_found"
+	CodeInvalidBody             = "invalid_body"
+	CodeInvalidQuery            = "invalid_query"
+	CodeInvalidJSON             = "invalid_json"
+	CodeSessionNotActive        = "session_not_active"
+	CodeSessionAlreadyActive    = "session_already_active"
+	CodeProjectArchived         = "project_archived"
+	CodeCodeInUse               = "code_in_use"
+	CodeNameInUse               = "name_in_use"
+	CodeLastActiveProject       = "last_active_project"
+	CodeProjectHasSessions      = "project_has_sessions"
+	CodeActivityTypeHasSessions = "activity_type_has_sessions"
+	CodeInvalidTransition       = "invalid_transition"
+	CodeUnauthorized            = "unauthorized"
+	CodeInvalidCredentials      = "invalid_credentials"
+	CodeUsernameInUse           = "username_in_use"
 )
 
 // Error is a contract error code plus a log/DevTools message.
@@ -74,6 +76,14 @@ func ErrProjectArchived() *Error {
 
 func ErrCodeInUse() *Error {
 	return NewError(CodeCodeInUse, "Project code is already in use.")
+}
+
+func ErrNameInUse() *Error {
+	return NewError(CodeNameInUse, "That name is already in use.")
+}
+
+func ErrActivityTypeHasSessions() *Error {
+	return NewError(CodeActivityTypeHasSessions, "Cannot delete an activity type that has sessions.")
 }
 
 func ErrLastActiveProject() *Error {

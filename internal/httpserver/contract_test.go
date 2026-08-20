@@ -245,6 +245,112 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 	assertCode(t, w, http.StatusNotFound, "not_found")
 }
 
+func TestActivityTypesCRUD(t *testing.T) {
+	r := testRouter(t)
+	ck := loginCookie(t, r)
+	auth := withCookie(ck)
+
+	w := doJSON(t, r, http.MethodGet, "/v1/activity-types", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /activity-types = %d %s", w.Code, w.Body.String())
+	}
+	var list listDTO[activityTypeDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &list); err != nil {
+		t.Fatal(err)
+	}
+	if len(list.Items) != 0 {
+		t.Fatalf("new user should have empty activity types: %#v", list.Items)
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/v1/activity-types", map[string]any{
+		"name": " Coding ", "color": "Secondary",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /activity-types = %d %s", w.Code, w.Body.String())
+	}
+	var created activityTypeDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Name != "Coding" || created.Color != "secondary" {
+		t.Fatalf("normalized: %#v", created)
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/v1/activity-types", map[string]any{
+		"name": "coding", "color": "primary",
+	}, auth)
+	assertCode(t, w, http.StatusConflict, "name_in_use")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/activity-types", map[string]any{
+		"name": "coding", "color": "#22c55e",
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/activity-types/"+created.ID, map[string]any{
+		"color": "error",
+	}, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PATCH = %d %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
+	var projects listDTO[projectDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatal(err)
+	}
+	projectID := projects.Items[0].ID
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "with type", "activityTypeId": created.ID,
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /sessions = %d %s", w.Code, w.Body.String())
+	}
+	var live sessionDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+	if live.ActivityTypeID == nil || *live.ActivityTypeID != created.ID {
+		t.Fatalf("session activityTypeId: %#v", live.ActivityTypeID)
+	}
+
+	w = doJSON(t, r, http.MethodDelete, "/v1/activity-types/"+created.ID, nil, auth)
+	assertCode(t, w, http.StatusConflict, "activity_type_has_sessions")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/stop", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("stop = %d %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, r, http.MethodGet, "/v1/activity-types/"+created.ID+"/session-count", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("session-count = %d %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "unknown type", "activityTypeId": uuid.NewString(),
+	}, auth)
+	assertCode(t, w, http.StatusNotFound, "not_found")
+
+	w = doJSON(t, r, http.MethodDelete, "/v1/activity-types/"+created.ID, nil, auth)
+	assertCode(t, w, http.StatusConflict, "activity_type_has_sessions")
+
+	other := doJSON(t, r, http.MethodPost, "/v1/activity-types", map[string]any{
+		"name": "meeting", "color": "tertiary",
+	}, auth)
+	if other.Code != http.StatusCreated {
+		t.Fatalf("POST meeting = %d %s", other.Code, other.Body.String())
+	}
+	var meeting activityTypeDTO
+	if err := json.Unmarshal(other.Body.Bytes(), &meeting); err != nil {
+		t.Fatal(err)
+	}
+	w = doJSON(t, r, http.MethodDelete, "/v1/activity-types/"+meeting.ID, nil, auth)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("DELETE unused = %d %s", w.Code, w.Body.String())
+	}
+}
+
 func assertCode(t *testing.T, w *httptest.ResponseRecorder, status int, code string) {
 	t.Helper()
 	if w.Code != status {

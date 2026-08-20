@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-19  
+**Last updated:** 2026-08-20  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -125,6 +125,14 @@ Plan: [plans/dev-data.md](./plans/dev-data.md).
 - [x] `scripts/reset` — wipe `vynno_dev`, restore bootstrap `alexdev` + Identity
 - [x] `scripts/seed` — wipe `vynno_dev`, load three isolated accounts with production-like history
 - [x] Generator lives in `internal/devdata`; not imported by `cmd/api`
+
+### User-defined activity types
+
+Plan: [plans/activity-types.md](./plans/activity-types.md). ADR: [ADR-0012](./adr/0012-activity-types.md).
+
+- [x] Contract amendment: `/activity-types` CRUD; sessions use `activityTypeId`
+- [x] Per-user dictionary; display `name`; token `color`; empty on register
+- [x] Frontend pairing (Timer picker, Settings, chips, Insights)
 
 ### Local production runtime
 

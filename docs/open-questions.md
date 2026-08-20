@@ -1,6 +1,6 @@
 # Open questions — Vynno API
 
-**Last updated:** 2026-08-19
+**Last updated:** 2026-08-20
 
 Undecided items and the **default we ship with** until an ADR or PRD update says otherwise. When a question is resolved, move the outcome into an ADR (or the PRD) and mark the row resolved — do not delete the history.
 
@@ -16,7 +16,7 @@ Undecided items and the **default we ship with** until an ADR or PRD update says
 | 8 | Timezone storage | **UTC ISO-8601**; display TZ is the client | [domain-model.md](./domain-model.md) |
 | 9 | ID format | **Opaque strings**; do not require `proj-` / `sess-` prefixes | [api-contract.md](./api-contract.md) |
 | 10 | Pagination | **None** — `limit` only | Contract amendment when needed |
-| 11 | User-defined activity types? | **No** — fixed enum | Contract amendment |
+| 11 | User-defined activity types? | **Resolved:** per-user dictionary; display `name` + token `color`; empty on register. | [ADR-0012](./adr/0012-activity-types.md) |
 | 12 | Must every session have a project? | **Yes** | [domain-model.md](./domain-model.md) |
 | 13 | Auto-stop previous session on start? | **No** | [ADR-0005](./adr/0005-session-lifecycle.md) |
 | 14 | Shared DTO package with the frontend? | **No** — dual docs until we extract one | New ADR |

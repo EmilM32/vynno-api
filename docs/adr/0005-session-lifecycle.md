@@ -21,7 +21,7 @@ If the server auto-stops, allows two live sessions, or stores pause time differe
 6. Any other transition is `409 invalid_transition`. Unknown id is `404 not_found`.
 7. **Empty / whitespace `note`** is stored as `"Untitled session"`.
 8. **Stopped sessions are immutable** in v1. Edit, delete, and manual entry are backlog (LOG-6, LOG-7) and need a contract amendment.
-9. **No Task entity.** `note`, optional `ticketId`, `activityType`, and `tags` live on the session.
+9. **No Task entity.** `note`, optional `ticketId`, `activityTypeId`, and `tags` live on the session. Activity types are a user-owned dictionary ([0012-activity-types.md](./0012-activity-types.md)).
 
 ## Consequences
 

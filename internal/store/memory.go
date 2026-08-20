@@ -18,12 +18,13 @@ type memAvatar struct {
 }
 
 type memAccount struct {
-	id           uuid.UUID
-	username     string
-	passwordHash string
-	profile      domain.Profile
-	projects     map[uuid.UUID]domain.Project
-	sessions     map[uuid.UUID]domain.Session
+	id            uuid.UUID
+	username      string
+	passwordHash  string
+	profile       domain.Profile
+	projects      map[uuid.UUID]domain.Project
+	activityTypes map[uuid.UUID]domain.ActivityType
+	sessions      map[uuid.UUID]domain.Session
 }
 
 // Memory is an in-memory Store for tests. Data is scoped by user.
@@ -54,10 +55,11 @@ func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project)
 	return &Memory{
 		accounts: map[uuid.UUID]*memAccount{
 			userID: {
-				id:       userID,
-				profile:  profile,
-				projects: map[uuid.UUID]domain.Project{pid: project},
-				sessions: map[uuid.UUID]domain.Session{},
+				id:            userID,
+				profile:       profile,
+				projects:      map[uuid.UUID]domain.Project{pid: project},
+				activityTypes: map[uuid.UUID]domain.ActivityType{},
+				sessions:      map[uuid.UUID]domain.Session{},
 			},
 		},
 		byName:  map[string]uuid.UUID{},
@@ -189,11 +191,12 @@ func (m *Memory) CreateAccount(_ context.Context, acc Account) error {
 		return domain.ErrUsernameInUse()
 	}
 	m.accounts[acc.ID] = &memAccount{
-		id:           acc.ID,
-		username:     acc.Username,
-		passwordHash: acc.PasswordHash,
-		projects:     map[uuid.UUID]domain.Project{},
-		sessions:     map[uuid.UUID]domain.Session{},
+		id:            acc.ID,
+		username:      acc.Username,
+		passwordHash:  acc.PasswordHash,
+		projects:      map[uuid.UUID]domain.Project{},
+		activityTypes: map[uuid.UUID]domain.ActivityType{},
+		sessions:      map[uuid.UUID]domain.Session{},
 	}
 	if acc.Username != "" {
 		m.byName[acc.Username] = acc.ID
@@ -392,6 +395,131 @@ func (m *Memory) codeTaken(a *memAccount, code string, excludeID uuid.UUID) bool
 	return false
 }
 
+func (m *Memory) ListActivityTypes(_ context.Context, userID uuid.UUID) ([]domain.ActivityType, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return nil, domain.ErrNotFound()
+	}
+	out := make([]domain.ActivityType, 0, len(a.activityTypes))
+	for _, t := range a.activityTypes {
+		out = append(out, t)
+	}
+	sort.Slice(out, func(i, j int) bool { return strings.ToLower(out[i].Name) < strings.ToLower(out[j].Name) })
+	return out, nil
+}
+
+func (m *Memory) GetActivityType(_ context.Context, userID, id uuid.UUID) (domain.ActivityType, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	t, ok := a.activityTypes[id]
+	if !ok {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	return t, nil
+}
+
+func (m *Memory) CreateActivityType(_ context.Context, userID uuid.UUID, t domain.ActivityType) (domain.ActivityType, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	id, err := uuid.Parse(t.ID)
+	if err != nil {
+		return domain.ActivityType{}, domain.ErrInvalidBody("invalid id")
+	}
+	if m.activityNameTaken(a, t.Name, uuid.Nil) {
+		return domain.ActivityType{}, domain.ErrNameInUse()
+	}
+	if a.activityTypes == nil {
+		a.activityTypes = map[uuid.UUID]domain.ActivityType{}
+	}
+	a.activityTypes[id] = t
+	return t, nil
+}
+
+func (m *Memory) UpdateActivityType(_ context.Context, userID uuid.UUID, t domain.ActivityType) (domain.ActivityType, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	id, err := uuid.Parse(t.ID)
+	if err != nil {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	if _, ok := a.activityTypes[id]; !ok {
+		return domain.ActivityType{}, domain.ErrNotFound()
+	}
+	if m.activityNameTaken(a, t.Name, id) {
+		return domain.ActivityType{}, domain.ErrNameInUse()
+	}
+	a.activityTypes[id] = t
+	return t, nil
+}
+
+func (m *Memory) DeleteActivityType(_ context.Context, userID, id uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	if _, ok := a.activityTypes[id]; !ok {
+		return domain.ErrNotFound()
+	}
+	delete(a.activityTypes, id)
+	return nil
+}
+
+func (m *Memory) CountActivityTypeSessions(_ context.Context, userID, activityTypeID uuid.UUID) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return 0, domain.ErrNotFound()
+	}
+	want := activityTypeID.String()
+	n := 0
+	for _, s := range a.sessions {
+		if s.ActivityTypeID != nil && *s.ActivityTypeID == want {
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (m *Memory) ActivityTypeNameInUse(_ context.Context, userID uuid.UUID, name string, excludeID uuid.UUID) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return false, domain.ErrNotFound()
+	}
+	return m.activityNameTaken(a, name, excludeID), nil
+}
+
+func (m *Memory) activityNameTaken(a *memAccount, name string, excludeID uuid.UUID) bool {
+	want := strings.ToLower(name)
+	for id, t := range a.activityTypes {
+		if id == excludeID {
+			continue
+		}
+		if strings.ToLower(t.Name) == want {
+			return true
+		}
+	}
+	return false
+}
+
 func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -521,12 +649,13 @@ func (m *Memory) Bootstrap(_ context.Context, userID uuid.UUID, username, passwo
 		project.ID = pid.String()
 	}
 	m.accounts[userID] = &memAccount{
-		id:           userID,
-		username:     username,
-		passwordHash: passwordHash,
-		profile:      profile,
-		projects:     map[uuid.UUID]domain.Project{pid: project},
-		sessions:     map[uuid.UUID]domain.Session{},
+		id:            userID,
+		username:      username,
+		passwordHash:  passwordHash,
+		profile:       profile,
+		projects:      map[uuid.UUID]domain.Project{pid: project},
+		activityTypes: map[uuid.UUID]domain.ActivityType{},
+		sessions:      map[uuid.UUID]domain.Session{},
 	}
 	if username != "" {
 		m.byName[username] = userID
@@ -553,9 +682,9 @@ func cloneSession(s domain.Session) domain.Session {
 		v := *s.TicketID
 		out.TicketID = &v
 	}
-	if s.ActivityType != nil {
-		v := *s.ActivityType
-		out.ActivityType = &v
+	if s.ActivityTypeID != nil {
+		v := *s.ActivityTypeID
+		out.ActivityTypeID = &v
 	}
 	if s.EndedAt != nil {
 		v := *s.EndedAt

@@ -65,7 +65,12 @@ func buildAccount(rng *rand.Rand, now time.Time, p persona, username, password s
 	for _, spec := range p.projects {
 		projects = append(projects, projectFromSpec(spec))
 	}
-	sessions := generateSessions(rng, now, p, projects)
+	types := seedActivityTypes()
+	byName := map[string]string{}
+	for _, a := range types {
+		byName[a.Name] = a.ID
+	}
+	sessions := generateSessions(rng, now, p, projects, byName)
 	return Account{
 		ID:       p.id,
 		Username: username,
@@ -75,8 +80,22 @@ func buildAccount(rng *rand.Rand, now time.Time, p persona, username, password s
 			DisplayName: p.displayName,
 			Handle:      domain.HandleFromUsername(username),
 		},
-		Projects: projects,
-		Sessions: sessions,
+		Projects:      projects,
+		ActivityTypes: types,
+		Sessions:      sessions,
+	}
+}
+
+func seedActivityTypes() []domain.ActivityType {
+	return []domain.ActivityType{
+		{ID: uuid.New().String(), Name: "deep_work", Color: "primary"},
+		{ID: uuid.New().String(), Name: "meeting", Color: "tertiary"},
+		{ID: uuid.New().String(), Name: "maintenance", Color: "primary"},
+		{ID: uuid.New().String(), Name: "coding", Color: "secondary"},
+		{ID: uuid.New().String(), Name: "debugging", Color: "error"},
+		{ID: uuid.New().String(), Name: "docs", Color: "on-surface-variant"},
+		{ID: uuid.New().String(), Name: "research", Color: "primary"},
+		{ID: uuid.New().String(), Name: "other", Color: "outline"},
 	}
 }
 
@@ -100,7 +119,7 @@ func projectFromSpec(spec projectSpec) domain.Project {
 	}
 }
 
-func generateSessions(rng *rand.Rand, now time.Time, p persona, projects []domain.Project) []domain.Session {
+func generateSessions(rng *rand.Rand, now time.Time, p persona, projects []domain.Project, activityIDs map[string]string) []domain.Session {
 	cutoff := now.Add(-45 * time.Minute)
 	out := make([]domain.Session, 0, p.daysBack*p.maxPerDay)
 	for _, day := range calendarDays(now, p.daysBack) {
@@ -129,7 +148,7 @@ func generateSessions(rng *rand.Rand, now time.Time, p persona, projects []domai
 			if !end.Before(cutoff) && !end.Equal(cutoff) {
 				break
 			}
-			sess, err := buildStopped(rng, spec, proj, start, end, pauseLen)
+			sess, err := buildStopped(rng, spec, proj, start, end, pauseLen, activityIDs)
 			if err != nil {
 				break
 			}
@@ -141,7 +160,7 @@ func generateSessions(rng *rand.Rand, now time.Time, p persona, projects []domai
 		}
 	}
 	if p.live {
-		if live, ok := buildLive(rng, now, p.projects, projects, out); ok {
+		if live, ok := buildLive(rng, now, p.projects, projects, out, activityIDs); ok {
 			out = append(out, live)
 		}
 	}
@@ -210,8 +229,8 @@ func pickDuration(rng *rand.Rand) time.Duration {
 	}
 }
 
-func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, pauseLen time.Duration) (domain.Session, error) {
-	note, ticket, activity, tags, target := sessionFields(rng, spec)
+func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, pauseLen time.Duration, activityIDs map[string]string) (domain.Session, error) {
+	note, ticket, activity, tags, target := sessionFields(rng, spec, activityIDs)
 	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, tags, target, start)
 	if pauseLen > 0 {
 		pauseAt := start.Add((end.Sub(start) - pauseLen) / 3)
@@ -238,7 +257,7 @@ func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, 
 	return domain.Stop(s, end)
 }
 
-func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []domain.Project, existing []domain.Session) (domain.Session, bool) {
+func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []domain.Project, existing []domain.Session, activityIDs map[string]string) (domain.Session, bool) {
 	start := now.Add(-40 * time.Minute)
 	if lastEnd := latestEnd(existing); lastEnd != nil && !lastEnd.Before(start) {
 		start = lastEnd.Add(5 * time.Minute)
@@ -258,7 +277,7 @@ func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []do
 	idx := active[rng.IntN(len(active))]
 	spec := specs[idx]
 	proj := projects[idx]
-	note, ticket, activity, tags, target := sessionFields(rng, spec)
+	note, ticket, activity, tags, target := sessionFields(rng, spec, activityIDs)
 	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, tags, target, start)
 	return s, true
 }
@@ -277,7 +296,7 @@ func latestEnd(sessions []domain.Session) *time.Time {
 	return latest
 }
 
-func sessionFields(rng *rand.Rand, spec projectSpec) (note string, ticket, activity *string, tags []string, target *int64) {
+func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]string) (note string, ticket, activity *string, tags []string, target *int64) {
 	if len(spec.notes) > 0 && rng.Float64() >= 0.04 {
 		note = spec.notes[rng.IntN(len(spec.notes))]
 	}
@@ -286,8 +305,10 @@ func sessionFields(rng *rand.Rand, spec projectSpec) (note string, ticket, activ
 		ticket = &t
 	}
 	if len(spec.activities) > 0 && rng.Float64() >= 0.16 {
-		a := spec.activities[rng.IntN(len(spec.activities))]
-		activity = &a
+		slug := spec.activities[rng.IntN(len(spec.activities))]
+		if id, ok := activityIDs[slug]; ok {
+			activity = &id
+		}
 	}
 	if rng.Float64() < 0.32 {
 		n := 1

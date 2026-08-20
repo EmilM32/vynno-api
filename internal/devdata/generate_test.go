@@ -112,6 +112,17 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 		t.Fatalf("%s has no active project", a.Username)
 	}
 
+	typeIDs := map[string]struct{}{}
+	for _, at := range a.ActivityTypes {
+		if _, err := domain.NormalizeActivityTypeName(at.Name); err != nil {
+			t.Fatalf("%s activity name %s: %v", a.Username, at.Name, err)
+		}
+		if _, err := domain.NormalizeActivityColor(at.Color); err != nil {
+			t.Fatalf("%s activity color %s: %v", a.Username, at.Color, err)
+		}
+		typeIDs[at.ID] = struct{}{}
+	}
+
 	var liveCount int
 	byStart := append([]domain.Session(nil), a.Sessions...)
 	slices.SortFunc(byStart, func(x, y domain.Session) int {
@@ -145,8 +156,10 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 				t.Fatalf("%s pausedMs=%d wall=%d", a.Username, s.PausedMs, wall)
 			}
 		}
-		if s.ActivityType != nil && !slices.Contains(domain.ActivityTypes, *s.ActivityType) {
-			t.Fatalf("%s activityType %s", a.Username, *s.ActivityType)
+		if s.ActivityTypeID != nil {
+			if _, ok := typeIDs[*s.ActivityTypeID]; !ok {
+				t.Fatalf("%s activityTypeId %s not in account types", a.Username, *s.ActivityTypeID)
+			}
 		}
 		if s.Note == "" {
 			t.Fatalf("%s empty note (want Untitled session)", a.Username)

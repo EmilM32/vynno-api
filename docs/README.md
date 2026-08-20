@@ -36,6 +36,7 @@ Also decided:
 - HTTP JSON contract (`/v1`) — [ADR-0003](./adr/0003-http-json-contract.md)
 - Project and session rules — [ADR-0004](./adr/0004-project-lifecycle.md), [ADR-0005](./adr/0005-session-lifecycle.md)
 - Single-user v1 — [ADR-0006](./adr/0006-single-user-tenancy.md)
+- User-defined activity types — [ADR-0012](./adr/0012-activity-types.md)
 
 ## Status
 

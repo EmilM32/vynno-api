@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-17
+**Last updated:** 2026-08-20
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -18,7 +18,7 @@ Inherited from the frontend domain model and from the mock engine the SPA alread
 | **Project** | Named container for work. Has a color used in lists and charts. |
 | **Session / time entry** | A timed interval. While `active` or `paused` it is the *live session*; when `stopped` it is a historical log entry. |
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
-| **Activity type** | Fixed category (Deep Work, Meeting, Coding, …). Optional on a session. |
+| **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
 | **Tag** | Secondary string labels on a session. Distinct from project color. |
 | **Profile** | Display name, handle, optional avatar. Display name and avatar are writable after register. |
 | **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
@@ -47,12 +47,17 @@ User* (many personal accounts; isolated; no teams)
  │    ├── progressPercent?
  │    └── archived
  │
+ ├── ActivityType*
+ │    ├── id
+ │    ├── name
+ │    └── color
+ │
  └── TimeSession*
       ├── id
       ├── projectId
       ├── note
       ├── ticketId?
-      ├── activityType?
+      ├── activityTypeId?
       ├── tags[]
       ├── status: active | paused | stopped
       ├── startedAt
@@ -147,7 +152,7 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 | `projectId` | string | Required |
 | `note` | string | Task description; default `"Untitled session"` |
 | `ticketId` | string? | e.g. `DEV-842` |
-| `activityType` | ActivityType? | Fixed enum |
+| `activityTypeId` | string? | Optional FK to an activity type this user owns |
 | `tags` | string[] | Empty array on the wire when none |
 | `status` | `active` \| `paused` \| `stopped` | |
 | `startedAt` | ISO-8601 | UTC |
@@ -158,11 +163,20 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 
 ### 5.3 ActivityType
 
-```
-deep_work | meeting | maintenance | coding | debugging | docs | research | other
-```
+Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012](./adr/0012-activity-types.md).
 
-Display labels (`Deep Work`, `Debug`) are a frontend i18n concern.
+| Field | Type | Notes |
+| --- | --- | --- |
+| `id` | string | Opaque, stable |
+| `name` | string | Display label. Trim, 1–80, stored as typed. Unique per user case-insensitively. The SPA shows this string; chips render it uppercase. |
+| `color` | string | Theme token: `primary` \| `secondary` \| `tertiary` \| `error` \| `on-surface-variant` \| `outline` \| `primary-container` \| `secondary-container`. Chip CSS lives on the client. |
+
+| Rule | Description |
+| --- | --- |
+| **Optional on session** | `activityTypeId` may be null. Unknown or other-user id is `404 not_found`. |
+| **Hard delete** | Only when zero sessions reference the row (`409 activity_type_has_sessions`). No archive. |
+| **Duplicate name** | `409 name_in_use`. |
+| **Empty list** | Allowed. Register does not seed types. |
 
 ### 5.4 Profile
 
@@ -202,8 +216,10 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `session_already_active` | `POST /sessions` while one is live |
 | `project_archived` | Start against an archived project |
 | `code_in_use` | Project `code` not unique |
+| `name_in_use` | Activity type `name` not unique for this user |
 | `last_active_project` | Archive/delete of the last active project |
 | `project_has_sessions` | Hard-delete of a project that has sessions |
+| `activity_type_has_sessions` | Hard-delete of an activity type that has sessions |
 | `invalid_transition` | Verb in a bad state (session or project) |
 | `unauthorized` | Missing, unknown, or expired session |
 | `invalid_credentials` | Login username/password do not match |
