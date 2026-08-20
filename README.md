@@ -31,28 +31,49 @@ Decisions: [ADR-0001](./docs/adr/0001-backend-stack.md), [ADR-0009](./docs/adr/0
 
 ## Run locally
 
-Requires Go 1.26+ and Docker (for Postgres). Daily driver: **[docs/local-production.md](./docs/local-production.md)**.
+Requires Go 1.26+ and Docker (for Postgres). Full runbook: **[docs/local-production.md](./docs/local-production.md)**.
+
+Production and playground can run at the same time. They do **not** share rows.
+
+| | Production (daily) | Playground |
+| --- | --- | --- |
+| Start | `./scripts/start` | `./scripts/dev` |
+| Stop | `./scripts/stop` | `./scripts/stop --dev` |
+| Bind | `127.0.0.1:8080` (`ADDR`) | `127.0.0.1:8081` (`DEV_ADDR`) |
+| Database | `vynno` | `vynno_dev` |
+| Process | `bin/vynno-api` | `go run ./cmd/api` |
+
+`scripts/stop --postgres` stops Compose as well (named volume kept). It cannot be combined with `--dev`: Postgres is shared. Do **not** run `docker compose down -v`.
+
+### Production
 
 ```sh
 cp .env.example .env
 ./scripts/build
 ./scripts/start              # foreground; does not rebuild
 ./scripts/start --detach     # pid in var/api.pid, logs in logs/api.log
-./scripts/stop               # API only; Postgres stays up
-./scripts/stop --postgres    # API + Compose stop (named volume kept)
+./scripts/stop               # production API only; Postgres stays up
+./scripts/stop --postgres    # production API + Compose stop (named volume kept)
 ./scripts/backup
 ./scripts/restore backups/vynno-YYYYMMDD-HHMMSS.sql
 ```
 
-`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`http://localhost:3000`). Database `vynno` is daily history. Do **not** run `docker compose down -v`.
+`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`http://localhost:3000`). Database `vynno` is daily history.
 
-Playground (database `vynno_dev` only):
+`GET http://127.0.0.1:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
+
+`/v1` requires a session (`GET /v1/avatars/:id` is the public exception). Production: `POST /v1/auth/register` then login. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`.
+
+### Playground
 
 ```sh
-./scripts/dev                # go run on 127.0.0.1:8081
+./scripts/dev                # go run on 127.0.0.1:8081 → vynno_dev
+./scripts/stop --dev         # playground API only; Postgres stays up
 ./scripts/reset              # wipe vynno_dev → alexdev + Identity
 ./scripts/seed               # wipe vynno_dev → 3 demo accounts with history
 ```
+
+Foreground: Ctrl-C in the `scripts/dev` terminal stops it. If `:8081` is already in use (`bind: address already in use`), a previous `go run` is still up — `scripts/stop --dev`, then `scripts/dev` again. `scripts/stop` without `--dev` does not touch the playground.
 
 `reset` and `seed` are destructive (same confirm / `--yes` as `restore`). They refuse database `vynno` and do not stop the production API.
 
@@ -63,10 +84,6 @@ Demo logins after `scripts/seed` (playground only):
 | `alexdev` | `BOOTSTRAP_PASSWORD` from `.env` | Power user, live session, ~10 weeks of logs |
 | `maya` | `SEED_PASSWORD` (default `local-dev-password`) | Contractor, idle |
 | `rio` | same as Maya | Short history |
-
-`GET http://127.0.0.1:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
-
-`/v1` requires a session (`GET /v1/avatars/:id` is the public exception). Production: `POST /v1/auth/register` then login. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`.
 
 ```sh
 go test ./...

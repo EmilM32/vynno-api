@@ -10,6 +10,7 @@ Run the API with go run against vynno_dev (does not use the release binary).
   scripts/dev
 
 Listens on DEV_ADDR (default 127.0.0.1:8081). Foreground; Ctrl-C stops it.
+Leftover after a closed terminal: scripts/stop --dev.
 Does not touch database vynno or the production process on :8080.
 EOF
 }
@@ -28,11 +29,32 @@ done
 
 load_env
 require_dev_database_url
+
+if pid="$(dev_api_pid)"; then
+	die "already running (pid $pid); scripts/stop --dev first"
+fi
+
 ensure_postgres
 
 export DATABASE_URL="$DEV_DATABASE_URL"
-export ADDR="${DEV_ADDR:-127.0.0.1:8081}"
+export ADDR="$(dev_addr)"
 unset GIN_MODE || true
 
 cd "$ROOT"
-exec go run ./cmd/api
+mkdir -p "$ROOT/var"
+
+cleanup_dev() {
+	trap - EXIT INT TERM HUP
+	stop_dev_api
+}
+trap cleanup_dev EXIT INT TERM HUP
+
+go run ./cmd/api &
+dev_run_pid=$!
+echo "$dev_run_pid" >"$DEV_PIDFILE"
+
+set +e
+wait "$dev_run_pid"
+status=$?
+set -e
+exit "$status"

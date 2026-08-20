@@ -2,9 +2,11 @@
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PIDFILE="$ROOT/var/api.pid"
+DEV_PIDFILE="$ROOT/var/dev.pid"
 COMPOSE=(docker compose --project-directory "$ROOT")
 PROD_DB=vynno
 DEV_DB=vynno_dev
+DEFAULT_DEV_ADDR=127.0.0.1:8081
 
 die() {
 	echo "$*" >&2
@@ -67,36 +69,118 @@ require_dev_database_url() {
 	fi
 }
 
-api_pid() {
-	if [[ ! -f "$PIDFILE" ]]; then
+alive_pid() {
+	local pid="${1-}"
+	[[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null
+}
+
+pidfile_pid() {
+	local file="$1"
+	if [[ ! -f "$file" ]]; then
 		return 1
 	fi
 	local pid
-	pid="$(cat "$PIDFILE")"
-	if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
+	pid="$(cat "$file")"
+	if alive_pid "$pid"; then
 		echo "$pid"
 		return 0
 	fi
-	rm -f "$PIDFILE"
+	rm -f "$file"
 	return 1
+}
+
+kill_pid_wait() {
+	local pid="${1-}"
+	if ! alive_pid "$pid"; then
+		return 0
+	fi
+	kill "$pid" 2>/dev/null || true
+	local i
+	for i in $(seq 1 20); do
+		if ! alive_pid "$pid"; then
+			return 0
+		fi
+		sleep 0.1
+	done
+	kill -9 "$pid" 2>/dev/null || true
+}
+
+kill_pid_tree() {
+	local pid="${1-}" child
+	if ! alive_pid "$pid"; then
+		return 0
+	fi
+	for child in $(pgrep -P "$pid" 2>/dev/null || true); do
+		kill_pid_tree "$child"
+	done
+	kill_pid_wait "$pid"
+}
+
+api_pid() {
+	pidfile_pid "$PIDFILE"
 }
 
 stop_api() {
 	local pid
 	if pid="$(api_pid)"; then
-		kill "$pid" 2>/dev/null || true
-		local i
-		for i in $(seq 1 20); do
-			if ! kill -0 "$pid" 2>/dev/null; then
-				break
-			fi
-			sleep 0.1
-		done
-		if kill -0 "$pid" 2>/dev/null; then
-			kill -9 "$pid" 2>/dev/null || true
-		fi
+		kill_pid_wait "$pid"
 		rm -f "$PIDFILE"
 	fi
+}
+
+dev_addr() {
+	printf '%s\n' "${DEV_ADDR:-$DEFAULT_DEV_ADDR}"
+}
+
+dev_listen_port() {
+	local addr
+	addr="$(dev_addr)"
+	printf '%s\n' "${addr##*:}"
+}
+
+# PIDs listening on the playground TCP port. go run's child is the listener;
+# a leftover after the parent dies has no pidfile.
+listen_pids_on_port() {
+	local port="$1" out
+	if [[ -z "$port" ]] || ! command -v lsof >/dev/null 2>&1; then
+		return 1
+	fi
+	out="$(lsof -nP -iTCP:"$port" -sTCP:LISTEN -t 2>/dev/null || true)"
+	if [[ -z "$out" ]]; then
+		return 1
+	fi
+	printf '%s\n' "$out"
+	return 0
+}
+
+dev_api_pid() {
+	local pid
+	if pid="$(pidfile_pid "$DEV_PIDFILE")"; then
+		echo "$pid"
+		return 0
+	fi
+	local pids
+	if pids="$(listen_pids_on_port "$(dev_listen_port)")"; then
+		# First PID is enough for "already running" messages.
+		read -r pid <<< "$pids"
+		echo "$pid"
+		return 0
+	fi
+	return 1
+}
+
+stop_dev_api() {
+	local pid pids
+	if pid="$(pidfile_pid "$DEV_PIDFILE")"; then
+		kill_pid_tree "$pid"
+	fi
+	if pids="$(listen_pids_on_port "$(dev_listen_port)")"; then
+		while IFS= read -r pid; do
+			[[ -n "$pid" ]] || continue
+			kill_pid_tree "$pid"
+		done <<<"$pids"
+	fi
+	rm -f "$DEV_PIDFILE"
 }
 
 wait_for_postgres() {

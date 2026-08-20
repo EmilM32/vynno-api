@@ -5,17 +5,22 @@ set -euo pipefail
 
 usage() {
 	cat <<'EOF'
-Stop the API process. Postgres stays up unless --postgres.
+Stop an API process. Postgres stays up unless --postgres.
 
-  scripts/stop            stop the detached API
+  scripts/stop            stop the detached production API (:8080)
+  scripts/stop --dev      stop the playground API (scripts/dev, :8081)
   scripts/stop --postgres also docker compose stop (named volume kept)
+
+--dev and --postgres cannot be combined: Postgres is shared with production.
 EOF
 }
 
 STOP_PG=0
+STOP_DEV=0
 for arg in "$@"; do
 	case "$arg" in
 	--postgres) STOP_PG=1 ;;
+	--dev) STOP_DEV=1 ;;
 	-h | --help)
 		usage
 		exit 0
@@ -25,6 +30,17 @@ for arg in "$@"; do
 		;;
 	esac
 done
+
+if [[ "$STOP_DEV" -eq 1 && "$STOP_PG" -eq 1 ]]; then
+	die "--dev and --postgres cannot be combined (Postgres is shared with production)"
+fi
+
+if [[ "$STOP_DEV" -eq 1 ]]; then
+	load_env
+	stop_dev_api
+	echo "stopped playground API (Postgres still up)"
+	exit 0
+fi
 
 stop_api
 if [[ "$STOP_PG" -eq 1 ]]; then

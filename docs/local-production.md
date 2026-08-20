@@ -10,6 +10,13 @@ browser  →  http://localhost:3000  (vynno, adapter-node)
 
 Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:8081`. It does not share rows with daily history.
 
+| | Production | Playground |
+| --- | --- | --- |
+| Start | `scripts/start` | `scripts/dev` |
+| Stop | `scripts/stop` | `scripts/stop --dev` |
+| Bind | `127.0.0.1:8080` | `127.0.0.1:8081` |
+| Database | `vynno` | `vynno_dev` |
+
 Use **`http://localhost:3000`** in the browser and in `SPA_ORIGIN`. `localhost` and `127.0.0.1` are different origins and do not share the session cookie.
 
 ## Once (or after API source changes)
@@ -50,8 +57,8 @@ Do not add a production wipe script. Do not `docker compose down -v`.
 Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://localhost:3000](http://localhost:3000).
 
 ```sh
-./scripts/stop            # detached API only; Postgres stays up
-./scripts/stop --postgres # API + Compose stop (named volume kept)
+./scripts/stop            # detached production API only; Postgres stays up
+./scripts/stop --postgres # production API + Compose stop (named volume kept)
 ```
 
 `scripts/start` fails if `.env` is missing, `bin/vynno-api` is missing (`scripts/build` first), the API is already running, or `DATABASE_URL` is not database `vynno`.
@@ -62,11 +69,14 @@ After pulling API changes, run `scripts/build` again. Start does not rebuild.
 
 ```sh
 ./scripts/dev             # go run on 127.0.0.1:8081 → vynno_dev
+./scripts/stop --dev      # playground API only; Postgres stays up
 ./scripts/seed            # wipe vynno_dev, load alexdev / maya / rio
 ./scripts/reset           # wipe vynno_dev, alexdev + Identity only
 ```
 
-Seed and reset refuse `vynno`. They do not stop the production API.
+Foreground: Ctrl-C in the `scripts/dev` terminal stops it. A leftover `go run` child (closed terminal, `bind: address already in use` on `:8081`) is `scripts/stop --dev`. `scripts/stop` without `--dev` only stops the production binary in `var/api.pid`. `--dev` and `--postgres` cannot be combined.
+
+Seed and reset refuse `vynno`. They do not stop the production API. Stop the playground first (`scripts/stop --dev`) before a wipe if `scripts/dev` is up.
 
 Playwright in the SPA repo talks to `API_ORIGIN` (`:8080`) unless you set `E2E_API_BASE=http://localhost:8081/v1`. Use that override while the daily binary is on `:8080`, or e2e registers throwaway users into production.
 

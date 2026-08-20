@@ -61,7 +61,7 @@ Neither script restarts an API. Hit `scripts/dev` (or the SPA against `:8081`) a
 | Risk | Failure mode | Mitigation |
 | --- | --- | --- |
 | Wipe daily `vynno` by habit | Lose real history | `cmd/devdata` refuses any database except `vynno_dev` |
-| Seed while `scripts/dev` is up | Mid-request 500s / FK errors | Stop the dev process first; production on `:8080` is a different database |
+| Seed while `scripts/dev` is up | Mid-request 500s / FK errors | `scripts/stop --dev` first; production on `:8080` is a different database |
 | Too many sessions | SPA `GET /sessions` on boot gets slow | Cap ~400 for the power user |
 | Stale “today” data | Insights look empty after a month | Generate from `time.Now()`, not a dump |
 | Bootstrap vs seed clash | Second API start creates a fourth user | `alexdev` keeps `DefaultUserID`; `Bootstrap` no-ops when that row has a password |
