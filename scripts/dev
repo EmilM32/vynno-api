@@ -38,6 +38,8 @@ ensure_postgres
 
 export DATABASE_URL="$DEV_DATABASE_URL"
 export ADDR="$(dev_addr)"
+# Same-origin Swagger Try-it-out (CSRF + CORS) must match this process, not production :8080.
+export PUBLIC_API_ORIGIN="http://${ADDR}"
 unset GIN_MODE || true
 
 cd "$ROOT"

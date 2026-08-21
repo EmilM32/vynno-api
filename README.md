@@ -62,12 +62,14 @@ cp .env.example .env
 
 `GET http://127.0.0.1:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
 
+Operator API docs (generated from the Gin routes): [http://localhost:8080/swagger/](http://localhost:8080/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
+
 `/v1` requires a session (`GET /v1/avatars/:id` is the public exception). Production: `POST /v1/auth/register` then login. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`.
 
 ### Playground
 
 ```sh
-./scripts/dev                # go run on 127.0.0.1:8081 → vynno_dev
+./scripts/dev                # go run on 127.0.0.1:8081 → vynno_dev; Swagger at http://127.0.0.1:8081/swagger/
 ./scripts/stop --dev         # playground API only; Postgres stays up
 ./scripts/reset              # wipe vynno_dev → alexdev + Identity
 ./scripts/seed               # wipe vynno_dev → 3 demo accounts with history

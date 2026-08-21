@@ -26,6 +26,7 @@ If this doc and the frontend schemas drift, stop and reconcile — do not “fix
 | IDs | Opaque strings |
 | Pagination | Not yet — `limit` query only |
 | Auth | HttpOnly session cookie (see [Auth](#auth)) |
+| Operator docs | `GET /swagger/` and `GET /openapi.json` — **not** SPA resources ([ADR-0013](./adr/0013-openapi-swagger.md)) |
 
 Creates return **`201`**. Other successful writes return **`200`** with the updated resource. `DELETE` returns **`204`** with an empty body.
 
@@ -128,7 +129,7 @@ Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is
 
 CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
 
-Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public.
+Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public. Operator Swagger UI (`GET /swagger/`, `GET /openapi.json`) is also outside `/v1` and public on this loopback process.
 
 ### Profile
 

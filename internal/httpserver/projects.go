@@ -131,7 +131,7 @@ func (s *Server) projectSessionCount(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"count": n})
+	c.JSON(http.StatusOK, countDTO{Count: n})
 }
 
 func parseID(raw string) (uuid.UUID, error) {

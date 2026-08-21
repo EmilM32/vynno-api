@@ -54,7 +54,7 @@ Do not add a production wipe script. Do not `docker compose down -v`.
 ./scripts/start --detach  # pid in var/api.pid, logs in logs/api.log
 ```
 
-Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://localhost:3000](http://localhost:3000).
+Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://localhost:3000](http://localhost:3000). Operator API docs: [http://localhost:8080/swagger/](http://localhost:8080/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`).
 
 ```sh
 ./scripts/stop            # detached production API only; Postgres stays up
@@ -68,7 +68,7 @@ After pulling API changes, run `scripts/build` again. Start does not rebuild.
 ## Playground (not daily history)
 
 ```sh
-./scripts/dev             # go run on 127.0.0.1:8081 → vynno_dev
+./scripts/dev             # go run on 127.0.0.1:8081 → vynno_dev; Swagger at http://127.0.0.1:8081/swagger/
 ./scripts/stop --dev      # playground API only; Postgres stays up
 ./scripts/seed            # wipe vynno_dev, load alexdev / maya / rio
 ./scripts/reset           # wipe vynno_dev, alexdev + Identity only

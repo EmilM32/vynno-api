@@ -15,3 +15,4 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [dev-data.md](./dev-data.md) | Done | Operator reset + demo seed (`vynno_dev`) |
 | [local-prod-runtime.md](./local-prod-runtime.md) | Done | Build ≠ start; two databases |
 | [activity-types.md](./activity-types.md) | Done | User-defined activity types |
+| [swagger.md](./swagger.md) | Done | OpenAPI from Gin routes + Swagger UI |

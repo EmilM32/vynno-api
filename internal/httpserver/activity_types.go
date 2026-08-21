@@ -95,5 +95,5 @@ func (s *Server) activityTypeSessionCount(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"count": n})
+	c.JSON(http.StatusOK, countDTO{Count: n})
 }

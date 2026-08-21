@@ -28,6 +28,7 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 - Validation is hand-written. Do not treat Gin `binding` tags as the source of truth for contract or lifecycle errors.
 - Persistence (Phase 2): PostgreSQL, goose SQL migrations, sqlc, `pgx` via `database/sql`. Local DB is Docker Compose. App reads `DATABASE_URL`.
 - Wire format is [docs/api-contract.md](./docs/api-contract.md). No extra endpoints, fields, or error codes.
+- OpenAPI is generated from `Server.route(...)` in `internal/httpserver` ([ADR-0013](./docs/adr/0013-openapi-swagger.md)). Do not add a hand-written spec or swaggo comments. Contract amendments update `route()` metadata in the same change.
 - Auth is Accepted ([docs/adr/0008-authentication.md](./docs/adr/0008-authentication.md)). Session cookie `vynno_session`; do not return the token in JSON.
 - IDs are UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes.
 
@@ -52,7 +53,7 @@ golangci-lint run ./...
 sqlc generate                 # after changing internal/store/queries or migrations
 ```
 
-Health check: `GET /healthz` → `{"status":"ok"}`. Readiness: `GET /readyz` (Postgres ping). SPA contract is under `/v1`.
+Health check: `GET /healthz` → `{"status":"ok"}`. Readiness: `GET /readyz` (Postgres ping). SPA contract is under `/v1`. Operator docs: `GET /swagger/` (Swagger UI) and `GET /openapi.json` (generated from `internal/httpserver` route registration). Open Swagger at `PUBLIC_API_ORIGIN`.
 
 Do not `docker compose down -v` on a machine that holds real data.
 

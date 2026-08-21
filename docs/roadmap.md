@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-20  
+**Last updated:** 2026-08-21  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -133,6 +133,14 @@ Plan: [plans/activity-types.md](./plans/activity-types.md). ADR: [ADR-0012](./ad
 - [x] Contract amendment: `/activity-types` CRUD; sessions use `activityTypeId`
 - [x] Per-user dictionary; display `name`; token `color`; empty on register
 - [x] Frontend pairing (Timer picker, Settings, chips, Insights)
+
+### Operator Swagger UI
+
+Plan: [plans/swagger.md](./plans/swagger.md). ADR: [ADR-0013](./adr/0013-openapi-swagger.md).
+
+- [x] OpenAPI 3.0 generated from Gin `route()` registration (not a hand-written YAML)
+- [x] `GET /swagger/` and `GET /openapi.json` (outside `/v1`)
+- [x] CSRF allows `PUBLIC_API_ORIGIN` so same-origin Try-it-out works
 
 ### Local production runtime
 

@@ -28,7 +28,7 @@ If this backend invented GraphQL, RPC, or different field names, the SPA would h
 
 - Frontend Phase 5c is a configuration change plus auth.
 - Domain tests can assert on codes and state without HTTP.
-- A later OpenAPI file can be generated from this contract; it is not a prerequisite.
+- A later OpenAPI file can be generated from this contract; it is not a prerequisite. (Done: generated from Gin `route()` registration, [0013-openapi-swagger.md](./0013-openapi-swagger.md).)
 
 ### Negative / tradeoffs
 
@@ -45,9 +45,14 @@ If this backend invented GraphQL, RPC, or different field names, the SPA would h
 | Different DTO naming to match the DB | Forces a mapper rewrite on the client. |
 | JSON:API / HAL | Heavier than `{ items }` and unused by the client. |
 
+## Amendment (2026-08-21)
+
+Operator OpenAPI is generated from the handlers that implement this contract ([0013-openapi-swagger.md](./0013-openapi-swagger.md)). [../api-contract.md](../api-contract.md) remains the SPA wire-format source of truth. Do not invent `/v1` fields in the spec that are not in the markdown contract.
+
 ## Related
 
 - [../api-contract.md](../api-contract.md)
 - [../frontend-handoff.md](../frontend-handoff.md)
 - [0002-separate-repository.md](./0002-separate-repository.md)
 - [0005-session-lifecycle.md](./0005-session-lifecycle.md)
+- [0013-openapi-swagger.md](./0013-openapi-swagger.md)

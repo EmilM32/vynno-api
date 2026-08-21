@@ -1,6 +1,6 @@
 # Backlog — Vynno API
 
-**Last updated:** 2026-08-20  
+**Last updated:** 2026-08-21  
 **Context:** Work we are deliberately **not** doing now. Phase 4 (local production) is done. Do not pull these in without a contract amendment and a roadmap change.
 
 IDs that start with frontend requirement codes (`LOG-6`, …) are the same items as in the frontend PRD / P2 backlog. They imply API work only when the SPA is ready to call new endpoints.
@@ -25,7 +25,7 @@ IDs that start with frontend requirement codes (`LOG-6`, …) are the same items
 | AUTH-EXT | OAuth / passwordless / 2FA / password reset | After ADR-0008’s cookie session works. |
 | MULTI | Team workspaces | Contradicts [ADR-0006](./adr/0006-single-user-tenancy.md) until we supersede it. |
 | RATE | Rate limiting | Production hardening; not a contract field. |
-| OPENAPI | Generated OpenAPI + client | Optional; SPA already has Valibot schemas. |
+| OPENAPI | Generated TypeScript / Valibot client | Spec + Swagger UI shipped ([ADR-0013](./adr/0013-openapi-swagger.md)). SPA already has Valibot schemas. |
 | WEBHOOK | Outbound webhooks | No product request. |
 
 ## Not this product
