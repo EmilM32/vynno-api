@@ -60,7 +60,7 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 		"/v1/me", "/v1/me/avatar", "/v1/avatars/{id}",
 		"/v1/projects", "/v1/projects/{id}",
 		"/v1/activity-types", "/v1/activity-types/{id}",
-		"/v1/sessions", "/v1/sessions/active", "/v1/sessions/{id}",
+		"/v1/sessions", "/v1/sessions/active", "/v1/sessions/manual", "/v1/sessions/{id}",
 	} {
 		if _, ok := paths[p]; !ok {
 			t.Fatalf("missing path %s", p)
@@ -77,7 +77,8 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 	for _, name := range []string{
 		"Profile", "Project", "ProjectList", "Session", "SessionList",
 		"ActivityType", "ErrorEnvelope", "RegisterRequest", "LoginRequest",
-		"StartSessionRequest", "Count", "HealthResponse",
+		"StartSessionRequest", "UpdateSessionRequest", "CreateManualSessionRequest",
+		"Count", "HealthResponse",
 	} {
 		if _, ok := schemas[name]; !ok {
 			t.Fatalf("missing schema %s", name)

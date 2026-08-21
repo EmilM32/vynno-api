@@ -37,16 +37,20 @@ RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
 
 -- name: UpdateSession :one
 UPDATE sessions
-SET note = $3,
-    ticket_id = $4,
-    activity_type_id = $5,
-    tags = $6,
-    status = $7,
-    started_at = $8,
-    ended_at = $9,
-    paused_ms = $10,
-    paused_at = $11,
-    target_duration_ms = $12
+SET project_id = $3,
+    note = $4,
+    ticket_id = $5,
+    activity_type_id = $6,
+    tags = $7,
+    status = $8,
+    started_at = $9,
+    ended_at = $10,
+    paused_ms = $11,
+    paused_at = $12,
+    target_duration_ms = $13
 WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms;
+
+-- name: DeleteSession :exec
+DELETE FROM sessions WHERE user_id = $1 AND id = $2;

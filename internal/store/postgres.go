@@ -403,6 +403,10 @@ func (p *Postgres) UpdateSession(ctx context.Context, userID uuid.UUID, s domain
 	return sessionFromUpdate(row), nil
 }
 
+func (p *Postgres) DeleteSession(ctx context.Context, userID, id uuid.UUID) error {
+	return p.q.DeleteSession(ctx, sqlcgen.DeleteSessionParams{UserID: userID, ID: id})
+}
+
 func (p *Postgres) FirstUserID(ctx context.Context) (uuid.UUID, bool, error) {
 	id, err := p.q.FirstUserID(ctx)
 	if errors.Is(err, sql.ErrNoRows) {
@@ -492,6 +496,10 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 	if err != nil {
 		return sqlcgen.UpdateSessionParams{}, domain.ErrNotFound()
 	}
+	pid, err := uuid.Parse(s.ProjectID)
+	if err != nil {
+		return sqlcgen.UpdateSessionParams{}, domain.ErrInvalidBody("invalid projectId")
+	}
 	tags, err := encodeTags(s.Tags)
 	if err != nil {
 		return sqlcgen.UpdateSessionParams{}, err
@@ -499,6 +507,7 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 	return sqlcgen.UpdateSessionParams{
 		UserID:           userID,
 		ID:               id,
+		ProjectID:        pid,
 		Note:             s.Note,
 		TicketID:         ptrNullString(s.TicketID),
 		ActivityTypeID:   uuidPtrFromString(s.ActivityTypeID),

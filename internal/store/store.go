@@ -65,6 +65,7 @@ type Store interface {
 	GetLiveSession(ctx context.Context, userID uuid.UUID) (domain.Session, bool, error)
 	CreateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
 	UpdateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
+	DeleteSession(ctx context.Context, userID, id uuid.UUID) error
 
 	FirstUserID(ctx context.Context) (uuid.UUID, bool, error)
 	Bootstrap(ctx context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error

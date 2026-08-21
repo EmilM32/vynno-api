@@ -268,11 +268,35 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Success:     sessionDTO{},
 		Errors:      []string{domain.CodeSessionNotActive},
 	})
+	s.route(authed, http.MethodPost, "/sessions/manual", s.createManualSession, op{
+		Summary:     "Manual time entry",
+		Description: "Creates a stopped session with startedAt and endedAt. Allowed while a live session exists. Archived projects are allowed.",
+		Tags:        []string{"Sessions"},
+		Body:        createManualSessionBody{},
+		Success:     sessionDTO{},
+		SuccessCode: http.StatusCreated,
+		Errors:      []string{domain.CodeNotFound},
+	})
 	s.route(authed, http.MethodGet, "/sessions/:id", s.getSession, op{
 		Summary: "Get session",
 		Tags:    []string{"Sessions"},
 		Success: sessionDTO{},
 		Errors:  []string{domain.CodeNotFound},
+	})
+	s.route(authed, http.MethodPatch, "/sessions/:id", s.updateSession, op{
+		Summary:     "Update session",
+		Description: "All fields optional. Omit = leave unchanged. Do not send status, pausedAt, or id. Live endedAt must stay null; stopped endedAt must stay set.",
+		Tags:        []string{"Sessions"},
+		Body:        updateSessionBody{},
+		Success:     sessionDTO{},
+		Errors:      []string{domain.CodeNotFound},
+	})
+	s.route(authed, http.MethodDelete, "/sessions/:id", s.deleteSession, op{
+		Summary:     "Delete session",
+		Description: "Hard-delete any session, including the live timer.",
+		Tags:        []string{"Sessions"},
+		Empty:       true,
+		Errors:      []string{domain.CodeNotFound},
 	})
 	s.route(authed, http.MethodPost, "/sessions/:id/pause", s.pauseSession, op{
 		Summary: "Pause session",

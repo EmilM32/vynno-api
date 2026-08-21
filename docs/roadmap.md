@@ -134,6 +134,15 @@ Plan: [plans/activity-types.md](./plans/activity-types.md). ADR: [ADR-0012](./ad
 - [x] Per-user dictionary; display `name`; token `color`; empty on register
 - [x] Frontend pairing (Timer picker, Settings, chips, Insights)
 
+### Session edit, delete, and manual entry
+
+Plan: [plans/session-edit.md](./plans/session-edit.md). Amends [ADR-0005](./adr/0005-session-lifecycle.md).
+
+- [x] Contract amendment: `PATCH` / `DELETE /sessions/:id`, `POST /sessions/manual`
+- [x] Any session (including live) may be patched or deleted
+- [x] Manual create is always `stopped`; allowed while a timer is running
+- [x] Frontend pairing (Logs edit/delete, add entry, Timer live fields)
+
 ### Operator Swagger UI
 
 Plan: [plans/swagger.md](./plans/swagger.md). ADR: [ADR-0013](./adr/0013-openapi-swagger.md).
@@ -158,7 +167,6 @@ Only via contract amendments. Candidates: [backlog.md](./backlog.md).
 
 - Pagination / cursors
 - Prefs persistence
-- LOG-6 / LOG-7 (edit, delete, manual entry)
 - Insights aggregation endpoints
 - Multi-user workspaces
 

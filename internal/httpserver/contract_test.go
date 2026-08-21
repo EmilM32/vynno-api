@@ -123,6 +123,12 @@ func TestUnauthenticatedRejected(t *testing.T) {
 	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{"projectId": uuid.NewString()})
 	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{"projectId": uuid.NewString()})
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+uuid.NewString(), map[string]any{"note": "x"})
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodDelete, "/v1/sessions/"+uuid.NewString(), nil)
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
 }
 
 func TestMeAndProjectsAndSessions(t *testing.T) {
@@ -349,6 +355,161 @@ func TestActivityTypesCRUD(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("DELETE unused = %d %s", w.Code, w.Body.String())
 	}
+}
+
+func TestSessionEditDeleteManual(t *testing.T) {
+	r := testRouter(t)
+	ck := loginCookie(t, r)
+	auth := withCookie(ck)
+
+	w := doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /projects = %d %s", w.Code, w.Body.String())
+	}
+	var projects listDTO[projectDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatal(err)
+	}
+	projectID := projects.Items[0].ID
+
+	w = doJSON(t, r, http.MethodPost, "/v1/projects", map[string]any{
+		"name": "Tools", "color": "#22c55e",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /projects = %d %s", w.Code, w.Body.String())
+	}
+	var other projectDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &other); err != nil {
+		t.Fatal(err)
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "Live work",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /sessions = %d %s", w.Code, w.Body.String())
+	}
+	var live sessionDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+	startedAt := live.StartedAt
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+live.ID, map[string]any{
+		"note": "Renamed live",
+	}, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PATCH live note = %d %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+	if live.Note != "Renamed live" || live.Status != "active" || live.StartedAt != startedAt {
+		t.Fatalf("PATCH omit: %+v", live)
+	}
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+live.ID, map[string]any{
+		"status": "stopped",
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+live.ID, map[string]any{
+		"endedAt": "2026-03-11T10:00:00.000Z",
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{
+		"projectId": projectID,
+		"note":      "Forgot to start",
+		"startedAt": "2026-03-11T08:00:00.000Z",
+		"endedAt":   "2026-03-11T10:15:00.000Z",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /sessions/manual = %d %s", w.Code, w.Body.String())
+	}
+	var log sessionDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &log); err != nil {
+		t.Fatal(err)
+	}
+	if log.Status != "stopped" || log.EndedAt == nil || log.PausedAt != nil {
+		t.Fatalf("manual: %+v", log)
+	}
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+log.ID, map[string]any{
+		"projectId":      other.ID,
+		"ticketId":       nil,
+		"activityTypeId": nil,
+		"endedAt":        "2026-03-11T11:00:00.000Z",
+	}, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PATCH log = %d %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &log); err != nil {
+		t.Fatal(err)
+	}
+	if log.ProjectID != other.ID || log.TicketID != nil || *log.EndedAt != "2026-03-11T11:00:00.000Z" {
+		t.Fatalf("patched log: %+v", log)
+	}
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+log.ID, map[string]any{
+		"endedAt": "2026-03-11T07:00:00.000Z",
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+log.ID, map[string]any{
+		"pausedMs": int64(9 * 60 * 60 * 1000),
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodDelete, "/v1/sessions/"+live.ID, nil, auth)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("DELETE live = %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions/active", nil, auth)
+	assertCode(t, w, http.StatusNotFound, "session_not_active")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "After delete",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST after delete live = %d %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+
+	w = doJSON(t, r, http.MethodDelete, "/v1/sessions/"+log.ID, nil, auth)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("DELETE log = %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions/"+log.ID, nil, auth)
+	assertCode(t, w, http.StatusNotFound, "not_found")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/stop", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("stop = %d %s", w.Code, w.Body.String())
+	}
+
+	w = doJSON(t, r, http.MethodPost, "/v1/projects/"+projectID+"/archive", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("archive = %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{
+		"projectId": projectID,
+		"note":      "On archived",
+		"startedAt": "2026-03-10T08:00:00.000Z",
+		"endedAt":   "2026-03-10T09:00:00.000Z",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("manual on archived = %d %s", w.Code, w.Body.String())
+	}
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "start archived",
+	}, auth)
+	assertCode(t, w, http.StatusConflict, "project_archived")
+
+	w = doJSON(t, r, http.MethodDelete, "/v1/sessions/"+uuid.NewString(), nil, auth)
+	assertCode(t, w, http.StatusNotFound, "not_found")
 }
 
 func assertCode(t *testing.T, w *httptest.ResponseRecorder, status int, code string) {

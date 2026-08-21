@@ -102,6 +102,144 @@ type startSessionBody struct {
 	TargetDurationMs *int64   `json:"targetDurationMs"`
 }
 
+type createManualSessionBody struct {
+	ProjectID        string   `json:"projectId"`
+	Note             string   `json:"note"`
+	TicketID         *string  `json:"ticketId"`
+	ActivityTypeID   *string  `json:"activityTypeId"`
+	Tags             []string `json:"tags"`
+	TargetDurationMs *int64   `json:"targetDurationMs"`
+	StartedAt        string   `json:"startedAt"`
+	EndedAt          string   `json:"endedAt"`
+	PausedMs         *int64   `json:"pausedMs"`
+}
+
+type updateSessionBody struct {
+	ProjectID        *string   `json:"projectId"`
+	Note             *string   `json:"note"`
+	TicketID         *string   `json:"ticketId"`
+	TicketSet        bool      `json:"-"`
+	ActivityTypeID   *string   `json:"activityTypeId"`
+	ActivityTypeSet  bool      `json:"-"`
+	Tags             *[]string `json:"tags"`
+	StartedAt        *string   `json:"startedAt"`
+	EndedAt          *string   `json:"endedAt"`
+	EndedSet         bool      `json:"-"`
+	PausedMs         *int64    `json:"pausedMs"`
+	TargetDurationMs *int64    `json:"targetDurationMs"`
+	TargetSet        bool      `json:"-"`
+}
+
+func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(b, &raw); err != nil {
+		return err
+	}
+	if _, ok := raw["status"]; ok {
+		return errWritable("status is not writable; use pause, resume, or stop.")
+	}
+	if _, ok := raw["pausedAt"]; ok {
+		return errWritable("pausedAt is not writable; use pause, resume, or stop.")
+	}
+	if _, ok := raw["id"]; ok {
+		return errWritable("id is not writable.")
+	}
+	if v, ok := raw["projectId"]; ok {
+		if string(v) == "null" {
+			return errWritable("projectId cannot be null.")
+		}
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return err
+		}
+		u.ProjectID = &s
+	}
+	if v, ok := raw["note"]; ok {
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return err
+		}
+		u.Note = &s
+	}
+	if v, ok := raw["ticketId"]; ok {
+		u.TicketSet = true
+		if string(v) != "null" {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				return err
+			}
+			u.TicketID = &s
+		}
+	}
+	if v, ok := raw["activityTypeId"]; ok {
+		u.ActivityTypeSet = true
+		if string(v) != "null" {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				return err
+			}
+			u.ActivityTypeID = &s
+		}
+	}
+	if v, ok := raw["tags"]; ok {
+		if string(v) == "null" {
+			empty := []string{}
+			u.Tags = &empty
+		} else {
+			var tags []string
+			if err := json.Unmarshal(v, &tags); err != nil {
+				return err
+			}
+			u.Tags = &tags
+		}
+	}
+	if v, ok := raw["startedAt"]; ok {
+		if string(v) == "null" {
+			return errWritable("startedAt cannot be null.")
+		}
+		var s string
+		if err := json.Unmarshal(v, &s); err != nil {
+			return err
+		}
+		u.StartedAt = &s
+	}
+	if v, ok := raw["endedAt"]; ok {
+		u.EndedSet = true
+		if string(v) != "null" {
+			var s string
+			if err := json.Unmarshal(v, &s); err != nil {
+				return err
+			}
+			u.EndedAt = &s
+		}
+	}
+	if v, ok := raw["pausedMs"]; ok {
+		if string(v) == "null" {
+			return errWritable("pausedMs cannot be null.")
+		}
+		var n int64
+		if err := json.Unmarshal(v, &n); err != nil {
+			return err
+		}
+		u.PausedMs = &n
+	}
+	if v, ok := raw["targetDurationMs"]; ok {
+		u.TargetSet = true
+		if string(v) != "null" {
+			var n int64
+			if err := json.Unmarshal(v, &n); err != nil {
+				return err
+			}
+			u.TargetDurationMs = &n
+		}
+	}
+	return nil
+}
+
+func errWritable(msg string) error {
+	return domain.ErrInvalidBody(msg)
+}
+
 type activityTypeDTO struct {
 	ID    string `json:"id"`
 	Name  string `json:"name"`

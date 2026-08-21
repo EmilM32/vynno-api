@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-20
+**Last updated:** 2026-08-21
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -98,8 +98,11 @@ User* (many personal accounts; isolated; no teams)
 | **Stop** | From `active` or `paused`. If paused, apply the same pause-accounting as resume first. Sets `status=stopped`, `endedAt=now`. |
 | **Invalid transition** | Any other verb (pause while paused, resume while active, stop while stopped, …) is `409 invalid_transition`. |
 | **Restart** | Client sends a new `POST /sessions` with the same `projectId` / `note` / optionals. Never mutate a stopped row to make it live again. |
-| **Stopped sessions** | Immutable in v1. Edit/delete is P2 and needs a contract amendment. |
+| **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `tags`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`. Not writable: `status`, `pausedAt`. Archived projects are allowed. |
+| **Delete** | Any session, including live. Hard-delete. Idle after deleting live. |
+| **Manual entry** | `POST /sessions/manual` inserts `stopped` with `startedAt`/`endedAt`. Allowed while a live session exists. Archived projects are allowed. |
 | **Empty note** | Trim; if empty, store `"Untitled session"`. |
+| **Time integrity** | Stopped: `endedAt > startedAt` and `0 <= pausedMs <= endedAt - startedAt`. Live: `endedAt` is null. Paused: `pausedAt >= startedAt`. `pausedMs` must fit the interval. |
 
 ### Elapsed time (derived, do not store as source of truth)
 
@@ -232,7 +235,7 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 ## 7. Consistency decisions
 
 1. **One live session** — enforced on the server, not only in the SPA store.
-2. **Stopped sessions are immutable** until LOG-6 lands.
+2. **Sessions are mutable.** PATCH and DELETE apply to any row. Status still changes only via pause/resume/stop. Manual create is always `stopped`.
 3. **Duration precision** — milliseconds. Display formatting is the client.
 4. **`user_id` is internal** — not on the wire. Accounts are isolated; there are no team workspaces ([ADR-0006](./adr/0006-single-user-tenancy.md)).
 5. **UTC on the wire.** Day grouping and local clocks are the client.

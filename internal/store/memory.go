@@ -614,6 +614,20 @@ func (m *Memory) UpdateSession(_ context.Context, userID uuid.UUID, s domain.Ses
 	return cloneSession(s), nil
 }
 
+func (m *Memory) DeleteSession(_ context.Context, userID, id uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	if _, ok := a.sessions[id]; !ok {
+		return domain.ErrNotFound()
+	}
+	delete(a.sessions, id)
+	return nil
+}
+
 func (m *Memory) FirstUserID(_ context.Context) (uuid.UUID, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

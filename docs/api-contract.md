@@ -2,8 +2,8 @@
 
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-08-20  
-**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012)
+**Last updated:** 2026-08-21  
+**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7)
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -78,13 +78,15 @@ These are product rules the API must enforce. Details: [domain-model.md](./domai
 
 1. **One live session.** At most one session with status `active` or `paused`. A second `POST /sessions` is `409 session_already_active`. The client requires an explicit stop — do not auto-stop.
 2. **Restart is a new session.** Restart-from-recent sends `POST /sessions` with the same `projectId` / `note` / optional fields. It is not a resume of a stopped log.
-3. **Session actions are verbs.** Use `/pause`, `/resume`, `/stop` — not a generic `PATCH status`.
+3. **Session actions are verbs.** Use `/pause`, `/resume`, `/stop` — not a generic `PATCH status`. `PATCH /sessions/:id` updates fields; it must not send `status` or `pausedAt`.
 4. **Elapsed time.** `pausedMs` is accumulated pause duration. On resume/stop-from-paused, add `now - pausedAt` into `pausedMs` and clear `pausedAt`.
 5. **Default `GET /projects` omits archived.** Pass `includeArchived=true` for management UI. Archived projects must still resolve via `GET /projects/:id` so logs keep a label.
 6. **Last active project.** Cannot archive or hard-delete the last non-archived project (`409 last_active_project`).
 7. **Hard delete** only when **zero** sessions reference the project. Otherwise `409 project_has_sessions` — archive instead.
 8. **Code uniqueness** is case-insensitive among all non-deleted projects, only when `code` is non-empty.
 9. **Cannot start** on a missing (`404 not_found`) or archived (`409 project_archived`) project.
+10. **Edit / delete.** `PATCH /sessions/:id` and `DELETE /sessions/:id` apply to any session, including the live timer. Deleting live returns idle. Stopped `endedAt` cannot be cleared. Live `endedAt` cannot be set (use `/stop`, then PATCH the stop time).
+11. **Manual entry.** `POST /sessions/manual` creates a stopped log with `startedAt` and `endedAt`. Allowed while a live session exists. Archived projects are allowed. `session_already_active` and `project_archived` apply only to live `POST /sessions`.
 
 ---
 
@@ -262,6 +264,9 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 | GET | `/sessions/active` | — | `SessionDto` | `session_not_active` |
 | GET | `/sessions/:id` | — | `SessionDto` | `not_found` |
 | POST | `/sessions` | `StartSessionDto` | `SessionDto` `201` | `session_already_active`, `not_found`, `project_archived`, `invalid_body` |
+| POST | `/sessions/manual` | `CreateManualSessionDto` | `SessionDto` `201` | `not_found`, `invalid_body` |
+| PATCH | `/sessions/:id` | `UpdateSessionDto` | `SessionDto` | `not_found`, `invalid_body` |
+| DELETE | `/sessions/:id` | — | `204` | `not_found` |
 | POST | `/sessions/:id/pause` | — | `SessionDto` | `not_found`, `invalid_transition` |
 | POST | `/sessions/:id/resume` | — | `SessionDto` | `not_found`, `invalid_transition` |
 | POST | `/sessions/:id/stop` | — | `SessionDto` | `not_found`, `invalid_transition` |
@@ -305,6 +310,47 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 `status` query is a comma-separated list of those enum values. `limit` is a positive integer. Anything else is `400 invalid_query`.
 
+`UpdateSessionDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`. Do not send `status`, `pausedAt`, or `id` (`invalid_body`).
+
+```json
+{
+	"projectId": "proj-auth",
+	"note": "Renamed task",
+	"ticketId": null,
+	"activityTypeId": null,
+	"tags": [],
+	"startedAt": "2026-03-11T08:00:00.000Z",
+	"endedAt": "2026-03-11T10:15:00.000Z",
+	"pausedMs": 0,
+	"targetDurationMs": null
+}
+```
+
+- `note`: trim; empty → `"Untitled session"`.
+- `projectId`: must exist for this user. Archived is allowed.
+- `activityTypeId` / `ticketId` / `targetDurationMs`: `null` clears.
+- `tags`: `null` or `[]` → `[]`.
+- `endedAt`: required to stay set on stopped sessions; must stay `null` on live (use `/stop`).
+- `pausedMs`: `>= 0` and must not exceed the interval (`endedAt - startedAt` when stopped; `pausedAt - startedAt` when paused; `now - startedAt` when active).
+
+`CreateManualSessionDto` — always inserts `status=stopped`, `pausedAt=null`. Allowed while a live session exists. Archived projects are allowed.
+
+```json
+{
+	"projectId": "proj-auth",
+	"note": "Forgot to start the timer",
+	"ticketId": null,
+	"activityTypeId": null,
+	"tags": [],
+	"targetDurationMs": null,
+	"startedAt": "2026-03-11T08:00:00.000Z",
+	"endedAt": "2026-03-11T10:15:00.000Z",
+	"pausedMs": 0
+}
+```
+
+`projectId`, `startedAt`, and `endedAt` are required. `pausedMs` optional, default `0`. Same note / activity / target rules as start. `endedAt` must be after `startedAt`; `pausedMs` must fit the interval.
+
 ---
 
 ## Domain vs DTO
@@ -323,8 +369,6 @@ Not in this contract. Do not invent them to “complete” the API without a con
 | Theme / locale | Device-local |
 | Insights / dashboard totals | Computed on the client from the session list |
 | Pagination / cursors | Full session list on boot (`limit` only) |
-| Edit or delete a stopped log | P2 (LOG-6) |
-| Manual time entry | P2 (LOG-7) |
 | Session target duration UI | Field exists on `StartSessionDto`; UI is P2 |
 
 ---
