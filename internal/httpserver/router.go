@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -30,6 +31,8 @@ type Server struct {
 	cookieSecure bool
 	publicOrigin string
 	ready        func(context.Context) error
+	ops          []documentedOp
+	specJSON     []byte
 }
 
 func NewRouter(svc *service.Service, opts Options) *gin.Engine {
@@ -55,50 +58,256 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	r.Use(requestLog())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
-		AllowOrigins:     origins,
+		AllowOrigins:     corsAllowOrigins(origins, publicOrigin),
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
 	_ = r.SetTrustedProxies(nil)
-	r.GET("/healthz", handleHealth)
-	r.GET("/readyz", s.handleReady)
+
+	s.route(r, http.MethodGet, "/healthz", handleHealth, op{
+		Summary: "Liveness",
+		Tags:    []string{"Ops"},
+		Public:  true,
+		Success: healthResponse{},
+	})
+	s.route(r, http.MethodGet, "/readyz", s.handleReady, op{
+		Summary: "Readiness (Postgres ping)",
+		Tags:    []string{"Ops"},
+		Public:  true,
+		Success: healthResponse{},
+	})
 
 	v1 := r.Group("/v1")
-	v1.POST("/auth/register", s.register)
-	v1.POST("/auth/login", s.login)
-	v1.GET("/avatars/:id", s.getAvatar)
+	s.route(v1, http.MethodPost, "/auth/register", s.register, op{
+		Summary:     "Register",
+		Description: "Creates an account, signs in, and sets cookie vynno_session. JSON body is { profile } only.",
+		Tags:        []string{"Auth"},
+		Public:      true,
+		Body:        registerBody{},
+		Success:     authResponse{},
+		SuccessCode: http.StatusCreated,
+		Errors:      []string{domain.CodeUsernameInUse},
+		SetCookie:   true,
+	})
+	s.route(v1, http.MethodPost, "/auth/login", s.login, op{
+		Summary:     "Login",
+		Description: "Sets cookie vynno_session. JSON body is { profile } only.",
+		Tags:        []string{"Auth"},
+		Public:      true,
+		Body:        loginBody{},
+		Success:     authResponse{},
+		Errors:      []string{domain.CodeInvalidCredentials},
+		SetCookie:   true,
+	})
+	s.route(v1, http.MethodGet, "/avatars/:id", s.getAvatar, op{
+		Summary:     "Avatar bytes",
+		Description: "Public. Success is raw image bytes with Cache-Control: public, max-age=31536000, immutable.",
+		Tags:        []string{"Profile"},
+		Public:      true,
+		Binary:      "image/*",
+		Errors:      []string{domain.CodeNotFound},
+	})
 
 	authed := v1.Group("")
 	authed.Use(s.requireAuth())
-	authed.POST("/auth/logout", s.logout)
-	authed.GET("/me", s.getMe)
-	authed.PATCH("/me", s.patchMe)
-	authed.PUT("/me/avatar", s.putMeAvatar)
-	authed.DELETE("/me/avatar", s.deleteMeAvatar)
-	authed.GET("/projects", s.listProjects)
-	authed.POST("/projects", s.createProject)
-	authed.GET("/projects/:id", s.getProject)
-	authed.PATCH("/projects/:id", s.updateProject)
-	authed.DELETE("/projects/:id", s.deleteProject)
-	authed.POST("/projects/:id/archive", s.archiveProject)
-	authed.POST("/projects/:id/restore", s.restoreProject)
-	authed.GET("/projects/:id/session-count", s.projectSessionCount)
-	authed.GET("/activity-types", s.listActivityTypes)
-	authed.POST("/activity-types", s.createActivityType)
-	authed.GET("/activity-types/:id", s.getActivityType)
-	authed.PATCH("/activity-types/:id", s.updateActivityType)
-	authed.DELETE("/activity-types/:id", s.deleteActivityType)
-	authed.GET("/activity-types/:id/session-count", s.activityTypeSessionCount)
-	authed.GET("/sessions", s.listSessions)
-	authed.POST("/sessions", s.startSession)
-	authed.GET("/sessions/active", s.getActiveSession)
-	authed.GET("/sessions/:id", s.getSession)
-	authed.POST("/sessions/:id/pause", s.pauseSession)
-	authed.POST("/sessions/:id/resume", s.resumeSession)
-	authed.POST("/sessions/:id/stop", s.stopSession)
+	s.route(authed, http.MethodPost, "/auth/logout", s.logout, op{
+		Summary:     "Logout",
+		Tags:        []string{"Auth"},
+		Empty:       true,
+		ClearCookie: true,
+	})
+	s.route(authed, http.MethodGet, "/me", s.getMe, op{
+		Summary: "Current profile",
+		Tags:    []string{"Profile"},
+		Success: profileDTO{},
+	})
+	s.route(authed, http.MethodPatch, "/me", s.patchMe, op{
+		Summary:     "Update profile",
+		Description: "All fields optional. Omit = leave unchanged. Do not send handle or avatarUrl.",
+		Tags:        []string{"Profile"},
+		Body:        updateProfileBody{},
+		Success:     profileDTO{},
+	})
+	s.route(authed, http.MethodPut, "/me/avatar", s.putMeAvatar, op{
+		Summary:     "Upload avatar",
+		Description: "multipart field file. jpeg, png, or webp. Max 1 MiB (magic bytes).",
+		Tags:        []string{"Profile"},
+		Multipart:   "file",
+		Success:     profileDTO{},
+		Errors:      []string{domain.CodeInvalidBody},
+	})
+	s.route(authed, http.MethodDelete, "/me/avatar", s.deleteMeAvatar, op{
+		Summary: "Remove avatar",
+		Tags:    []string{"Profile"},
+		Success: profileDTO{},
+	})
+
+	s.route(authed, http.MethodGet, "/projects", s.listProjects, op{
+		Summary:     "List projects",
+		Description: "Default omits archived. Pass includeArchived=true for management UI.",
+		Tags:        []string{"Projects"},
+		Success:     listDTO[projectDTO]{},
+		Query: []queryParam{{
+			Name: "includeArchived", Type: "boolean",
+			Description: "When true, include archived projects.",
+		}},
+		Errors: []string{domain.CodeInvalidQuery},
+	})
+	s.route(authed, http.MethodPost, "/projects", s.createProject, op{
+		Summary:     "Create project",
+		Tags:        []string{"Projects"},
+		Body:        createProjectBody{},
+		Success:     projectDTO{},
+		SuccessCode: http.StatusCreated,
+		Errors:      []string{domain.CodeCodeInUse},
+	})
+	s.route(authed, http.MethodGet, "/projects/:id", s.getProject, op{
+		Summary: "Get project",
+		Tags:    []string{"Projects"},
+		Success: projectDTO{},
+		Errors:  []string{domain.CodeNotFound},
+	})
+	s.route(authed, http.MethodPatch, "/projects/:id", s.updateProject, op{
+		Summary:     "Update project",
+		Description: "All fields optional. code: null clears the chip.",
+		Tags:        []string{"Projects"},
+		Body:        updateProjectBody{},
+		Success:     projectDTO{},
+		Errors:      []string{domain.CodeNotFound, domain.CodeCodeInUse},
+	})
+	s.route(authed, http.MethodDelete, "/projects/:id", s.deleteProject, op{
+		Summary: "Hard-delete project",
+		Tags:    []string{"Projects"},
+		Empty:   true,
+		Errors:  []string{domain.CodeNotFound, domain.CodeLastActiveProject, domain.CodeProjectHasSessions},
+	})
+	s.route(authed, http.MethodPost, "/projects/:id/archive", s.archiveProject, op{
+		Summary: "Archive project",
+		Tags:    []string{"Projects"},
+		Success: projectDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeLastActiveProject, domain.CodeInvalidTransition},
+	})
+	s.route(authed, http.MethodPost, "/projects/:id/restore", s.restoreProject, op{
+		Summary: "Restore project",
+		Tags:    []string{"Projects"},
+		Success: projectDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
+	})
+	s.route(authed, http.MethodGet, "/projects/:id/session-count", s.projectSessionCount, op{
+		Summary: "Session count for project",
+		Tags:    []string{"Projects"},
+		Success: countDTO{},
+		Errors:  []string{domain.CodeNotFound},
+	})
+
+	s.route(authed, http.MethodGet, "/activity-types", s.listActivityTypes, op{
+		Summary: "List activity types",
+		Tags:    []string{"Activity types"},
+		Success: listDTO[activityTypeDTO]{},
+	})
+	s.route(authed, http.MethodPost, "/activity-types", s.createActivityType, op{
+		Summary:     "Create activity type",
+		Tags:        []string{"Activity types"},
+		Body:        createActivityTypeBody{},
+		Success:     activityTypeDTO{},
+		SuccessCode: http.StatusCreated,
+		Errors:      []string{domain.CodeNameInUse},
+	})
+	s.route(authed, http.MethodGet, "/activity-types/:id", s.getActivityType, op{
+		Summary: "Get activity type",
+		Tags:    []string{"Activity types"},
+		Success: activityTypeDTO{},
+		Errors:  []string{domain.CodeNotFound},
+	})
+	s.route(authed, http.MethodPatch, "/activity-types/:id", s.updateActivityType, op{
+		Summary: "Update activity type",
+		Tags:    []string{"Activity types"},
+		Body:    updateActivityTypeBody{},
+		Success: activityTypeDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeNameInUse},
+	})
+	s.route(authed, http.MethodDelete, "/activity-types/:id", s.deleteActivityType, op{
+		Summary: "Hard-delete activity type",
+		Tags:    []string{"Activity types"},
+		Empty:   true,
+		Errors:  []string{domain.CodeNotFound, domain.CodeActivityTypeHasSessions},
+	})
+	s.route(authed, http.MethodGet, "/activity-types/:id/session-count", s.activityTypeSessionCount, op{
+		Summary: "Session count for activity type",
+		Tags:    []string{"Activity types"},
+		Success: countDTO{},
+		Errors:  []string{domain.CodeNotFound},
+	})
+
+	s.route(authed, http.MethodGet, "/sessions", s.listSessions, op{
+		Summary:     "List sessions",
+		Description: "Newest first. status is a comma-separated list of active, paused, stopped. limit is a positive integer.",
+		Tags:        []string{"Sessions"},
+		Success:     listDTO[sessionDTO]{},
+		Query: []queryParam{
+			{Name: "status", Type: "string", Description: "Comma-separated: active, paused, stopped."},
+			{Name: "limit", Type: "integer", Description: "Positive integer. Omit for the full list."},
+		},
+		Errors: []string{domain.CodeInvalidQuery},
+	})
+	s.route(authed, http.MethodPost, "/sessions", s.startSession, op{
+		Summary:     "Start session",
+		Description: "409 session_already_active if one is already active or paused. Restart is a new POST, not a resume.",
+		Tags:        []string{"Sessions"},
+		Body:        startSessionBody{},
+		Success:     sessionDTO{},
+		SuccessCode: http.StatusCreated,
+		Errors:      []string{domain.CodeSessionAlreadyActive, domain.CodeNotFound, domain.CodeProjectArchived},
+	})
+	s.route(authed, http.MethodGet, "/sessions/active", s.getActiveSession, op{
+		Summary:     "Active or paused session",
+		Description: "Idle → 404 session_not_active.",
+		Tags:        []string{"Sessions"},
+		Success:     sessionDTO{},
+		Errors:      []string{domain.CodeSessionNotActive},
+	})
+	s.route(authed, http.MethodGet, "/sessions/:id", s.getSession, op{
+		Summary: "Get session",
+		Tags:    []string{"Sessions"},
+		Success: sessionDTO{},
+		Errors:  []string{domain.CodeNotFound},
+	})
+	s.route(authed, http.MethodPost, "/sessions/:id/pause", s.pauseSession, op{
+		Summary: "Pause session",
+		Tags:    []string{"Sessions"},
+		Success: sessionDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
+	})
+	s.route(authed, http.MethodPost, "/sessions/:id/resume", s.resumeSession, op{
+		Summary: "Resume session",
+		Tags:    []string{"Sessions"},
+		Success: sessionDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
+	})
+	s.route(authed, http.MethodPost, "/sessions/:id/stop", s.stopSession, op{
+		Summary: "Stop session",
+		Tags:    []string{"Sessions"},
+		Success: sessionDTO{},
+		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
+	})
+
+	s.mountDocs(r)
 	return r
+}
+
+func corsAllowOrigins(spa []string, publicOrigin string) []string {
+	out := append([]string{}, spa...)
+	if publicOrigin == "" {
+		return out
+	}
+	for _, o := range out {
+		if o == publicOrigin {
+			return out
+		}
+	}
+	return append(out, publicOrigin)
 }
 
 func (s *Server) userSvc(c *gin.Context) *service.Service {

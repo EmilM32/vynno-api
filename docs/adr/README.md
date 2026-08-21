@@ -18,6 +18,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0010](./0010-avatar-storage.md) | Avatar storage | Accepted |
 | [0011](./0011-local-production-host.md) | Local production host | Accepted |
 | [0012](./0012-activity-types.md) | User-defined activity types | Accepted |
+| [0013](./0013-openapi-swagger.md) | OpenAPI spec generated from Gin routes | Accepted |
 
 ## Format
 

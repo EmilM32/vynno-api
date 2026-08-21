@@ -29,6 +29,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | Auth | HttpOnly session cookie + remember-me | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
 | Avatars | BYTEA + public `/v1/avatars/:id` | [ADR-0010](./adr/0010-avatar-storage.md) (Accepted) |
 | Host | Owner’s machine; binary + Compose Postgres | [ADR-0011](./adr/0011-local-production-host.md) (Accepted) |
+| Operator docs | OpenAPI from Gin routes; Swagger UI at `/swagger/` | [ADR-0013](./adr/0013-openapi-swagger.md) (Accepted) |
 
 Also decided:
 
@@ -37,6 +38,7 @@ Also decided:
 - Project and session rules — [ADR-0004](./adr/0004-project-lifecycle.md), [ADR-0005](./adr/0005-session-lifecycle.md)
 - Single-user v1 — [ADR-0006](./adr/0006-single-user-tenancy.md)
 - User-defined activity types — [ADR-0012](./adr/0012-activity-types.md)
+- OpenAPI / Swagger UI — [ADR-0013](./adr/0013-openapi-swagger.md)
 
 ## Status
 

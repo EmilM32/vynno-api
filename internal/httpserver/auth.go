@@ -127,10 +127,13 @@ func (s *Server) checkCSRF(c *gin.Context) error {
 	if origin == "" {
 		return nil
 	}
-	if _, ok := s.spaOrigins[origin]; !ok {
-		return domain.ErrUnauthorized()
+	if _, ok := s.spaOrigins[origin]; ok {
+		return nil
 	}
-	return nil
+	if s.publicOrigin != "" && origin == s.publicOrigin {
+		return nil
+	}
+	return domain.ErrUnauthorized()
 }
 
 func originFromReferer(raw string) string {

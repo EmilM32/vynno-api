@@ -15,8 +15,8 @@ import (
 const maxAvatarMultipart = 2 << 20
 
 type updateProfileBody struct {
-	DisplayName    *string
-	DisplayNameSet bool
+	DisplayName    *string `json:"displayName"`
+	DisplayNameSet bool    `json:"-"`
 }
 
 func (u *updateProfileBody) UnmarshalJSON(b []byte) error {

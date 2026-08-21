@@ -50,11 +50,15 @@ type createProjectBody struct {
 	Code  *string `json:"code"`
 }
 
+type countDTO struct {
+	Count int `json:"count"`
+}
+
 type updateProjectBody struct {
-	Name    *string
-	Color   *string
-	Code    *string
-	CodeSet bool
+	Name    *string `json:"name"`
+	Color   *string `json:"color"`
+	Code    *string `json:"code"`
+	CodeSet bool    `json:"-"`
 }
 
 func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
@@ -110,8 +114,8 @@ type createActivityTypeBody struct {
 }
 
 type updateActivityTypeBody struct {
-	Name  *string
-	Color *string
+	Name  *string `json:"name"`
+	Color *string `json:"color"`
 }
 
 func (u *updateActivityTypeBody) UnmarshalJSON(b []byte) error {

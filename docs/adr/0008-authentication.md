@@ -22,8 +22,8 @@ This ADR decides the mechanism. Login/register routes are in [../api-contract.md
 5. **Credentials:** `username` + `password`. Password hashed with bcrypt. Username is `^[a-z0-9_]{3,32}$` after trim+lowercase.
 6. **Public routes:** `GET /healthz`, `POST /v1/auth/login`, `POST /v1/auth/register`, `GET /v1/avatars/:id`. Every other `/v1` resource requires a valid session (reads and writes).
 7. **Accounts:** many personal accounts, isolated by internal `user_id`. No roles, invites, or workspaces ([0006](./0006-single-user-tenancy.md)).
-8. **CORS:** lock to `SPA_ORIGIN` (comma-separated). `AllowCredentials: true`. `*` is incompatible with cookies.
-9. **CSRF:** `SameSite=Lax` + JSON `Content-Type` on mutating requests + reject mutating cookie requests whose `Origin` (or `Referer` if `Origin` is absent) is not in `SPA_ORIGIN`. Bearer-only requests skip the Origin check.
+8. **CORS:** lock to `SPA_ORIGIN` (comma-separated) plus `PUBLIC_API_ORIGIN` (same-origin Swagger UI). `AllowCredentials: true`. `*` is incompatible with cookies.
+9. **CSRF:** `SameSite=Lax` + JSON `Content-Type` on mutating requests + reject mutating cookie requests whose `Origin` (or `Referer` if `Origin` is absent) is not in `SPA_ORIGIN` **or** `PUBLIC_API_ORIGIN`. Bearer-only requests skip the Origin check. The API origin is trusted so same-origin Swagger UI Try-it-out can send the session cookie ([0013](./0013-openapi-swagger.md)).
 10. **Cookie flags:** `HttpOnly`; `SameSite=Lax`; `Path=/`; `Secure` when `COOKIE_SECURE=true`.
 11. **SPA attach point:** `ApiClient` sets `credentials: 'include'`. It does not store the session secret. A username/logged-in flag may live in `localStorage` (remember-me) or `sessionStorage` (not remembered) so the UI can skip `/login`; a `401 unauthorized` clears it.
 
@@ -74,6 +74,10 @@ Constraints still in force:
 
 `GET /v1/avatars/:id` is public. Cross-origin `<img src>` from the SPA cannot send the `SameSite=Lax` session cookie, so a cookie-gated image URL would never load. The path uses an unguessable UUID. Decision and [ADR-0010](./0010-avatar-storage.md).
 
+## Amendment (2026-08-21)
+
+CSRF allowlist includes `PUBLIC_API_ORIGIN` in addition to `SPA_ORIGIN`, so operator Swagger UI served from this process can mutate cookie-backed routes. The Gin CORS middleware also lists `PUBLIC_API_ORIGIN` so it does not 403 same-origin Try-it-out POSTs (browsers send `Origin` on those). Do not put the API origin in the `SPA_ORIGIN` env var (that list is the SvelteKit app). Open `/swagger/` at `PUBLIC_API_ORIGIN`, not a hostname variant (`localhost` vs `127.0.0.1`).
+
 ## Related
 
 - [../frontend-handoff.md](../frontend-handoff.md)
@@ -82,3 +86,4 @@ Constraints still in force:
 - [../api-contract.md](../api-contract.md)
 - [../roadmap.md](../roadmap.md) Phase 3
 - [../plans/phase-3-auth.md](../plans/phase-3-auth.md)
+- [0013-openapi-swagger.md](./0013-openapi-swagger.md)
