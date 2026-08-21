@@ -46,7 +46,7 @@ Clause 8 is lifted. LOG-6 and LOG-7 are in the contract.
 
 - Users must stop before starting something else (product default; data integrity over convenience).
 - Pause math is easy to get wrong around clock skew; tests must cover resume and stop-from-paused.
-- Large histories stay a single list until pagination is amended in.
+- Large histories are paged; see [0014-session-list-pagination.md](./0014-session-list-pagination.md).
 
 ## Alternatives considered
 

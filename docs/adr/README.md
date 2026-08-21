@@ -19,6 +19,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0011](./0011-local-production-host.md) | Local production host | Accepted |
 | [0012](./0012-activity-types.md) | User-defined activity types | Accepted |
 | [0013](./0013-openapi-swagger.md) | OpenAPI spec generated from Gin routes | Accepted |
+| [0014](./0014-session-list-pagination.md) | Session list cursor pagination | Accepted |
 
 ## Format
 

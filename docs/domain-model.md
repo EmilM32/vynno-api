@@ -202,7 +202,7 @@ Each account has its own profile. A fresh production database has no users; the 
 
 ### 5.5 Aggregates
 
-**Not stored and not served in v1.** The client computes today/week totals, insights KPIs, and charts from `GET /sessions`. Do not add aggregate endpoints without a contract amendment.
+**Not stored and not served in v1.** The client computes today/week totals, insights KPIs, and charts from loaded `GET /sessions` pages. Do not add aggregate endpoints without a contract amendment.
 
 ---
 
@@ -214,7 +214,7 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | --- | --- |
 | `not_found` | Unknown project or session id |
 | `invalid_body` | Create/update failed validation |
-| `invalid_query` | Bad `status` / `limit` |
+| `invalid_query` | Bad `status` / `limit` / `cursor` |
 | `session_not_active` | `GET /sessions/active` when idle |
 | `session_already_active` | `POST /sessions` while one is live |
 | `project_archived` | Start against an archived project |

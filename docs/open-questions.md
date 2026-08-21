@@ -15,7 +15,7 @@ Undecided items and the **default we ship with** until an ADR or PRD update says
 | 7 | Insights on the server? | **No** — client aggregates from `GET /sessions` | Contract amendment |
 | 8 | Timezone storage | **UTC ISO-8601**; display TZ is the client | [domain-model.md](./domain-model.md) |
 | 9 | ID format | **Opaque strings**; do not require `proj-` / `sess-` prefixes | [api-contract.md](./api-contract.md) |
-| 10 | Pagination | **None** — `limit` only | Contract amendment when needed |
+| 10 | Pagination | **Resolved:** cursor (keyset) on `GET /sessions`; `limit` default 20, max 100; `{ items, nextCursor }`. | [ADR-0014](./adr/0014-session-list-pagination.md) (Accepted) |
 | 11 | User-defined activity types? | **Resolved:** per-user dictionary; display `name` + token `color`; empty on register. | [ADR-0012](./adr/0012-activity-types.md) |
 | 12 | Must every session have a project? | **Yes** | [domain-model.md](./domain-model.md) |
 | 13 | Auto-stop previous session on start? | **No** | [ADR-0005](./adr/0005-session-lifecycle.md) |

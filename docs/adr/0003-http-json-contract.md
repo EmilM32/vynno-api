@@ -33,8 +33,8 @@ If this backend invented GraphQL, RPC, or different field names, the SPA would h
 ### Negative / tradeoffs
 
 - We cannot “improve” field names (`isArchived` vs `archived`) without a paired frontend change.
-- Pagination, prefs, and insights endpoints are intentionally missing until amended.
-- Full session list on boot will not scale forever ([../open-questions.md](../open-questions.md) #5).
+- Prefs and insights endpoints are intentionally missing until amended.
+- Session list pagination is [0014-session-list-pagination.md](./0014-session-list-pagination.md).
 
 ## Alternatives considered
 

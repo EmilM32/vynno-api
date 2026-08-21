@@ -69,7 +69,7 @@ Paths are relative to `/v1`:
 | PATCH | `/activity-types/:id` |
 | DELETE | `/activity-types/:id` |
 | GET | `/activity-types/:id/session-count` |
-| GET | `/sessions` , `/sessions?status=active,paused&limit=n` |
+| GET | `/sessions` , `/sessions?status=active,paused&limit=n&cursor=…` |
 | GET | `/sessions/active` |
 | GET | `/sessions/:id` |
 | POST | `/sessions` |
@@ -93,7 +93,7 @@ Do not add these to “complete” the API. They are client-local or deferred.
 | Theme (`dark` / `light` / `deep-dark`) | `localStorage` |
 | Locale (en / pl) | `localStorage` / cookie, Paraglide |
 | Daily hour target, default project | In-memory `prefsStore` |
-| Insights KPIs, donut, weekly bars | Computed from the session list |
+| Insights KPIs, donut, weekly bars | Computed from loaded session pages |
 | Command palette, nav chrome | Pure UI |
 | `X-Mock-Workspace` | Mock isolation only; never send to this API |
 | Forgot-password UI | Later screen |

@@ -15,7 +15,7 @@
 | **2** | Contract v1 | Persist + implement `/me`, projects, sessions | Yes |
 | **3** | Auth | Real identity; SPA can leave the login stub | Yes |
 | **4** | Production | Observability, backups, secrets, CORS | Yes |
-| **5** | Later | Pagination, prefs, log edit, insights — contract first | Later |
+| **5** | Later | Prefs, insights — contract first. Pagination shipped. | Later |
 
 ---
 
@@ -151,6 +151,14 @@ Plan: [plans/swagger.md](./plans/swagger.md). ADR: [ADR-0013](./adr/0013-openapi
 - [x] `GET /swagger/` and `GET /openapi.json` (outside `/v1`)
 - [x] CSRF allows `PUBLIC_API_ORIGIN` so same-origin Try-it-out works
 
+### Session list pagination
+
+Plan: [plans/session-pagination.md](./plans/session-pagination.md). ADR: [ADR-0014](./adr/0014-session-list-pagination.md).
+
+- [x] Contract amendment: `GET /sessions` `{ items, nextCursor }`; `limit` default 20, max 100; opaque `cursor`
+- [x] Keyset on `(started_at, id)`; Memory store matches
+- [x] Frontend pairing (first-page seed, Logs infinite scroll, period drain)
+
 ### Local production runtime
 
 Plan: [plans/local-prod-runtime.md](./plans/local-prod-runtime.md).
@@ -165,7 +173,6 @@ Plan: [plans/local-prod-runtime.md](./plans/local-prod-runtime.md).
 
 Only via contract amendments. Candidates: [backlog.md](./backlog.md).
 
-- Pagination / cursors
 - Prefs persistence
 - Insights aggregation endpoints
 - Multi-user workspaces

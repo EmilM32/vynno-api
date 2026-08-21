@@ -14,7 +14,7 @@ IDs that start with frontend requirement codes (`LOG-6`, …) are the same items
 | LOG-6 | Edit / delete a session | **Done** — [plans/session-edit.md](./plans/session-edit.md). `PATCH` / `DELETE /sessions/:id`. |
 | LOG-7 | Manual time entry | **Done** — same plan. `POST /sessions/manual`. |
 | PREFS | Persist daily target and default project | Client `prefsStore` is in-memory. New resource. |
-| PAGE | Cursor / offset pagination | v1 loads the full session list. Revisit when history is large. |
+| PAGE | Cursor / offset pagination | **Done** — [plans/session-pagination.md](./plans/session-pagination.md). Cursor on `GET /sessions`. |
 | INS | Insights / dashboard aggregate endpoints | Client computes these from sessions. |
 | TMR-9 | Session target duration UI | Field already exists on `StartSessionDto`; no API change until the UI ships. |
 

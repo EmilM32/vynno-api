@@ -3,7 +3,7 @@
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
 **Last updated:** 2026-08-21  
-**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7)
+**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -24,7 +24,7 @@ If this doc and the frontend schemas drift, stop and reconcile — do not “fix
 | Timestamps | ISO-8601 (`Date.toISOString()`) |
 | Absent optionals | JSON `null` (not omitted) |
 | IDs | Opaque strings |
-| Pagination | Not yet — `limit` query only |
+| Pagination | `GET /sessions` only: `limit` + opaque `cursor`; `{ items, nextCursor }` ([ADR-0014](./adr/0014-session-list-pagination.md)) |
 | Auth | HttpOnly session cookie (see [Auth](#auth)) |
 | Operator docs | `GET /swagger/` and `GET /openapi.json` — **not** SPA resources ([ADR-0013](./adr/0013-openapi-swagger.md)) |
 
@@ -37,7 +37,7 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | Code | Status | When | Frontend UI string |
 | --- | --- | --- | --- |
 | `not_found` | 404 | Unknown project, session, or activity type id | `error_not_found` |
-| `invalid_query` | 400 | Bad `status` / `limit` | fallback |
+| `invalid_query` | 400 | Bad `status` / `limit` / `cursor` | fallback |
 | `invalid_json` | 400 | Request body is not JSON | `error_invalid_response` |
 | `invalid_body` | 400 | Write body failed the request schema / validation | fallback (`error_failed_*`) |
 | `invalid_response` | 502 | Client-only: body did not match the response schema | `error_invalid_response` |
@@ -260,7 +260,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 | Method | Path | Body | Success | Typical errors |
 | --- | --- | --- | --- | --- |
-| GET | `/sessions?status=active,paused&limit=n` | — | `{ items: SessionDto[] }` newest-first | `invalid_query` |
+| GET | `/sessions?status=active,paused&limit=n&cursor=…` | — | `{ items: SessionDto[], nextCursor: string \| null }` newest-first | `invalid_query` |
 | GET | `/sessions/active` | — | `SessionDto` | `session_not_active` |
 | GET | `/sessions/:id` | — | `SessionDto` | `not_found` |
 | POST | `/sessions` | `StartSessionDto` | `SessionDto` `201` | `session_already_active`, `not_found`, `project_archived`, `invalid_body` |
@@ -308,7 +308,18 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 `GET /sessions/active` returns the active **or paused** session. Idle → `404` `{ "error": { "code": "session_not_active", "message": "…" } }`.
 
-`status` query is a comma-separated list of those enum values. `limit` is a positive integer. Anything else is `400 invalid_query`.
+`status` query is a comma-separated list of those enum values. `limit` is a positive integer, default **20**, max **100**. `cursor` is an opaque string from the previous page’s `nextCursor`; omit it on the first page. Anything else is `400 invalid_query`.
+
+Session list body:
+
+```json
+{
+	"items": [],
+	"nextCursor": null
+}
+```
+
+`nextCursor` is JSON `null` when this page is the last. Follow it as `cursor` to load the next page. Do not parse the cursor. Other lists stay `{ "items": T[] }`.
 
 `UpdateSessionDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`. Do not send `status`, `pausedAt`, or `id` (`invalid_body`).
 
@@ -367,8 +378,7 @@ Not in this contract. Do not invent them to “complete” the API without a con
 | --- | --- |
 | Prefs (daily target, default project) | In-memory `prefsStore` |
 | Theme / locale | Device-local |
-| Insights / dashboard totals | Computed on the client from the session list |
-| Pagination / cursors | Full session list on boot (`limit` only) |
+| Insights / dashboard totals | Computed on the client from loaded sessions |
 | Session target duration UI | Field exists on `StartSessionDto`; UI is P2 |
 
 ---

@@ -125,7 +125,7 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 
 | ID | Requirement | Priority |
 | --- | --- | --- |
-| SES-1 | `GET /sessions` newest-first; optional `status` (comma list) and `limit` | P0 |
+| SES-1 | `GET /sessions` newest-first; optional `status` (comma list), `limit` (default 20, max 100), opaque `cursor`; `{ items, nextCursor }` | P0 |
 | SES-2 | `GET /sessions/active` returns the active **or paused** session; idle → `404 session_not_active` | P0 |
 | SES-3 | `GET /sessions/:id` | P0 |
 | SES-4 | `POST /sessions` → `201`; fails `409 session_already_active` if one is live | P0 |
@@ -177,7 +177,7 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | Time | Store UTC ISO-8601. Display timezone is the client. |
 | Security | No secrets in the frontend. Auth design in ADR-0008. |
 | Compatibility | A contract change is a paired change with the frontend schemas |
-| Performance | v1 assumes the full session list fits in one `GET /sessions` (no cursors yet) |
+| Performance | `GET /sessions` is cursor-paginated ([ADR-0014](./adr/0014-session-list-pagination.md)); the SPA must not assume a full dump |
 
 ## 10. Domain summary
 
