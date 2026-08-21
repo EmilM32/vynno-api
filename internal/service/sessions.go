@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
+	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/google/uuid"
 )
 
@@ -29,8 +30,8 @@ type CreateManualSessionInput struct {
 	PausedMs         *int64
 }
 
-func (s *Service) ListSessions(ctx context.Context, statuses []string, limit int) ([]domain.Session, error) {
-	return s.Store.ListSessions(ctx, s.User, statuses, limit)
+func (s *Service) ListSessions(ctx context.Context, statuses []string, limit int, cursor string) (store.SessionPage, error) {
+	return s.Store.ListSessions(ctx, s.User, statuses, limit, cursor)
 }
 
 func (s *Service) GetSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {

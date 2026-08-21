@@ -60,7 +60,7 @@ type Store interface {
 	CountActivityTypeSessions(ctx context.Context, userID, activityTypeID uuid.UUID) (int, error)
 	ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, name string, excludeID uuid.UUID) (bool, error)
 
-	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error)
+	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error)
 	GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error)
 	GetLiveSession(ctx context.Context, userID uuid.UUID) (domain.Session, bool, error)
 	CreateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)

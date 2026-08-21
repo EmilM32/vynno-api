@@ -520,12 +520,12 @@ func (m *Memory) activityNameTaken(a *memAccount, name string, excludeID uuid.UU
 	return false
 }
 
-func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
+func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.account(userID)
 	if !ok {
-		return nil, domain.ErrNotFound()
+		return SessionPage{}, domain.ErrNotFound()
 	}
 	allow := map[string]bool{}
 	for _, s := range statuses {
@@ -538,11 +538,13 @@ func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []st
 		}
 		out = append(out, cloneSession(s))
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].StartedAt.After(out[j].StartedAt) })
-	if limit > 0 && len(out) > limit {
-		out = out[:limit]
-	}
-	return out, nil
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StartedAt.Equal(out[j].StartedAt) {
+			return out[i].ID > out[j].ID
+		}
+		return out[i].StartedAt.After(out[j].StartedAt)
+	})
+	return paginateSessions(out, limit, cursor)
 }
 
 func (m *Memory) GetSession(_ context.Context, userID, id uuid.UUID) (domain.Session, error) {

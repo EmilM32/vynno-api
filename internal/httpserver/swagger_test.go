@@ -84,6 +84,11 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 			t.Fatalf("missing schema %s", name)
 		}
 	}
+	sessionList, _ := schemas["SessionList"].(map[string]any)
+	props, _ := sessionList["properties"].(map[string]any)
+	if _, ok := props["nextCursor"]; !ok {
+		t.Fatal("SessionList missing nextCursor")
+	}
 }
 
 func TestSwaggerUIServesHTML(t *testing.T) {

@@ -337,10 +337,25 @@ func (p *Postgres) ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, 
 	})
 }
 
-func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int) ([]domain.Session, error) {
+func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error) {
 	want := map[string]bool{}
 	for _, s := range statuses {
 		want[s] = true
+	}
+	useCursor := cursor != ""
+	cursorStarted := time.Time{}
+	cursorID := uuid.Nil
+	if useCursor {
+		startedAt, id, err := DecodeSessionCursor(cursor)
+		if err != nil {
+			return SessionPage{}, domain.ErrInvalidQuery("cursor is not valid.")
+		}
+		cursorStarted = startedAt
+		cursorID = id
+	}
+	fetch := limit
+	if fetch < 1 {
+		fetch = 1
 	}
 	rows, err := p.q.ListSessions(ctx, sqlcgen.ListSessionsParams{
 		UserID:         userID,
@@ -348,16 +363,19 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 		WantActive:     want[domain.StatusActive],
 		WantPaused:     want[domain.StatusPaused],
 		WantStopped:    want[domain.StatusStopped],
-		Lim:            int32(limit),
+		UseCursor:      useCursor,
+		CursorStarted:  cursorStarted,
+		CursorID:       cursorID,
+		Lim:            int32(fetch + 1),
 	})
 	if err != nil {
-		return nil, err
+		return SessionPage{}, err
 	}
 	out := make([]domain.Session, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, sessionFromList(r))
 	}
-	return out, nil
+	return paginateSessions(out, limit, "")
 }
 
 func (p *Postgres) GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error) {

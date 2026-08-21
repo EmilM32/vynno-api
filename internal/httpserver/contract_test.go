@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
 	"github.com/EmilM32/vynno-api/internal/service"
@@ -510,6 +511,124 @@ func TestSessionEditDeleteManual(t *testing.T) {
 
 	w = doJSON(t, r, http.MethodDelete, "/v1/sessions/"+uuid.NewString(), nil, auth)
 	assertCode(t, w, http.StatusNotFound, "not_found")
+}
+
+func TestListSessionsPagination(t *testing.T) {
+	r := testRouter(t)
+	auth := withCookie(loginCookie(t, r))
+
+	w := doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /projects = %d %s", w.Code, w.Body.String())
+	}
+	var projects listDTO[projectDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatal(err)
+	}
+	projectID := projects.Items[0].ID
+
+	starts := []string{
+		"2026-03-11T12:00:00.000Z",
+		"2026-03-11T11:00:00.000Z",
+		"2026-03-11T10:00:00.000Z",
+		"2026-03-11T10:00:00.000Z",
+		"2026-03-11T09:00:00.000Z",
+	}
+	for i, started := range starts {
+		ended := "2026-03-11T13:00:00.000Z"
+		w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{
+			"projectId": projectID,
+			"note":      "page-" + strconv.Itoa(i),
+			"startedAt": started,
+			"endedAt":   ended,
+		}, auth)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("manual %d = %d %s", i, w.Code, w.Body.String())
+		}
+	}
+
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?limit=0", nil, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_query")
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?limit=101", nil, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_query")
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?limit=-1", nil, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_query")
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?cursor=not-a-cursor", nil, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_query")
+
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?limit=100", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("full list = %d %s", w.Code, w.Body.String())
+	}
+	var full sessionListDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &full); err != nil {
+		t.Fatal(err)
+	}
+	if full.NextCursor != nil {
+		t.Fatal("expected last page")
+	}
+	if len(full.Items) != len(starts) {
+		t.Fatalf("full items = %d, want %d", len(full.Items), len(starts))
+	}
+
+	var got []sessionDTO
+	seen := map[string]bool{}
+	cursor := ""
+	pages := 0
+	for {
+		path := "/v1/sessions?limit=2"
+		if cursor != "" {
+			path += "&cursor=" + cursor
+		}
+		w = doJSON(t, r, http.MethodGet, path, nil, auth)
+		if w.Code != http.StatusOK {
+			t.Fatalf("page = %d %s", w.Code, w.Body.String())
+		}
+		var page sessionListDTO
+		if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+			t.Fatal(err)
+		}
+		pages++
+		for _, item := range page.Items {
+			if seen[item.ID] {
+				t.Fatalf("duplicate id %s", item.ID)
+			}
+			seen[item.ID] = true
+			got = append(got, item)
+		}
+		if page.NextCursor == nil {
+			break
+		}
+		cursor = *page.NextCursor
+		if pages > 10 {
+			t.Fatal("too many pages")
+		}
+	}
+	if len(got) != len(full.Items) {
+		t.Fatalf("paged %d, full %d", len(got), len(full.Items))
+	}
+	for i := range full.Items {
+		if got[i].ID != full.Items[i].ID {
+			t.Fatalf("order mismatch at %d: %s vs %s", i, got[i].ID, full.Items[i].ID)
+		}
+	}
+
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions?status=stopped&limit=2", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("filtered = %d %s", w.Code, w.Body.String())
+	}
+	var filtered sessionListDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &filtered); err != nil {
+		t.Fatal(err)
+	}
+	if len(filtered.Items) != 2 || filtered.NextCursor == nil {
+		t.Fatalf("filtered page = %#v", filtered)
+	}
+	for _, item := range filtered.Items {
+		if item.Status != "stopped" {
+			t.Fatalf("status = %s", item.Status)
+		}
+	}
 }
 
 func assertCode(t *testing.T, w *httptest.ResponseRecorder, status int, code string) {

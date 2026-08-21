@@ -205,8 +205,16 @@ WHERE user_id = $1
     OR ($4::boolean AND status = 'paused')
     OR ($5::boolean AND status = 'stopped')
   )
-ORDER BY started_at DESC
-LIMIT NULLIF($6::int, 0)
+  AND (
+    $6::boolean = FALSE
+    OR started_at < $7::timestamptz
+    OR (
+      started_at = $7::timestamptz
+      AND id < $8::uuid
+    )
+  )
+ORDER BY started_at DESC, id DESC
+LIMIT $9::int
 `
 
 type ListSessionsParams struct {
@@ -215,6 +223,9 @@ type ListSessionsParams struct {
 	WantActive     bool
 	WantPaused     bool
 	WantStopped    bool
+	UseCursor      bool
+	CursorStarted  time.Time
+	CursorID       uuid.UUID
 	Lim            int32
 }
 
@@ -240,6 +251,9 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 		arg.WantActive,
 		arg.WantPaused,
 		arg.WantStopped,
+		arg.UseCursor,
+		arg.CursorStarted,
+		arg.CursorID,
 		arg.Lim,
 	)
 	if err != nil {

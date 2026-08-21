@@ -243,12 +243,13 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 
 	s.route(authed, http.MethodGet, "/sessions", s.listSessions, op{
 		Summary:     "List sessions",
-		Description: "Newest first. status is a comma-separated list of active, paused, stopped. limit is a positive integer.",
+		Description: "Newest first. status is a comma-separated list of active, paused, stopped. limit defaults to 20, max 100. cursor is an opaque nextCursor from the previous page.",
 		Tags:        []string{"Sessions"},
-		Success:     listDTO[sessionDTO]{},
+		Success:     sessionListDTO{},
 		Query: []queryParam{
 			{Name: "status", Type: "string", Description: "Comma-separated: active, paused, stopped."},
-			{Name: "limit", Type: "integer", Description: "Positive integer. Omit for the full list."},
+			{Name: "limit", Type: "integer", Description: "Positive integer, default 20, max 100."},
+			{Name: "cursor", Type: "string", Description: "Opaque cursor from nextCursor. Omit on the first page."},
 		},
 		Errors: []string{domain.CodeInvalidQuery},
 	})

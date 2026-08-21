@@ -8,6 +8,7 @@ import (
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/service"
+	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -23,16 +24,21 @@ func (s *Server) listSessions(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	items, err := s.userSvc(c).ListSessions(c.Request.Context(), statuses, limit)
+	cursor, err := parseCursor(c.Query("cursor"))
 	if err != nil {
 		writeError(c, err)
 		return
 	}
-	dtos := make([]sessionDTO, 0, len(items))
-	for _, sess := range items {
+	page, err := s.userSvc(c).ListSessions(c.Request.Context(), statuses, limit, cursor)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	dtos := make([]sessionDTO, 0, len(page.Items))
+	for _, sess := range page.Items {
 		dtos = append(dtos, toSessionDTO(sess))
 	}
-	c.JSON(http.StatusOK, listDTO[sessionDTO]{Items: dtos})
+	c.JSON(http.StatusOK, sessionListDTO{Items: dtos, NextCursor: page.NextCursor})
 }
 
 func (s *Server) getSession(c *gin.Context) {
@@ -236,11 +242,21 @@ func parseStatusQuery(raw string) ([]string, error) {
 
 func parseLimit(raw string) (int, error) {
 	if raw == "" {
-		return 0, nil
+		return domain.DefaultSessionListLimit, nil
 	}
 	n, err := strconv.Atoi(raw)
-	if err != nil || n < 1 {
-		return 0, domain.ErrInvalidQuery("limit must be a positive integer.")
+	if err != nil || n < 1 || n > domain.MaxSessionListLimit {
+		return 0, domain.ErrInvalidQuery("limit must be a positive integer not greater than 100.")
 	}
 	return n, nil
+}
+
+func parseCursor(raw string) (string, error) {
+	if raw == "" {
+		return "", nil
+	}
+	if _, _, err := store.DecodeSessionCursor(raw); err != nil {
+		return "", domain.ErrInvalidQuery("cursor is not valid.")
+	}
+	return raw, nil
 }

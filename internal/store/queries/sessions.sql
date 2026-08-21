@@ -9,8 +9,16 @@ WHERE user_id = $1
     OR (sqlc.arg(want_paused)::boolean AND status = 'paused')
     OR (sqlc.arg(want_stopped)::boolean AND status = 'stopped')
   )
-ORDER BY started_at DESC
-LIMIT NULLIF(sqlc.arg(lim)::int, 0);
+  AND (
+    sqlc.arg(use_cursor)::boolean = FALSE
+    OR started_at < sqlc.arg(cursor_started)::timestamptz
+    OR (
+      started_at = sqlc.arg(cursor_started)::timestamptz
+      AND id < sqlc.arg(cursor_id)::uuid
+    )
+  )
+ORDER BY started_at DESC, id DESC
+LIMIT sqlc.arg(lim)::int;
 
 -- name: GetSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,

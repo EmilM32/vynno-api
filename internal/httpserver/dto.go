@@ -44,6 +44,11 @@ type listDTO[T any] struct {
 	Items []T `json:"items"`
 }
 
+type sessionListDTO struct {
+	Items      []sessionDTO `json:"items"`
+	NextCursor *string      `json:"nextCursor"`
+}
+
 type createProjectBody struct {
 	Name  string  `json:"name"`
 	Color string  `json:"color"`

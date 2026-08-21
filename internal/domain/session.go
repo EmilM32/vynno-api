@@ -9,6 +9,11 @@ import (
 const UntitledNote = "Untitled session"
 
 const (
+	DefaultSessionListLimit = 20
+	MaxSessionListLimit     = 100
+)
+
+const (
 	StatusActive  = "active"
 	StatusPaused  = "paused"
 	StatusStopped = "stopped"

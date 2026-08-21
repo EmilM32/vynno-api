@@ -30,12 +30,12 @@ func TestApplyMemory(t *testing.T) {
 		if len(projects) != len(acc.Projects) {
 			t.Fatalf("%s projects stored %d want %d", acc.Username, len(projects), len(acc.Projects))
 		}
-		sessions, err := mem.ListSessions(ctx, acc.ID, nil, 0)
+		sessions, err := mem.ListSessions(ctx, acc.ID, nil, 10000, "")
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(sessions) != len(acc.Sessions) {
-			t.Fatalf("%s sessions stored %d want %d", acc.Username, len(sessions), len(acc.Sessions))
+		if len(sessions.Items) != len(acc.Sessions) {
+			t.Fatalf("%s sessions stored %d want %d", acc.Username, len(sessions.Items), len(acc.Sessions))
 		}
 		_, live, err := mem.GetLiveSession(ctx, acc.ID)
 		if err != nil {
@@ -57,12 +57,12 @@ func TestApplyResetMemory(t *testing.T) {
 	if err := Apply(ctx, mem, ds); err != nil {
 		t.Fatal(err)
 	}
-	sessions, err := mem.ListSessions(ctx, ds.Accounts[0].ID, nil, 0)
+	sessions, err := mem.ListSessions(ctx, ds.Accounts[0].ID, nil, 10000, "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sessions) != 0 {
-		t.Fatalf("reset sessions = %d", len(sessions))
+	if len(sessions.Items) != 0 {
+		t.Fatalf("reset sessions = %d", len(sessions.Items))
 	}
 	projects, err := mem.ListProjects(ctx, ds.Accounts[0].ID, false)
 	if err != nil {
