@@ -86,22 +86,7 @@ func marshalOpenAPI(ops []documentedOp) ([]byte, error) {
 		OpenAPI: "3.0.3",
 		Info: oaInfo{
 			Title:   "Vynno API",
-			Version: "1.0.0",
-			Description: strings.TrimSpace(`
-HTTP JSON API for Vynno (VIN-oh). The SPA contract is docs/api-contract.md; this document is generated from the same Go route registrations that mount the handlers.
-
-**Try it out.** Open this UI at PUBLIC_API_ORIGIN (production: http://localhost:8080/swagger/, playground: http://127.0.0.1:8081/swagger/). Login via POST /v1/auth/login — the HttpOnly cookie vynno_session is stored by the browser and sent on later requests. localhost and 127.0.0.1 are different origins; cookie mutations from the wrong host return 401.
-
-**Authorize → Bearer** is the curl/tests alternative (ADR-0008). The SPA uses the cookie only.
-
-**Rules the server enforces**
-- At most one session with status active or paused.
-- Session and project lifecycle use verb routes (/pause, /resume, /stop, /archive, /restore).
-- Cannot archive or delete the last active project.
-- Hard-delete a project or activity type only when it has zero sessions.
-- IDs are opaque UUID strings.
-- Absent optionals on responses are JSON null. PATCH bodies: omit a field to leave it unchanged; code: null clears a project code.
-`),
+			Version: "0.1.0",
 		},
 		Servers: []oaServer{{URL: "/", Description: "This process"}},
 		Tags: []oaTag{
