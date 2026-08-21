@@ -95,6 +95,112 @@ func (s *Server) stopSession(c *gin.Context) {
 	s.sessionVerb(c, s.userSvc(c).StopSession)
 }
 
+func (s *Server) createManualSession(c *gin.Context) {
+	var body createManualSessionBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if strings.TrimSpace(body.ProjectID) == "" {
+		writeError(c, domain.ErrInvalidBody("projectId is required."))
+		return
+	}
+	startedAt, err := domain.ParseISOTime(body.StartedAt)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	endedAt, err := domain.ParseISOTime(body.EndedAt)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	sess, err := s.userSvc(c).CreateManualSession(c.Request.Context(), service.CreateManualSessionInput{
+		ProjectID:        body.ProjectID,
+		Note:             body.Note,
+		TicketID:         body.TicketID,
+		ActivityTypeID:   body.ActivityTypeID,
+		Tags:             body.Tags,
+		TargetDurationMs: body.TargetDurationMs,
+		StartedAt:        startedAt,
+		EndedAt:          endedAt,
+		PausedMs:         body.PausedMs,
+	})
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, toSessionDTO(sess))
+}
+
+func (s *Server) updateSession(c *gin.Context) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	var body updateSessionBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	patch, err := body.toPatch()
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	sess, err := s.userSvc(c).UpdateSession(c.Request.Context(), id, patch)
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, toSessionDTO(sess))
+}
+
+func (s *Server) deleteSession(c *gin.Context) {
+	id, err := parseID(c.Param("id"))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.userSvc(c).DeleteSession(c.Request.Context(), id); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (b updateSessionBody) toPatch() (domain.SessionPatch, error) {
+	p := domain.SessionPatch{
+		ProjectID:        b.ProjectID,
+		Note:             b.Note,
+		TicketID:         b.TicketID,
+		TicketSet:        b.TicketSet,
+		ActivityTypeID:   b.ActivityTypeID,
+		ActivityTypeSet:  b.ActivityTypeSet,
+		Tags:             b.Tags,
+		PausedMs:         b.PausedMs,
+		TargetDurationMs: b.TargetDurationMs,
+		TargetSet:        b.TargetSet,
+		EndedSet:         b.EndedSet,
+	}
+	if b.StartedAt != nil {
+		t, err := domain.ParseISOTime(*b.StartedAt)
+		if err != nil {
+			return domain.SessionPatch{}, err
+		}
+		p.StartedAt = &t
+	}
+	if b.EndedSet && b.EndedAt != nil {
+		t, err := domain.ParseISOTime(*b.EndedAt)
+		if err != nil {
+			return domain.SessionPatch{}, err
+		}
+		p.EndedAt = &t
+	}
+	return p, nil
+}
+
 func (s *Server) sessionVerb(c *gin.Context, fn func(context.Context, uuid.UUID) (domain.Session, error)) {
 	id, err := parseID(c.Param("id"))
 	if err != nil {

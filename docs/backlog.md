@@ -11,8 +11,8 @@ IDs that start with frontend requirement codes (`LOG-6`, …) are the same items
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| LOG-6 | Edit / delete a stopped session | Not in [api-contract.md](./api-contract.md). Would need verbs or PATCH/DELETE on `/sessions/:id`. |
-| LOG-7 | Manual time entry | Create a stopped session without running the timer. New body shape. |
+| LOG-6 | Edit / delete a session | **Done** — [plans/session-edit.md](./plans/session-edit.md). `PATCH` / `DELETE /sessions/:id`. |
+| LOG-7 | Manual time entry | **Done** — same plan. `POST /sessions/manual`. |
 | PREFS | Persist daily target and default project | Client `prefsStore` is in-memory. New resource. |
 | PAGE | Cursor / offset pagination | v1 loads the full session list. Revisit when history is large. |
 | INS | Insights / dashboard aggregate endpoints | Client computes these from sessions. |

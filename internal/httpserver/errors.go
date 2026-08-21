@@ -60,6 +60,10 @@ func decodeJSON(c *gin.Context, dest any) error {
 		if errors.Is(err, io.EOF) {
 			return domain.ErrInvalidJSON()
 		}
+		var de *domain.Error
+		if errors.As(err, &de) {
+			return de
+		}
 		var syn *json.SyntaxError
 		var typ *json.UnmarshalTypeError
 		if errors.As(err, &syn) || errors.As(err, &typ) {

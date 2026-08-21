@@ -16,3 +16,4 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [local-prod-runtime.md](./local-prod-runtime.md) | Done | Build ≠ start; two databases |
 | [activity-types.md](./activity-types.md) | Done | User-defined activity types |
 | [swagger.md](./swagger.md) | Done | OpenAPI from Gin routes + Swagger UI |
+| [session-edit.md](./session-edit.md) | Done | LOG-6 / LOG-7: edit, delete, manual entry |

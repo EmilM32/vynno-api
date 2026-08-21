@@ -14,6 +14,20 @@ import (
 	"github.com/google/uuid"
 )
 
+const deleteSession = `-- name: DeleteSession :exec
+DELETE FROM sessions WHERE user_id = $1 AND id = $2
+`
+
+type DeleteSessionParams struct {
+	UserID uuid.UUID
+	ID     uuid.UUID
+}
+
+func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) error {
+	_, err := q.db.ExecContext(ctx, deleteSession, arg.UserID, arg.ID)
+	return err
+}
+
 const getLiveSession = `-- name: GetLiveSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
@@ -264,16 +278,17 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 
 const updateSession = `-- name: UpdateSession :one
 UPDATE sessions
-SET note = $3,
-    ticket_id = $4,
-    activity_type_id = $5,
-    tags = $6,
-    status = $7,
-    started_at = $8,
-    ended_at = $9,
-    paused_ms = $10,
-    paused_at = $11,
-    target_duration_ms = $12
+SET project_id = $3,
+    note = $4,
+    ticket_id = $5,
+    activity_type_id = $6,
+    tags = $7,
+    status = $8,
+    started_at = $9,
+    ended_at = $10,
+    paused_ms = $11,
+    paused_at = $12,
+    target_duration_ms = $13
 WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms
@@ -282,6 +297,7 @@ RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
 type UpdateSessionParams struct {
 	UserID           uuid.UUID
 	ID               uuid.UUID
+	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
@@ -313,6 +329,7 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 	row := q.db.QueryRowContext(ctx, updateSession,
 		arg.UserID,
 		arg.ID,
+		arg.ProjectID,
 		arg.Note,
 		arg.TicketID,
 		arg.ActivityTypeID,

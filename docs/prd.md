@@ -1,7 +1,7 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-20  
+**Last updated:** 2026-08-21  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, auth)
 
@@ -86,7 +86,7 @@ The API is the information architecture. There is no second resource model.
 | `PUT` / `DELETE /me/avatar` | Upload or remove photo |
 | `/projects` | Work containers; archive / restore / hard delete |
 | `/activity-types` | User-owned activity dictionary (display name + token color) |
-| `/sessions` | Timed intervals; start + verb actions |
+| `/sessions` | Timed intervals; start + verbs + edit/delete + manual entry |
 
 Primary navigation in the SPA (Timer, Dashboard, Logs, Insights, Projects, Settings) is **not** mirrored as endpoints. Dashboard and Insights read the session list and aggregate on the client.
 
@@ -134,8 +134,8 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | SES-7 | Pause accounting: on resume/stop-from-paused, add `now - pausedAt` into `pausedMs` and clear `pausedAt` | P0 |
 | SES-8 | Empty/whitespace note becomes `"Untitled session"` | P0 |
 | SES-9 | Restart-from-recent is a new `POST /sessions`, not a resume of a stopped row | P0 |
-| SES-10 | Edit or delete a stopped session | P2 (LOG-6; needs contract amendment) |
-| SES-11 | Manual time entry without running the timer | P2 (LOG-7; needs contract amendment) |
+| SES-10 | `PATCH` / `DELETE /sessions/:id` on any session, including live | P2 (LOG-6) |
+| SES-11 | `POST /sessions/manual` creates a stopped session without running the timer | P2 (LOG-7) |
 | SES-12 | `activityTypeId` is an optional FK to a user-owned activity type | P1 |
 
 ### 8.6 Activity types

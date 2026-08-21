@@ -1,7 +1,7 @@
 # Frontend handoff
 
 **Status:** Draft  
-**Last updated:** 2026-08-20
+**Last updated:** 2026-08-21
 
 How the SvelteKit app attaches to this API. This is not a second contract — [api-contract.md](./api-contract.md) is the wire format.
 
@@ -73,6 +73,9 @@ Paths are relative to `/v1`:
 | GET | `/sessions/active` |
 | GET | `/sessions/:id` |
 | POST | `/sessions` |
+| POST | `/sessions/manual` |
+| PATCH | `/sessions/:id` |
+| DELETE | `/sessions/:id` |
 | POST | `/sessions/:id/pause` , `/resume` , `/stop` |
 
 Creates expect **201**. Other successful writes **200** with the resource. `DELETE` **204** empty body.

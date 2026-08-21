@@ -42,6 +42,6 @@ Also decided:
 
 ## Status
 
-Phase 0–4 and profile/avatar are done. Phase 5 is later (contract amendments).
+Phase 0–4 and profile/avatar are done. Session edit/delete/manual entry (LOG-6 / LOG-7) is done. Phase 5 is later (pagination, prefs, insights).
 
 See [roadmap.md](./roadmap.md).
