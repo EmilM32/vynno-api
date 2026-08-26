@@ -53,20 +53,34 @@ func TestPatchMeDisplayName(t *testing.T) {
 	if p.DisplayName != "New Name" {
 		t.Fatalf("displayName = %q", p.DisplayName)
 	}
-	if p.Handle != "@alexdev" {
-		t.Fatalf("handle changed: %q", p.Handle)
+	if p.Email != "alexdev@vynno.local" {
+		t.Fatalf("email changed: %q", p.Email)
 	}
 	if p.AvatarURL != nil {
 		t.Fatalf("avatarUrl should still be null")
 	}
 
 	w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": ""}, auth)
-	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+	if w.Code != http.StatusOK {
+		t.Fatalf("PATCH empty displayName = %d %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.DisplayName != "" {
+		t.Fatalf("cleared displayName = %q", p.DisplayName)
+	}
+	if p.Email != "alexdev@vynno.local" {
+		t.Fatalf("email after clear = %q", p.Email)
+	}
 
 	w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": nil}, auth)
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 
 	w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"handle": "@other"}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"email": "other@example.com"}, auth)
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 }
 

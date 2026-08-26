@@ -34,7 +34,7 @@ func testRouter(t *testing.T) *gin.Engine {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := mem.Bootstrap(context.Background(), user, "alexdev", string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
+	if err := mem.Bootstrap(context.Background(), user, "alexdev@vynno.local", string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
 		t.Fatal(err)
 	}
 	return NewRouter(service.New(mem), testOpts())
@@ -94,13 +94,13 @@ func withReferer(ref string) reqOpt {
 
 func loginCookie(t *testing.T, r http.Handler) *http.Cookie {
 	t.Helper()
-	return loginAs(t, r, "alexdev", testPassword)
+	return loginAs(t, r, "alexdev@vynno.local", testPassword)
 }
 
-func loginAs(t *testing.T, r http.Handler, username, password string) *http.Cookie {
+func loginAs(t *testing.T, r http.Handler, email, password string) *http.Cookie {
 	t.Helper()
 	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
-		"username": username, "password": password,
+		"email": email, "password": password,
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("login = %d %s", w.Code, w.Body.String())
@@ -145,7 +145,7 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &profile); err != nil {
 		t.Fatal(err)
 	}
-	if profile.DisplayName == "" || profile.Handle == "" {
+	if profile.DisplayName == "" || profile.Email != "alexdev@vynno.local" {
 		t.Fatalf("profile: %+v", profile)
 	}
 	if profile.AvatarURL != nil {

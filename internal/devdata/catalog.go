@@ -14,7 +14,7 @@ const DefaultSeedPassword = "local-dev-password"
 // Options control reset/seed generation. Passwords are plaintext; Apply hashes them.
 type Options struct {
 	Now               time.Time
-	BootstrapUsername string
+	BootstrapEmail    string
 	BootstrapPassword string
 	SeedPassword      string
 }
@@ -27,7 +27,7 @@ type Dataset struct {
 // Account is one isolated login plus its projects and sessions.
 type Account struct {
 	ID            uuid.UUID
-	Username      string
+	Email         string
 	Password      string
 	Blurb         string
 	Profile       domain.Profile
@@ -38,7 +38,7 @@ type Account struct {
 
 type persona struct {
 	id          uuid.UUID
-	username    string // empty → bootstrap username
+	email       string // empty → bootstrap email
 	displayName string
 	blurb       string
 	live        bool
@@ -86,7 +86,7 @@ func seedPersonas() []persona {
 		},
 		{
 			id:          uuid.MustParse("00000000-0000-4000-8000-000000000002"),
-			username:    "maya",
+			email:       "maya@vynno.local",
 			displayName: "Maya Chen",
 			blurb:       "contractor, idle, one archived project",
 			daysBack:    42,
@@ -98,7 +98,7 @@ func seedPersonas() []persona {
 		},
 		{
 			id:          uuid.MustParse("00000000-0000-4000-8000-000000000003"),
-			username:    "rio",
+			email:       "rio@vynno.local",
 			displayName: "Rio Alvarez",
 			blurb:       "new-ish account, short history",
 			daysBack:    10,

@@ -17,7 +17,7 @@ func (s *Service) GetProfile(ctx context.Context) (domain.Profile, error) {
 
 func (s *Service) UpdateProfile(ctx context.Context, in UpdateProfileInput) (domain.Profile, error) {
 	if in.DisplayName != nil {
-		name, err := domain.NormalizeRequiredDisplayName(*in.DisplayName)
+		name, err := domain.NormalizeDisplayName(*in.DisplayName)
 		if err != nil {
 			return domain.Profile{}, err
 		}

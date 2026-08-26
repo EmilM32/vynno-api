@@ -40,7 +40,6 @@ type Avatar struct {
 type Profile struct {
 	UserID      uuid.UUID
 	DisplayName string
-	Handle      string
 	AvatarUrl   sql.NullString
 }
 
@@ -74,6 +73,6 @@ type Session struct {
 
 type User struct {
 	ID           uuid.UUID
-	Username     sql.NullString
+	Email        string
 	PasswordHash sql.NullString
 }

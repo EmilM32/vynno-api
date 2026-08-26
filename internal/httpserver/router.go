@@ -88,7 +88,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Body:        registerBody{},
 		Success:     authResponse{},
 		SuccessCode: http.StatusCreated,
-		Errors:      []string{domain.CodeUsernameInUse},
+		Errors:      []string{domain.CodeEmailInUse},
 		SetCookie:   true,
 	})
 	s.route(v1, http.MethodPost, "/auth/login", s.login, op{
@@ -125,7 +125,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPatch, "/me", s.patchMe, op{
 		Summary:     "Update profile",
-		Description: "All fields optional. Omit = leave unchanged. Do not send handle or avatarUrl.",
+		Description: "All fields optional. Omit = leave unchanged. Do not send email or avatarUrl.",
 		Tags:        []string{"Profile"},
 		Body:        updateProfileBody{},
 		Success:     profileDTO{},

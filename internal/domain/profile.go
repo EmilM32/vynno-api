@@ -17,7 +17,7 @@ const (
 // Profile is the display profile.
 type Profile struct {
 	DisplayName string
-	Handle      string
+	Email       string
 	// AvatarURL is the stored public path (/v1/avatars/{id}), or nil.
 	AvatarURL *string
 }

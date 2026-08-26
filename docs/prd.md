@@ -1,7 +1,7 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-21  
+**Last updated:** 2026-08-26  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, auth)
 
@@ -101,7 +101,7 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | ID | Requirement | Priority |
 | --- | --- | --- |
 | ME-1 | `GET /me` returns `ProfileDto` | P0 |
-| ME-2 | `displayName`, `handle` required; `avatarUrl` JSON `null` when absent | P0 |
+| ME-2 | `email` required; `displayName` may be empty; `avatarUrl` JSON `null` when absent | P0 |
 | ME-3 | `PATCH /me` updates `displayName` | P1 |
 | ME-4 | `PUT /me/avatar` stores jpeg/png/webp ≤ 1 MiB and returns a loadable `avatarUrl` | P1 |
 | ME-5 | `DELETE /me/avatar` clears to `null` | P1 |
@@ -188,7 +188,7 @@ Core concepts:
 - **Project** — work container with color, optional code, archive flag
 - **Time session** — timed interval with `active` / `paused` / `stopped`
 - **Activity type** — optional user-owned dictionary row (display name + token color)
-- **Profile** — display name, handle, optional avatar
+- **Profile** — display name, email, optional avatar
 
 ## 11. Assumptions
 

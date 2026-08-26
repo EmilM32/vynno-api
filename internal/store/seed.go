@@ -12,7 +12,6 @@ func DefaultUserID() uuid.UUID {
 func DefaultProfile() domain.Profile {
 	return domain.Profile{
 		DisplayName: "Alex Dev",
-		Handle:      "@alexdev",
 	}
 }
 

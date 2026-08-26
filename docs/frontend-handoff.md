@@ -1,7 +1,7 @@
 # Frontend handoff
 
 **Status:** Draft  
-**Last updated:** 2026-08-21
+**Last updated:** 2026-08-26
 
 How the SvelteKit app attaches to this API. This is not a second contract — [api-contract.md](./api-contract.md) is the wire format.
 
@@ -19,7 +19,7 @@ UI  →  SessionStore  →  HttpTimeTrackingRepository  →  fetch  →  /v1 (th
 - Base URL is `PUBLIC_API_BASE`. Local default is `/v1` (Kit proxies to this process). An absolute value is the origin **including** `/v1`, e.g. `http://localhost:8080/v1`.
 - Request/response bodies are validated with Valibot schemas in `src/lib/api/schemas/`. Those schemas are the **client executable source of truth** until this repo publishes its own.
 - Known `error.code` values map to Paraglide strings. Raw `error.message` is for logs / DevTools.
-- Login talks to `POST /v1/auth/login`. The session lives in the HttpOnly cookie `vynno_session`. The SPA may cache the username in `localStorage` (remember-me) or `sessionStorage` (not remembered) so chrome can skip `/login`. It never stores the session secret.
+- Login talks to `POST /v1/auth/login`. The session lives in the HttpOnly cookie `vynno_session`. The SPA may cache the email in `localStorage` (remember-me) or `sessionStorage` (not remembered) so chrome can skip `/login`. It never stores the session secret.
 
 No view or store rewrite is required to swap origins beyond `ApiClient` credentials and the login call.
 
@@ -32,13 +32,13 @@ The SPA already:
 1. Implements [api-contract.md](./api-contract.md) against this origin.
 2. Uses `PUBLIC_API_BASE=/v1` (or an absolute `…/v1`).
 3. Sets `credentials: 'include'` in `ApiClient`. It does not send `Authorization`.
-4. Posts `{ username, password, rememberMe }` on login. “Remember me” is checked by default.
-5. Treats `401 unauthorized` as sign-out (clears the username cache, redirects to `/login`).
+4. Posts `{ email, password, rememberMe }` on login. “Remember me” is checked by default.
+5. Treats `401 unauthorized` as sign-out (clears the email cache, redirects to `/login`).
 6. Has deleted `src/routes/mock/v1/`, `$lib/api/fixtures/`, and `$lib/api/mock/`.
 
 The API process must list the SPA origin in `SPA_ORIGIN` (comma-separated). Cookies will not be stored if CORS is `*`. On the owner’s machine that is the Vite origin (`:5173`), the Playwright preview (`:4173`), and the local production Node server (`http://localhost:3000`); see [ADR-0011](./adr/0011-local-production-host.md) and [local-production.md](./local-production.md).
 
-A fresh production database has no users. First daily login is the SPA **register** tab (`POST /v1/auth/register`), not a bootstrap account. Seed users (`alexdev` / `maya` / `rio`) exist only on `vynno_dev`.
+A fresh production database has no users. First daily login is the SPA **register** tab (`POST /v1/auth/register`), not a bootstrap account. Seed users (`alexdev@vynno.local` / `maya@vynno.local` / `rio@vynno.local`) exist only on `vynno_dev`.
 
 Playwright still defaults to `API_ORIGIN` (`:8080`). While the daily binary is on that port, set `E2E_API_BASE=http://localhost:8081/v1` and run `vynno-api` `scripts/dev`, or e2e will register throwaway users into production. Do not change committed `API_ORIGIN` — that is the production BFF.
 

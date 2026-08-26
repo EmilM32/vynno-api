@@ -18,3 +18,4 @@ Template: [TEMPLATE.md](./TEMPLATE.md). Process: [../working-agreement.md](../wo
 | [swagger.md](./swagger.md) | Done | OpenAPI from Gin routes + Swagger UI |
 | [session-edit.md](./session-edit.md) | Done | LOG-6 / LOG-7: edit, delete, manual entry |
 | [session-pagination.md](./session-pagination.md) | Done | PAGE: cursor pagination on GET /sessions |
+| [email-login.md](./email-login.md) | Done | Email login identifier; drop handle |

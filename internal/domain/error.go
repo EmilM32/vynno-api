@@ -18,7 +18,7 @@ const (
 	CodeInvalidTransition       = "invalid_transition"
 	CodeUnauthorized            = "unauthorized"
 	CodeInvalidCredentials      = "invalid_credentials"
-	CodeUsernameInUse           = "username_in_use"
+	CodeEmailInUse              = "email_in_use"
 )
 
 // Error is a contract error code plus a log/DevTools message.
@@ -103,9 +103,9 @@ func ErrUnauthorized() *Error {
 }
 
 func ErrInvalidCredentials() *Error {
-	return NewError(CodeInvalidCredentials, "Username or password is incorrect.")
+	return NewError(CodeInvalidCredentials, "Email or password is incorrect.")
 }
 
-func ErrUsernameInUse() *Error {
-	return NewError(CodeUsernameInUse, "That username is already in use.")
+func ErrEmailInUse() *Error {
+	return NewError(CodeEmailInUse, "That email is already in use.")
 }

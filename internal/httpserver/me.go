@@ -27,6 +27,9 @@ func (u *updateProfileBody) UnmarshalJSON(b []byte) error {
 	if _, ok := raw["handle"]; ok {
 		return fmt.Errorf("handle cannot be updated")
 	}
+	if _, ok := raw["email"]; ok {
+		return fmt.Errorf("email cannot be updated")
+	}
 	if _, ok := raw["avatarUrl"]; ok {
 		return fmt.Errorf("use PUT /me/avatar to set a photo")
 	}

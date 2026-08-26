@@ -71,7 +71,7 @@ Operator API docs (generated from the Gin routes): [http://localhost:8080/swagge
 ```sh
 ./scripts/dev                # go run on 127.0.0.1:8081 → vynno_dev; Swagger at http://127.0.0.1:8081/swagger/
 ./scripts/stop --dev         # playground API only; Postgres stays up
-./scripts/reset              # wipe vynno_dev → alexdev + Identity
+./scripts/reset              # wipe vynno_dev → alexdev@vynno.local + Identity
 ./scripts/seed               # wipe vynno_dev → 3 demo accounts with history
 ```
 
@@ -81,11 +81,11 @@ Foreground: Ctrl-C in the `scripts/dev` terminal stops it. If `:8081` is already
 
 Demo logins after `scripts/seed` (playground only):
 
-| Username | Password | Notes |
+| Email | Password | Notes |
 | --- | --- | --- |
-| `alexdev` | `BOOTSTRAP_PASSWORD` from `.env` | Power user, live session, ~10 weeks of logs |
-| `maya` | `SEED_PASSWORD` (default `local-dev-password`) | Contractor, idle |
-| `rio` | same as Maya | Short history |
+| `alexdev@vynno.local` | `BOOTSTRAP_PASSWORD` from `.env` | Power user, live session, ~10 weeks of logs |
+| `maya@vynno.local` | `SEED_PASSWORD` (default `local-dev-password`) | Contractor, idle |
+| `rio@vynno.local` | same as Maya | Short history |
 
 ```sh
 go test ./...

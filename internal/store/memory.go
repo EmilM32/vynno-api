@@ -19,7 +19,7 @@ type memAvatar struct {
 
 type memAccount struct {
 	id            uuid.UUID
-	username      string
+	email         string
 	passwordHash  string
 	profile       domain.Profile
 	projects      map[uuid.UUID]domain.Project
@@ -80,7 +80,9 @@ func (m *Memory) GetProfile(_ context.Context, userID uuid.UUID) (domain.Profile
 	if !ok {
 		return domain.Profile{}, domain.ErrNotFound()
 	}
-	return a.profile, nil
+	p := a.profile
+	p.Email = a.email
+	return p, nil
 }
 
 func (m *Memory) CreateProfile(_ context.Context, userID uuid.UUID, p domain.Profile) error {
@@ -158,15 +160,15 @@ func (m *Memory) GetAvatar(_ context.Context, id uuid.UUID) (domain.Avatar, erro
 	}, nil
 }
 
-func (m *Memory) GetAccountByUsername(_ context.Context, username string) (Account, error) {
+func (m *Memory) GetAccountByEmail(_ context.Context, email string) (Account, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	id, ok := m.byName[username]
+	id, ok := m.byName[email]
 	if !ok {
 		return Account{}, domain.ErrNotFound()
 	}
 	a := m.accounts[id]
-	return Account{ID: a.id, Username: a.username, PasswordHash: a.passwordHash}, nil
+	return Account{ID: a.id, Email: a.email, PasswordHash: a.passwordHash}, nil
 }
 
 func (m *Memory) GetAccountByID(_ context.Context, id uuid.UUID) (Account, error) {
@@ -176,57 +178,57 @@ func (m *Memory) GetAccountByID(_ context.Context, id uuid.UUID) (Account, error
 	if !ok {
 		return Account{}, domain.ErrNotFound()
 	}
-	return Account{ID: a.id, Username: a.username, PasswordHash: a.passwordHash}, nil
+	return Account{ID: a.id, Email: a.email, PasswordHash: a.passwordHash}, nil
 }
 
 func (m *Memory) CreateAccount(_ context.Context, acc Account) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if acc.Username != "" {
-		if _, taken := m.byName[acc.Username]; taken {
-			return domain.ErrUsernameInUse()
+	if acc.Email != "" {
+		if _, taken := m.byName[acc.Email]; taken {
+			return domain.ErrEmailInUse()
 		}
 	}
 	if _, exists := m.accounts[acc.ID]; exists {
-		return domain.ErrUsernameInUse()
+		return domain.ErrEmailInUse()
 	}
 	m.accounts[acc.ID] = &memAccount{
 		id:            acc.ID,
-		username:      acc.Username,
+		email:         acc.Email,
 		passwordHash:  acc.PasswordHash,
 		projects:      map[uuid.UUID]domain.Project{},
 		activityTypes: map[uuid.UUID]domain.ActivityType{},
 		sessions:      map[uuid.UUID]domain.Session{},
 	}
-	if acc.Username != "" {
-		m.byName[acc.Username] = acc.ID
+	if acc.Email != "" {
+		m.byName[acc.Email] = acc.ID
 	}
 	return nil
 }
 
-func (m *Memory) SetAccountCredentials(_ context.Context, id uuid.UUID, username, passwordHash string) error {
+func (m *Memory) SetAccountCredentials(_ context.Context, id uuid.UUID, email, passwordHash string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.account(id)
 	if !ok {
 		return domain.ErrNotFound()
 	}
-	if other, taken := m.byName[username]; taken && other != id {
-		return domain.ErrUsernameInUse()
+	if other, taken := m.byName[email]; taken && other != id {
+		return domain.ErrEmailInUse()
 	}
-	if a.username != "" && a.username != username {
-		delete(m.byName, a.username)
+	if a.email != "" && a.email != email {
+		delete(m.byName, a.email)
 	}
-	a.username = username
+	a.email = email
 	a.passwordHash = passwordHash
-	m.byName[username] = id
+	m.byName[email] = id
 	return nil
 }
 
-func (m *Memory) UsernameTaken(_ context.Context, username string, excludeID uuid.UUID) (bool, error) {
+func (m *Memory) EmailTaken(_ context.Context, email string, excludeID uuid.UUID) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	id, ok := m.byName[username]
+	id, ok := m.byName[email]
 	return ok && id != excludeID, nil
 }
 
@@ -639,20 +641,20 @@ func (m *Memory) FirstUserID(_ context.Context) (uuid.UUID, bool, error) {
 	return uuid.Nil, false, nil
 }
 
-func (m *Memory) Bootstrap(_ context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error {
+func (m *Memory) Bootstrap(_ context.Context, userID uuid.UUID, email, passwordHash string, profile domain.Profile, project domain.Project) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	if a, ok := m.accounts[userID]; ok {
 		if a.passwordHash != "" {
 			return nil
 		}
-		if username != "" {
-			if other, taken := m.byName[username]; taken && other != userID {
-				return domain.ErrUsernameInUse()
+		if email != "" {
+			if other, taken := m.byName[email]; taken && other != userID {
+				return domain.ErrEmailInUse()
 			}
-			a.username = username
+			a.email = email
 			a.passwordHash = passwordHash
-			m.byName[username] = userID
+			m.byName[email] = userID
 		}
 		return nil
 	}
@@ -666,15 +668,15 @@ func (m *Memory) Bootstrap(_ context.Context, userID uuid.UUID, username, passwo
 	}
 	m.accounts[userID] = &memAccount{
 		id:            userID,
-		username:      username,
+		email:         email,
 		passwordHash:  passwordHash,
 		profile:       profile,
 		projects:      map[uuid.UUID]domain.Project{pid: project},
 		activityTypes: map[uuid.UUID]domain.ActivityType{},
 		sessions:      map[uuid.UUID]domain.Session{},
 	}
-	if username != "" {
-		m.byName[username] = userID
+	if email != "" {
+		m.byName[email] = userID
 	}
 	return nil
 }

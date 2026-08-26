@@ -33,6 +33,24 @@ func (q *Queries) DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) erro
 	return err
 }
 
+const emailInUse = `-- name: EmailInUse :one
+SELECT EXISTS(
+    SELECT 1 FROM users WHERE email = $1 AND id <> $2
+)::boolean
+`
+
+type EmailInUseParams struct {
+	Email string
+	ID    uuid.UUID
+}
+
+func (q *Queries) EmailInUse(ctx context.Context, arg EmailInUseParams) (bool, error) {
+	row := q.db.QueryRowContext(ctx, emailInUse, arg.Email, arg.ID)
+	var column_1 bool
+	err := row.Scan(&column_1)
+	return column_1, err
+}
+
 const firstUserID = `-- name: FirstUserID :one
 SELECT id FROM users ORDER BY id LIMIT 1
 `
@@ -70,26 +88,40 @@ func (q *Queries) GetAvatar(ctx context.Context, id uuid.UUID) (GetAvatarRow, er
 }
 
 const getProfile = `-- name: GetProfile :one
-SELECT display_name, handle, avatar_url
-FROM profiles
-WHERE user_id = $1
+SELECT p.display_name, p.avatar_url, u.email
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE p.user_id = $1
 `
 
 type GetProfileRow struct {
 	DisplayName string
-	Handle      string
 	AvatarUrl   sql.NullString
+	Email       string
 }
 
 func (q *Queries) GetProfile(ctx context.Context, userID uuid.UUID) (GetProfileRow, error) {
 	row := q.db.QueryRowContext(ctx, getProfile, userID)
 	var i GetProfileRow
-	err := row.Scan(&i.DisplayName, &i.Handle, &i.AvatarUrl)
+	err := row.Scan(&i.DisplayName, &i.AvatarUrl, &i.Email)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, password_hash
+FROM users
+WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getUserByEmail, email)
+	var i User
+	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
 	return i, err
 }
 
 const getUserByID = `-- name: GetUserByID :one
-SELECT id, username, password_hash
+SELECT id, email, password_hash
 FROM users
 WHERE id = $1
 `
@@ -97,20 +129,7 @@ WHERE id = $1
 func (q *Queries) GetUserByID(ctx context.Context, id uuid.UUID) (User, error) {
 	row := q.db.QueryRowContext(ctx, getUserByID, id)
 	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
-	return i, err
-}
-
-const getUserByUsername = `-- name: GetUserByUsername :one
-SELECT id, username, password_hash
-FROM users
-WHERE username = $1
-`
-
-func (q *Queries) GetUserByUsername(ctx context.Context, username sql.NullString) (User, error) {
-	row := q.db.QueryRowContext(ctx, getUserByUsername, username)
-	var i User
-	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
+	err := row.Scan(&i.ID, &i.Email, &i.PasswordHash)
 	return i, err
 }
 
@@ -137,39 +156,33 @@ func (q *Queries) InsertAvatar(ctx context.Context, arg InsertAvatarParams) erro
 }
 
 const insertProfile = `-- name: InsertProfile :exec
-INSERT INTO profiles (user_id, display_name, handle, avatar_url)
-VALUES ($1, $2, $3, $4)
+INSERT INTO profiles (user_id, display_name, avatar_url)
+VALUES ($1, $2, $3)
 `
 
 type InsertProfileParams struct {
 	UserID      uuid.UUID
 	DisplayName string
-	Handle      string
 	AvatarUrl   sql.NullString
 }
 
 func (q *Queries) InsertProfile(ctx context.Context, arg InsertProfileParams) error {
-	_, err := q.db.ExecContext(ctx, insertProfile,
-		arg.UserID,
-		arg.DisplayName,
-		arg.Handle,
-		arg.AvatarUrl,
-	)
+	_, err := q.db.ExecContext(ctx, insertProfile, arg.UserID, arg.DisplayName, arg.AvatarUrl)
 	return err
 }
 
 const insertUser = `-- name: InsertUser :exec
-INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3)
+INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3)
 `
 
 type InsertUserParams struct {
 	ID           uuid.UUID
-	Username     sql.NullString
+	Email        string
 	PasswordHash sql.NullString
 }
 
 func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
-	_, err := q.db.ExecContext(ctx, insertUser, arg.ID, arg.Username, arg.PasswordHash)
+	_, err := q.db.ExecContext(ctx, insertUser, arg.ID, arg.Email, arg.PasswordHash)
 	return err
 }
 
@@ -191,18 +204,18 @@ func (q *Queries) SetProfileAvatarURL(ctx context.Context, arg SetProfileAvatarU
 
 const setUserCredentials = `-- name: SetUserCredentials :exec
 UPDATE users
-SET username = $2, password_hash = $3
+SET email = $2, password_hash = $3
 WHERE id = $1
 `
 
 type SetUserCredentialsParams struct {
 	ID           uuid.UUID
-	Username     sql.NullString
+	Email        string
 	PasswordHash sql.NullString
 }
 
 func (q *Queries) SetUserCredentials(ctx context.Context, arg SetUserCredentialsParams) error {
-	_, err := q.db.ExecContext(ctx, setUserCredentials, arg.ID, arg.Username, arg.PasswordHash)
+	_, err := q.db.ExecContext(ctx, setUserCredentials, arg.ID, arg.Email, arg.PasswordHash)
 	return err
 }
 
@@ -210,7 +223,7 @@ const updateProfileDisplayName = `-- name: UpdateProfileDisplayName :one
 UPDATE profiles
 SET display_name = $2
 WHERE user_id = $1
-RETURNING display_name, handle, avatar_url
+RETURNING display_name, avatar_url
 `
 
 type UpdateProfileDisplayNameParams struct {
@@ -220,31 +233,12 @@ type UpdateProfileDisplayNameParams struct {
 
 type UpdateProfileDisplayNameRow struct {
 	DisplayName string
-	Handle      string
 	AvatarUrl   sql.NullString
 }
 
 func (q *Queries) UpdateProfileDisplayName(ctx context.Context, arg UpdateProfileDisplayNameParams) (UpdateProfileDisplayNameRow, error) {
 	row := q.db.QueryRowContext(ctx, updateProfileDisplayName, arg.UserID, arg.DisplayName)
 	var i UpdateProfileDisplayNameRow
-	err := row.Scan(&i.DisplayName, &i.Handle, &i.AvatarUrl)
+	err := row.Scan(&i.DisplayName, &i.AvatarUrl)
 	return i, err
-}
-
-const usernameInUse = `-- name: UsernameInUse :one
-SELECT EXISTS(
-    SELECT 1 FROM users WHERE username = $1 AND id <> $2
-)::boolean
-`
-
-type UsernameInUseParams struct {
-	Username sql.NullString
-	ID       uuid.UUID
-}
-
-func (q *Queries) UsernameInUse(ctx context.Context, arg UsernameInUseParams) (bool, error) {
-	row := q.db.QueryRowContext(ctx, usernameInUse, arg.Username, arg.ID)
-	var column_1 bool
-	err := row.Scan(&column_1)
-	return column_1, err
 }

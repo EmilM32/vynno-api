@@ -16,7 +16,7 @@ func testNow() time.Time {
 func testOpts() Options {
 	return Options{
 		Now:               testNow(),
-		BootstrapUsername: "alexdev",
+		BootstrapEmail:    "alexdev@vynno.local",
 		BootstrapPassword: "local-dev-password",
 		SeedPassword:      "local-dev-password",
 	}
@@ -31,8 +31,8 @@ func TestBuildReset(t *testing.T) {
 	if a.ID != store.DefaultUserID() {
 		t.Fatalf("id = %s", a.ID)
 	}
-	if a.Username != "alexdev" || a.Password != "local-dev-password" {
-		t.Fatalf("creds = %s / %s", a.Username, a.Password)
+	if a.Email != "alexdev@vynno.local" || a.Password != "local-dev-password" {
+		t.Fatalf("creds = %s / %s", a.Email, a.Password)
 	}
 	if len(a.Projects) != 1 || a.Projects[0].ID != store.DefaultProject().ID {
 		t.Fatalf("projects = %+v", a.Projects)
@@ -51,10 +51,10 @@ func TestBuildSeedInvariants(t *testing.T) {
 		t.Fatalf("accounts = %d", len(ds.Accounts))
 	}
 
-	wantUsers := []string{"alexdev", "maya", "rio"}
+	wantUsers := []string{"alexdev@vynno.local", "maya@vynno.local", "rio@vynno.local"}
 	for i, want := range wantUsers {
-		if ds.Accounts[i].Username != want {
-			t.Fatalf("account[%d] = %s", i, ds.Accounts[i].Username)
+		if ds.Accounts[i].Email != want {
+			t.Fatalf("account[%d] = %s", i, ds.Accounts[i].Email)
 		}
 	}
 	if ds.Accounts[0].ID != store.DefaultUserID() {
@@ -75,12 +75,12 @@ func TestBuildSeedInvariants(t *testing.T) {
 func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live bool) {
 	t.Helper()
 	if len(a.Projects) != projects {
-		t.Fatalf("%s projects = %d want %d", a.Username, len(a.Projects), projects)
+		t.Fatalf("%s projects = %d want %d", a.Email, len(a.Projects), projects)
 	}
 	n := len(a.Sessions)
-	t.Logf("%s: %d projects, %d sessions (live=%v)", a.Username, len(a.Projects), n, live)
+	t.Logf("%s: %d projects, %d sessions (live=%v)", a.Email, len(a.Projects), n, live)
 	if n < sessMin || n > sessMax {
-		t.Fatalf("%s sessions = %d want %d–%d", a.Username, n, sessMin, sessMax)
+		t.Fatalf("%s sessions = %d want %d–%d", a.Email, n, sessMin, sessMax)
 	}
 
 	active := 0
@@ -96,29 +96,29 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 			key := *p.Code
 			codes[key]++
 			if codes[key] > 1 {
-				t.Fatalf("%s duplicate code %s", a.Username, key)
+				t.Fatalf("%s duplicate code %s", a.Email, key)
 			}
 		}
 		if _, err := domain.NormalizeColor(p.Color); err != nil {
-			t.Fatalf("%s color %s: %v", a.Username, p.Color, err)
+			t.Fatalf("%s color %s: %v", a.Email, p.Color, err)
 		}
 		if p.Code != nil {
 			if _, err := domain.NormalizeCode(p.Code); err != nil {
-				t.Fatalf("%s code %s: %v", a.Username, *p.Code, err)
+				t.Fatalf("%s code %s: %v", a.Email, *p.Code, err)
 			}
 		}
 	}
 	if active < 1 {
-		t.Fatalf("%s has no active project", a.Username)
+		t.Fatalf("%s has no active project", a.Email)
 	}
 
 	typeIDs := map[string]struct{}{}
 	for _, at := range a.ActivityTypes {
 		if _, err := domain.NormalizeActivityTypeName(at.Name); err != nil {
-			t.Fatalf("%s activity name %s: %v", a.Username, at.Name, err)
+			t.Fatalf("%s activity name %s: %v", a.Email, at.Name, err)
 		}
 		if _, err := domain.NormalizeActivityColor(at.Color); err != nil {
-			t.Fatalf("%s activity color %s: %v", a.Username, at.Color, err)
+			t.Fatalf("%s activity color %s: %v", a.Email, at.Color, err)
 		}
 		typeIDs[at.ID] = struct{}{}
 	}
@@ -133,42 +133,42 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 		if domain.IsLiveStatus(s.Status) {
 			liveCount++
 			if s.Status != domain.StatusActive {
-				t.Fatalf("%s live status = %s", a.Username, s.Status)
+				t.Fatalf("%s live status = %s", a.Email, s.Status)
 			}
 			if s.EndedAt != nil {
-				t.Fatalf("%s live session has endedAt", a.Username)
+				t.Fatalf("%s live session has endedAt", a.Email)
 			}
 			if s.PausedAt != nil {
-				t.Fatalf("%s live session has pausedAt", a.Username)
+				t.Fatalf("%s live session has pausedAt", a.Email)
 			}
 		} else {
 			if s.Status != domain.StatusStopped {
-				t.Fatalf("%s status = %s", a.Username, s.Status)
+				t.Fatalf("%s status = %s", a.Email, s.Status)
 			}
 			if s.EndedAt == nil || !s.EndedAt.After(s.StartedAt) {
-				t.Fatalf("%s stopped times %s → %v", a.Username, s.StartedAt, s.EndedAt)
+				t.Fatalf("%s stopped times %s → %v", a.Email, s.StartedAt, s.EndedAt)
 			}
 			if s.PausedAt != nil {
-				t.Fatalf("%s stopped session still paused", a.Username)
+				t.Fatalf("%s stopped session still paused", a.Email)
 			}
 			wall := s.EndedAt.Sub(s.StartedAt).Milliseconds()
 			if s.PausedMs < 0 || s.PausedMs >= wall {
-				t.Fatalf("%s pausedMs=%d wall=%d", a.Username, s.PausedMs, wall)
+				t.Fatalf("%s pausedMs=%d wall=%d", a.Email, s.PausedMs, wall)
 			}
 		}
 		if s.ActivityTypeID != nil {
 			if _, ok := typeIDs[*s.ActivityTypeID]; !ok {
-				t.Fatalf("%s activityTypeId %s not in account types", a.Username, *s.ActivityTypeID)
+				t.Fatalf("%s activityTypeId %s not in account types", a.Email, *s.ActivityTypeID)
 			}
 		}
 		if s.Note == "" {
-			t.Fatalf("%s empty note (want Untitled session)", a.Username)
+			t.Fatalf("%s empty note (want Untitled session)", a.Email)
 		}
 		if archivedIDs[s.ProjectID] && s.Status != domain.StatusStopped {
-			t.Fatalf("%s live session on archived project", a.Username)
+			t.Fatalf("%s live session on archived project", a.Email)
 		}
 		if i > 0 && s.StartedAt.Before(prevEnd) {
-			t.Fatalf("%s overlap: %s starts before previous end %s", a.Username, s.StartedAt, prevEnd)
+			t.Fatalf("%s overlap: %s starts before previous end %s", a.Email, s.StartedAt, prevEnd)
 		}
 		if s.EndedAt != nil {
 			prevEnd = *s.EndedAt
@@ -177,10 +177,10 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 		}
 	}
 	if live && liveCount != 1 {
-		t.Fatalf("%s live sessions = %d", a.Username, liveCount)
+		t.Fatalf("%s live sessions = %d", a.Email, liveCount)
 	}
 	if !live && liveCount != 0 {
-		t.Fatalf("%s unexpected live sessions = %d", a.Username, liveCount)
+		t.Fatalf("%s unexpected live sessions = %d", a.Email, liveCount)
 	}
 }
 
@@ -193,10 +193,10 @@ func TestBuildSeedDeterministicShape(t *testing.T) {
 	}
 	for i := range a.Accounts {
 		if len(a.Accounts[i].Sessions) != len(b.Accounts[i].Sessions) {
-			t.Fatalf("%s session count %d vs %d", a.Accounts[i].Username, len(a.Accounts[i].Sessions), len(b.Accounts[i].Sessions))
+			t.Fatalf("%s session count %d vs %d", a.Accounts[i].Email, len(a.Accounts[i].Sessions), len(b.Accounts[i].Sessions))
 		}
 		if len(a.Accounts[i].Projects) != len(b.Accounts[i].Projects) {
-			t.Fatalf("%s project count drifted", a.Accounts[i].Username)
+			t.Fatalf("%s project count drifted", a.Accounts[i].Email)
 		}
 	}
 }

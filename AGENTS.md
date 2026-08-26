@@ -44,7 +44,7 @@ cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_AP
 ./scripts/dev                 # go run on :8081 → vynno_dev
 ./scripts/stop --dev          # playground API only (leftover :8081 bind)
 ./scripts/backup              # pg_dump vynno into backups/
-./scripts/reset               # wipe vynno_dev → alexdev + Identity
+./scripts/reset               # wipe vynno_dev → alexdev@vynno.local + Identity
 ./scripts/seed                # wipe vynno_dev → 3 demo users
 ./scripts/setup               # git config core.hooksPath .githooks (pre-push runs go test ./...)
 go test ./...

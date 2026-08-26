@@ -1,27 +1,37 @@
 package domain
 
 import (
-	"regexp"
+	"net/mail"
 	"strings"
 	"unicode/utf8"
 )
 
 const (
-	usernameMin = 3
-	usernameMax = 32
+	emailMin    = 3
+	emailMax    = 254
 	passwordMin = 8
 	passwordMax = 128
 )
 
-var usernamePattern = regexp.MustCompile(`^[a-z0-9_]{3,32}$`)
-
-// NormalizeUsername trims, lowercases, and checks ^[a-z0-9_]{3,32}$.
-func NormalizeUsername(raw string) (string, error) {
-	u := strings.ToLower(strings.TrimSpace(raw))
-	if !usernamePattern.MatchString(u) {
-		return "", ErrInvalidBody("Username must be 3–32 characters: lowercase letters, digits, or underscore.")
+// NormalizeEmail trims, lowercases, and checks a single address whose domain contains a dot.
+func NormalizeEmail(raw string) (string, error) {
+	s := strings.ToLower(strings.TrimSpace(raw))
+	n := utf8.RuneCountInString(s)
+	if n < emailMin || n > emailMax {
+		return "", ErrInvalidBody("Email must be 3–254 characters.")
 	}
-	return u, nil
+	addr, err := mail.ParseAddress(s)
+	if err != nil || addr.Address != s {
+		return "", ErrInvalidBody("Email is not valid.")
+	}
+	at := strings.LastIndex(s, "@")
+	if at <= 0 || at == len(s)-1 {
+		return "", ErrInvalidBody("Email is not valid.")
+	}
+	if !strings.Contains(s[at+1:], ".") {
+		return "", ErrInvalidBody("Email is not valid.")
+	}
+	return s, nil
 }
 
 // NormalizePassword checks length only. The caller hashes the result.
@@ -33,7 +43,7 @@ func NormalizePassword(raw string) (string, error) {
 	return raw, nil
 }
 
-// NormalizeDisplayName trims a register display name. Empty becomes "".
+// NormalizeDisplayName trims a display name. Empty becomes "".
 func NormalizeDisplayName(raw string) (string, error) {
 	n := strings.TrimSpace(raw)
 	if n == "" {
@@ -43,11 +53,6 @@ func NormalizeDisplayName(raw string) (string, error) {
 		return "", ErrInvalidBody("Display name must be at most 80 characters.")
 	}
 	return n, nil
-}
-
-// HandleFromUsername is the default profile handle.
-func HandleFromUsername(username string) string {
-	return "@" + username
 }
 
 // RememberMe defaults to true when the field is omitted.

@@ -9,10 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
-// Account is a login identity. Username and hash are never on the wire.
+// Account is a login identity. The password hash is never on the wire.
 type Account struct {
 	ID           uuid.UUID
-	Username     string
+	Email        string
 	PasswordHash string
 }
 
@@ -33,11 +33,11 @@ type Store interface {
 	DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error
 	GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, error)
 
-	GetAccountByUsername(ctx context.Context, username string) (Account, error)
+	GetAccountByEmail(ctx context.Context, email string) (Account, error)
 	GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error)
 	CreateAccount(ctx context.Context, a Account) error
-	SetAccountCredentials(ctx context.Context, id uuid.UUID, username, passwordHash string) error
-	UsernameTaken(ctx context.Context, username string, excludeID uuid.UUID) (bool, error)
+	SetAccountCredentials(ctx context.Context, id uuid.UUID, email, passwordHash string) error
+	EmailTaken(ctx context.Context, email string, excludeID uuid.UUID) (bool, error)
 
 	CreateToken(ctx context.Context, tok Token) error
 	GetTokenByHash(ctx context.Context, hash string) (Token, error)
@@ -68,7 +68,7 @@ type Store interface {
 	DeleteSession(ctx context.Context, userID, id uuid.UUID) error
 
 	FirstUserID(ctx context.Context) (uuid.UUID, bool, error)
-	Bootstrap(ctx context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error
+	Bootstrap(ctx context.Context, userID uuid.UUID, email, passwordHash string, profile domain.Profile, project domain.Project) error
 }
 
 func encodeTags(tags []string) (json.RawMessage, error) {

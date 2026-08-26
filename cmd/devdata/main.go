@@ -36,9 +36,9 @@ func run(args []string) error {
 	if cfg.BootstrapPassword == "" {
 		return fmt.Errorf("BOOTSTRAP_PASSWORD is required for seed/reset")
 	}
-	username, err := domain.NormalizeUsername(cfg.BootstrapUsername)
+	email, err := domain.NormalizeEmail(cfg.BootstrapEmail)
 	if err != nil {
-		return fmt.Errorf("bootstrap username: %w", err)
+		return fmt.Errorf("bootstrap email: %w", err)
 	}
 	password, err := domain.NormalizePassword(cfg.BootstrapPassword)
 	if err != nil {
@@ -65,7 +65,7 @@ func run(args []string) error {
 	}
 
 	opts := devdata.Options{
-		BootstrapUsername: username,
+		BootstrapEmail:    email,
 		BootstrapPassword: password,
 		SeedPassword:      seedPass,
 	}
@@ -87,8 +87,8 @@ func run(args []string) error {
 
 	fmt.Printf("%s\n", args[0])
 	for _, acc := range ds.Accounts {
-		fmt.Printf("  %-10s  %s  %s  (%d projects, %d sessions)\n",
-			acc.Username, acc.Password, acc.Blurb, len(acc.Projects), len(acc.Sessions))
+		fmt.Printf("  %-24s  %s  %s  (%d projects, %d sessions)\n",
+			acc.Email, acc.Password, acc.Blurb, len(acc.Projects), len(acc.Sessions))
 	}
 	return nil
 }

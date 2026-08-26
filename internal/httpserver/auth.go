@@ -11,14 +11,14 @@ import (
 )
 
 type registerBody struct {
-	Username    string  `json:"username"`
+	Email       string  `json:"email"`
 	Password    string  `json:"password"`
 	DisplayName *string `json:"displayName"`
 	RememberMe  *bool   `json:"rememberMe"`
 }
 
 type loginBody struct {
-	Username   string `json:"username"`
+	Email      string `json:"email"`
 	Password   string `json:"password"`
 	RememberMe *bool  `json:"rememberMe"`
 }
@@ -34,7 +34,7 @@ func (s *Server) register(c *gin.Context) {
 		return
 	}
 	res, err := s.svc.Register(c.Request.Context(), service.RegisterInput{
-		Username:    body.Username,
+		Email:       body.Email,
 		Password:    body.Password,
 		DisplayName: body.DisplayName,
 		RememberMe:  body.RememberMe,
@@ -54,7 +54,7 @@ func (s *Server) login(c *gin.Context) {
 		return
 	}
 	res, err := s.svc.Login(c.Request.Context(), service.LoginInput{
-		Username:   body.Username,
+		Email:      body.Email,
 		Password:   body.Password,
 		RememberMe: body.RememberMe,
 	})

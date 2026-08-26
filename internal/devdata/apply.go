@@ -35,31 +35,31 @@ func Apply(ctx context.Context, s store.Store, ds Dataset) error {
 	for _, acc := range ds.Accounts {
 		hash, err := bcrypt.GenerateFromPassword([]byte(acc.Password), bcrypt.DefaultCost)
 		if err != nil {
-			return fmt.Errorf("hash %s: %w", acc.Username, err)
+			return fmt.Errorf("hash %s: %w", acc.Email, err)
 		}
 		if err := s.CreateAccount(ctx, store.Account{
 			ID:           acc.ID,
-			Username:     acc.Username,
+			Email:        acc.Email,
 			PasswordHash: string(hash),
 		}); err != nil {
-			return fmt.Errorf("account %s: %w", acc.Username, err)
+			return fmt.Errorf("account %s: %w", acc.Email, err)
 		}
 		if err := s.CreateProfile(ctx, acc.ID, acc.Profile); err != nil {
-			return fmt.Errorf("profile %s: %w", acc.Username, err)
+			return fmt.Errorf("profile %s: %w", acc.Email, err)
 		}
 		for _, p := range acc.Projects {
 			if _, err := s.CreateProject(ctx, acc.ID, p); err != nil {
-				return fmt.Errorf("project %s/%s: %w", acc.Username, p.Name, err)
+				return fmt.Errorf("project %s/%s: %w", acc.Email, p.Name, err)
 			}
 		}
 		for _, a := range acc.ActivityTypes {
 			if _, err := s.CreateActivityType(ctx, acc.ID, a); err != nil {
-				return fmt.Errorf("activity type %s/%s: %w", acc.Username, a.Name, err)
+				return fmt.Errorf("activity type %s/%s: %w", acc.Email, a.Name, err)
 			}
 		}
 		for _, sess := range acc.Sessions {
 			if _, err := s.CreateSession(ctx, acc.ID, sess); err != nil {
-				return fmt.Errorf("session %s/%s: %w", acc.Username, sess.ID, err)
+				return fmt.Errorf("session %s/%s: %w", acc.Email, sess.ID, err)
 			}
 		}
 	}

@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-21  
+**Last updated:** 2026-08-26  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -122,7 +122,7 @@ Plan: [plans/profile-avatar.md](./plans/profile-avatar.md) (Done).
 
 Plan: [plans/dev-data.md](./plans/dev-data.md).
 
-- [x] `scripts/reset` — wipe `vynno_dev`, restore bootstrap `alexdev` + Identity
+- [x] `scripts/reset` — wipe `vynno_dev`, restore bootstrap `alexdev@vynno.local` + Identity
 - [x] `scripts/seed` — wipe `vynno_dev`, load three isolated accounts with production-like history
 - [x] Generator lives in `internal/devdata`; not imported by `cmd/api`
 
@@ -158,6 +158,14 @@ Plan: [plans/session-pagination.md](./plans/session-pagination.md). ADR: [ADR-00
 - [x] Contract amendment: `GET /sessions` `{ items, nextCursor }`; `limit` default 20, max 100; opaque `cursor`
 - [x] Keyset on `(started_at, id)`; Memory store matches
 - [x] Frontend pairing (first-page seed, Logs infinite scroll, period drain)
+
+### Email login identifier
+
+Plan: [plans/email-login.md](./plans/email-login.md). Amends [ADR-0008](./adr/0008-authentication.md).
+
+- [x] Contract: `email` on register/login and `ProfileDto`; drop `username` / `handle`; `email_in_use`
+- [x] Display name may be empty; chrome shows email when unset
+- [x] Frontend pairing (login/register, Settings, SideNav)
 
 ### Local production runtime
 

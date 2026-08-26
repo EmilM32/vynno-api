@@ -12,7 +12,7 @@ const isoMilli = "2006-01-02T15:04:05.000Z07:00"
 
 type profileDTO struct {
 	DisplayName string  `json:"displayName"`
-	Handle      string  `json:"handle"`
+	Email       string  `json:"email"`
 	AvatarURL   *string `json:"avatarUrl"`
 }
 
@@ -284,7 +284,7 @@ func (u *updateActivityTypeBody) UnmarshalJSON(b []byte) error {
 }
 
 func (s *Server) toProfileDTO(p domain.Profile) profileDTO {
-	return profileDTO{DisplayName: p.DisplayName, Handle: p.Handle, AvatarURL: s.absoluteAvatarURL(p.AvatarURL)}
+	return profileDTO{DisplayName: p.DisplayName, Email: p.Email, AvatarURL: s.absoluteAvatarURL(p.AvatarURL)}
 }
 
 func (s *Server) absoluteAvatarURL(stored *string) *string {

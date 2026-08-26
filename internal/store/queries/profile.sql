@@ -1,43 +1,44 @@
 -- name: GetProfile :one
-SELECT display_name, handle, avatar_url
-FROM profiles
-WHERE user_id = $1;
+SELECT p.display_name, p.avatar_url, u.email
+FROM profiles p
+JOIN users u ON u.id = p.user_id
+WHERE p.user_id = $1;
 
 -- name: CountUsers :one
 SELECT count(*)::bigint FROM users;
 
 -- name: InsertUser :exec
-INSERT INTO users (id, username, password_hash) VALUES ($1, $2, $3);
+INSERT INTO users (id, email, password_hash) VALUES ($1, $2, $3);
 
--- name: GetUserByUsername :one
-SELECT id, username, password_hash
+-- name: GetUserByEmail :one
+SELECT id, email, password_hash
 FROM users
-WHERE username = $1;
+WHERE email = $1;
 
 -- name: GetUserByID :one
-SELECT id, username, password_hash
+SELECT id, email, password_hash
 FROM users
 WHERE id = $1;
 
 -- name: SetUserCredentials :exec
 UPDATE users
-SET username = $2, password_hash = $3
+SET email = $2, password_hash = $3
 WHERE id = $1;
 
--- name: UsernameInUse :one
+-- name: EmailInUse :one
 SELECT EXISTS(
-    SELECT 1 FROM users WHERE username = $1 AND id <> $2
+    SELECT 1 FROM users WHERE email = $1 AND id <> $2
 )::boolean;
 
 -- name: InsertProfile :exec
-INSERT INTO profiles (user_id, display_name, handle, avatar_url)
-VALUES ($1, $2, $3, $4);
+INSERT INTO profiles (user_id, display_name, avatar_url)
+VALUES ($1, $2, $3);
 
 -- name: UpdateProfileDisplayName :one
 UPDATE profiles
 SET display_name = $2
 WHERE user_id = $1
-RETURNING display_name, handle, avatar_url;
+RETURNING display_name, avatar_url;
 
 -- name: SetProfileAvatarURL :exec
 UPDATE profiles

@@ -16,36 +16,36 @@ func TestApplyMemory(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, acc := range ds.Accounts {
-		got, err := mem.GetAccountByUsername(ctx, acc.Username)
+		got, err := mem.GetAccountByEmail(ctx, acc.Email)
 		if err != nil {
-			t.Fatalf("lookup %s: %v", acc.Username, err)
+			t.Fatalf("lookup %s: %v", acc.Email, err)
 		}
 		if err := bcrypt.CompareHashAndPassword([]byte(got.PasswordHash), []byte(acc.Password)); err != nil {
-			t.Fatalf("password %s: %v", acc.Username, err)
+			t.Fatalf("password %s: %v", acc.Email, err)
 		}
 		projects, err := mem.ListProjects(ctx, acc.ID, true)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(projects) != len(acc.Projects) {
-			t.Fatalf("%s projects stored %d want %d", acc.Username, len(projects), len(acc.Projects))
+			t.Fatalf("%s projects stored %d want %d", acc.Email, len(projects), len(acc.Projects))
 		}
 		sessions, err := mem.ListSessions(ctx, acc.ID, nil, 10000, "")
 		if err != nil {
 			t.Fatal(err)
 		}
 		if len(sessions.Items) != len(acc.Sessions) {
-			t.Fatalf("%s sessions stored %d want %d", acc.Username, len(sessions.Items), len(acc.Sessions))
+			t.Fatalf("%s sessions stored %d want %d", acc.Email, len(sessions.Items), len(acc.Sessions))
 		}
 		_, live, err := mem.GetLiveSession(ctx, acc.ID)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if acc.Username == "alexdev" && !live {
+		if acc.Email == "alexdev@vynno.local" && !live {
 			t.Fatal("alexdev should have a live session")
 		}
-		if acc.Username != "alexdev" && live {
-			t.Fatalf("%s should be idle", acc.Username)
+		if acc.Email != "alexdev@vynno.local" && live {
+			t.Fatalf("%s should be idle", acc.Email)
 		}
 	}
 }

@@ -1,21 +1,38 @@
 package domain
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
-func TestNormalizeUsername(t *testing.T) {
+func TestNormalizeEmail(t *testing.T) {
 	t.Parallel()
-	got, err := NormalizeUsername("  Alex_Dev  ")
+	got, err := NormalizeEmail("  Alex@Example.COM  ")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got != "alex_dev" {
+	if got != "alex@example.com" {
 		t.Fatalf("got %q", got)
 	}
-	if _, err := NormalizeUsername("ab"); err == nil {
+
+	if _, err := NormalizeEmail("ab"); err == nil {
 		t.Fatal("expected too short")
 	}
-	if _, err := NormalizeUsername("Alex-Dev"); err == nil {
-		t.Fatal("expected hyphen rejected")
+	if _, err := NormalizeEmail("not-an-email"); err == nil {
+		t.Fatal("expected missing @")
+	}
+	if _, err := NormalizeEmail("Name <alex@example.com>"); err == nil {
+		t.Fatal("expected display-name form rejected")
+	}
+	if _, err := NormalizeEmail("user@localhost"); err == nil {
+		t.Fatal("expected domain without dot rejected")
+	}
+	if _, err := NormalizeEmail("alexdev@vynno.local"); err != nil {
+		t.Fatalf("seed email: %v", err)
+	}
+	long := strings.Repeat("a", 251) + "@b.c"
+	if _, err := NormalizeEmail(long); err == nil {
+		t.Fatal("expected too long")
 	}
 }
 

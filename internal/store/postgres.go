@@ -29,7 +29,7 @@ func (p *Postgres) GetProfile(ctx context.Context, userID uuid.UUID) (domain.Pro
 	}
 	return domain.Profile{
 		DisplayName: row.DisplayName,
-		Handle:      row.Handle,
+		Email:       row.Email,
 		AvatarURL:   nullStringPtr(row.AvatarUrl),
 	}, nil
 }
@@ -38,7 +38,6 @@ func (p *Postgres) CreateProfile(ctx context.Context, userID uuid.UUID, profile 
 	return p.q.InsertProfile(ctx, sqlcgen.InsertProfileParams{
 		UserID:      userID,
 		DisplayName: profile.DisplayName,
-		Handle:      profile.Handle,
 		AvatarUrl:   ptrNullString(profile.AvatarURL),
 	})
 }
@@ -114,8 +113,8 @@ func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, 
 	}, nil
 }
 
-func (p *Postgres) GetAccountByUsername(ctx context.Context, username string) (Account, error) {
-	row, err := p.q.GetUserByUsername(ctx, sql.NullString{String: username, Valid: true})
+func (p *Postgres) GetAccountByEmail(ctx context.Context, email string) (Account, error) {
+	row, err := p.q.GetUserByEmail(ctx, email)
 	if err != nil {
 		return Account{}, mapNotFound(err)
 	}
@@ -133,24 +132,24 @@ func (p *Postgres) GetAccountByID(ctx context.Context, id uuid.UUID) (Account, e
 func (p *Postgres) CreateAccount(ctx context.Context, a Account) error {
 	err := p.q.InsertUser(ctx, sqlcgen.InsertUserParams{
 		ID:           a.ID,
-		Username:     sql.NullString{String: a.Username, Valid: a.Username != ""},
+		Email:        a.Email,
 		PasswordHash: sql.NullString{String: a.PasswordHash, Valid: a.PasswordHash != ""},
 	})
 	return mapUnique(err)
 }
 
-func (p *Postgres) SetAccountCredentials(ctx context.Context, id uuid.UUID, username, passwordHash string) error {
+func (p *Postgres) SetAccountCredentials(ctx context.Context, id uuid.UUID, email, passwordHash string) error {
 	return mapUnique(p.q.SetUserCredentials(ctx, sqlcgen.SetUserCredentialsParams{
 		ID:           id,
-		Username:     sql.NullString{String: username, Valid: true},
+		Email:        email,
 		PasswordHash: sql.NullString{String: passwordHash, Valid: true},
 	}))
 }
 
-func (p *Postgres) UsernameTaken(ctx context.Context, username string, excludeID uuid.UUID) (bool, error) {
-	return p.q.UsernameInUse(ctx, sqlcgen.UsernameInUseParams{
-		Username: sql.NullString{String: username, Valid: true},
-		ID:       excludeID,
+func (p *Postgres) EmailTaken(ctx context.Context, email string, excludeID uuid.UUID) (bool, error) {
+	return p.q.EmailInUse(ctx, sqlcgen.EmailInUseParams{
+		Email: email,
+		ID:    excludeID,
 	})
 }
 
@@ -436,7 +435,7 @@ func (p *Postgres) FirstUserID(ctx context.Context) (uuid.UUID, bool, error) {
 	return id, true, nil
 }
 
-func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, username, passwordHash string, profile domain.Profile, project domain.Project) error {
+func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, email, passwordHash string, profile domain.Profile, project domain.Project) error {
 	existing, err := p.q.GetUserByID(ctx, userID)
 	if errors.Is(err, sql.ErrNoRows) {
 		n, err := p.q.CountUsers(ctx)
@@ -446,7 +445,7 @@ func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, username, pa
 		if n > 0 {
 			return nil
 		}
-		if err := p.CreateAccount(ctx, Account{ID: userID, Username: username, PasswordHash: passwordHash}); err != nil {
+		if err := p.CreateAccount(ctx, Account{ID: userID, Email: email, PasswordHash: passwordHash}); err != nil {
 			return err
 		}
 		if err := p.CreateProfile(ctx, userID, profile); err != nil {
@@ -461,13 +460,13 @@ func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, username, pa
 	if existing.PasswordHash.Valid && existing.PasswordHash.String != "" {
 		return nil
 	}
-	return p.SetAccountCredentials(ctx, userID, username, passwordHash)
+	return p.SetAccountCredentials(ctx, userID, email, passwordHash)
 }
 
 func accountFromUser(row sqlcgen.User) Account {
 	return Account{
 		ID:           row.ID,
-		Username:     nullStringValue(row.Username),
+		Email:        row.Email,
 		PasswordHash: nullStringValue(row.PasswordHash),
 	}
 }
@@ -556,8 +555,8 @@ func mapUnique(err error) error {
 			return domain.ErrNameInUse()
 		case "sessions_one_live_per_user":
 			return domain.ErrSessionAlreadyActive()
-		case "users_username_key":
-			return domain.ErrUsernameInUse()
+		case "users_email_key":
+			return domain.ErrEmailInUse()
 		}
 		return domain.ErrCodeInUse()
 	}

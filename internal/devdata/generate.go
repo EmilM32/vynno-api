@@ -14,13 +14,13 @@ const randSeed = 42
 
 // BuildReset is the empty-db bootstrap: one user, one active project, no sessions.
 func BuildReset(opts Options) Dataset {
-	username := opts.BootstrapUsername
-	if username == "" {
-		username = "alexdev"
+	email := opts.BootstrapEmail
+	if email == "" {
+		email = "alexdev@vynno.local"
 	}
 	return Dataset{Accounts: []Account{{
 		ID:       store.DefaultUserID(),
-		Username: username,
+		Email:    email,
 		Password: opts.BootstrapPassword,
 		Blurb:    "bootstrap, Identity only",
 		Profile:  store.DefaultProfile(),
@@ -39,28 +39,28 @@ func BuildSeed(opts Options) Dataset {
 	if seedPass == "" {
 		seedPass = DefaultSeedPassword
 	}
-	bootstrapUser := opts.BootstrapUsername
-	if bootstrapUser == "" {
-		bootstrapUser = "alexdev"
+	bootstrapEmail := opts.BootstrapEmail
+	if bootstrapEmail == "" {
+		bootstrapEmail = "alexdev@vynno.local"
 	}
 
 	accounts := make([]Account, 0, 3)
 	for i, p := range seedPersonas() {
-		username := p.username
+		email := p.email
 		password := seedPass
 		if i == 0 {
-			username = bootstrapUser
+			email = bootstrapEmail
 			password = opts.BootstrapPassword
 		}
 		// Isolated stream per persona so tuning one does not reshape the others.
 		rng := rand.New(rand.NewPCG(randSeed, uint64(i+1)))
-		acc := buildAccount(rng, now, p, username, password)
+		acc := buildAccount(rng, now, p, email, password)
 		accounts = append(accounts, acc)
 	}
 	return Dataset{Accounts: accounts}
 }
 
-func buildAccount(rng *rand.Rand, now time.Time, p persona, username, password string) Account {
+func buildAccount(rng *rand.Rand, now time.Time, p persona, email, password string) Account {
 	projects := make([]domain.Project, 0, len(p.projects))
 	for _, spec := range p.projects {
 		projects = append(projects, projectFromSpec(spec))
@@ -73,12 +73,11 @@ func buildAccount(rng *rand.Rand, now time.Time, p persona, username, password s
 	sessions := generateSessions(rng, now, p, projects, byName)
 	return Account{
 		ID:       p.id,
-		Username: username,
+		Email:    email,
 		Password: password,
 		Blurb:    p.blurb,
 		Profile: domain.Profile{
 			DisplayName: p.displayName,
-			Handle:      domain.HandleFromUsername(username),
 		},
 		Projects:      projects,
 		ActivityTypes: types,

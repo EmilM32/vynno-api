@@ -62,8 +62,8 @@ func TestLoadDefaultsAddr(t *testing.T) {
 	if cfg.Addr != defaultAddr {
 		t.Fatalf("Addr = %q, want %q", cfg.Addr, defaultAddr)
 	}
-	if cfg.BootstrapUsername != "alexdev" {
-		t.Fatalf("BootstrapUsername = %q", cfg.BootstrapUsername)
+	if cfg.BootstrapEmail != "alexdev@vynno.local" {
+		t.Fatalf("BootstrapEmail = %q", cfg.BootstrapEmail)
 	}
 	if len(cfg.SPAOrigins) != 1 || cfg.SPAOrigins[0] != "http://localhost:5173" {
 		t.Fatalf("SPAOrigins = %#v", cfg.SPAOrigins)

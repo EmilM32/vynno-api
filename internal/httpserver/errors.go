@@ -45,7 +45,7 @@ func statusFor(code string) int {
 		return http.StatusBadRequest
 	case domain.CodeSessionAlreadyActive, domain.CodeProjectArchived, domain.CodeCodeInUse,
 		domain.CodeNameInUse, domain.CodeLastActiveProject, domain.CodeProjectHasSessions,
-		domain.CodeActivityTypeHasSessions, domain.CodeInvalidTransition, domain.CodeUsernameInUse:
+		domain.CodeActivityTypeHasSessions, domain.CodeInvalidTransition, domain.CodeEmailInUse:
 		return http.StatusConflict
 	case domain.CodeUnauthorized, domain.CodeInvalidCredentials:
 		return http.StatusUnauthorized

@@ -17,14 +17,14 @@ import (
 const TokenTTL = 30 * 24 * time.Hour
 
 type RegisterInput struct {
-	Username    string
+	Email       string
 	Password    string
 	DisplayName *string
 	RememberMe  *bool
 }
 
 type LoginInput struct {
-	Username   string
+	Email      string
 	Password   string
 	RememberMe *bool
 }
@@ -36,7 +36,7 @@ type AuthResult struct {
 }
 
 func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, error) {
-	username, err := domain.NormalizeUsername(in.Username)
+	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return AuthResult{}, err
 	}
@@ -44,23 +44,21 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 	if err != nil {
 		return AuthResult{}, err
 	}
-	display := username
+	display := ""
 	if in.DisplayName != nil {
 		d, err := domain.NormalizeDisplayName(*in.DisplayName)
 		if err != nil {
 			return AuthResult{}, err
 		}
-		if d != "" {
-			display = d
-		}
+		display = d
 	}
 
-	taken, err := s.Store.UsernameTaken(ctx, username, uuid.Nil)
+	taken, err := s.Store.EmailTaken(ctx, email, uuid.Nil)
 	if err != nil {
 		return AuthResult{}, err
 	}
 	if taken {
-		return AuthResult{}, domain.ErrUsernameInUse()
+		return AuthResult{}, domain.ErrEmailInUse()
 	}
 
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -69,13 +67,12 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 	}
 	userID := s.NewID()
 	if err := s.Store.CreateAccount(ctx, store.Account{
-		ID: userID, Username: username, PasswordHash: string(hash),
+		ID: userID, Email: email, PasswordHash: string(hash),
 	}); err != nil {
 		return AuthResult{}, err
 	}
 	profile := domain.Profile{
 		DisplayName: display,
-		Handle:      domain.HandleFromUsername(username),
 	}
 	if err := s.Store.CreateProfile(ctx, userID, profile); err != nil {
 		return AuthResult{}, err
@@ -89,14 +86,14 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 }
 
 func (s *Service) Login(ctx context.Context, in LoginInput) (AuthResult, error) {
-	username, err := domain.NormalizeUsername(in.Username)
+	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	if _, err := domain.NormalizePassword(in.Password); err != nil {
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
-	acc, err := s.Store.GetAccountByUsername(ctx, username)
+	acc, err := s.Store.GetAccountByEmail(ctx, email)
 	if err != nil {
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}

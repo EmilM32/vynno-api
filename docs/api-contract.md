@@ -2,8 +2,8 @@
 
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-08-21  
-**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md))
+**Last updated:** 2026-08-26  
+**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier (drop username / handle)
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -52,8 +52,8 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `activity_type_has_sessions` | 409 | Hard-delete of an activity type that has sessions | `activity_types_cannot_delete_has_sessions` |
 | `invalid_transition` | 409 | Pause/resume/stop (or archive/restore) in a bad state | fallback |
 | `unauthorized` | 401 | Missing, unknown, or expired session on a protected route | `error_unauthorized` |
-| `invalid_credentials` | 401 | Login username/password do not match | `error_invalid_credentials` |
-| `username_in_use` | 409 | Register with a taken username | fallback |
+| `invalid_credentials` | 401 | Login email/password do not match | `error_invalid_credentials` |
+| `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
@@ -105,25 +105,25 @@ Anything else on a protected route is `401 unauthorized`. A project or session i
 
 | Method | Path | Auth | Body | Success | Typical errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `username_in_use` |
+| POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `email_in_use` |
 | POST | `/auth/login` | no | `LoginDto` | `{ profile }` `200` + `Set-Cookie` | `invalid_body`, `invalid_credentials` |
 | POST | `/auth/logout` | yes | — | `204` + clear cookie | `unauthorized` |
 
 `RegisterDto`:
 
 ```json
-{ "username": "alexdev", "password": "a-long-enough-secret", "displayName": "Alex Dev", "rememberMe": true }
+{ "email": "alex@example.com", "password": "a-long-enough-secret", "displayName": "Alex Dev", "rememberMe": true }
 ```
 
-`displayName` and `rememberMe` may be omitted. Omitted `displayName` becomes the username. Omitted `rememberMe` is `true`.
+`displayName` and `rememberMe` may be omitted. Omitted or empty `displayName` is stored as `""` (the SPA shows the email). Omitted `rememberMe` is `true`. Do not send `username`.
 
 `LoginDto`:
 
 ```json
-{ "username": "alexdev", "password": "a-long-enough-secret", "rememberMe": true }
+{ "email": "alex@example.com", "password": "a-long-enough-secret", "rememberMe": true }
 ```
 
-Username: trim, lowercase, `^[a-z0-9_]{3,32}$`. Password: 8–128 characters.
+Email: trim, lowercase, 3–254 characters; must be a single address (`net/mail.ParseAddress` equals the whole string) whose domain contains a `.`. Unique among accounts. Password: 8–128 characters. Login with a malformed email is `invalid_credentials` (same as unknown email).
 
 `rememberMe: true` (default) sets cookie `Max-Age` to 30 days. `false` sets a session cookie (cleared when the browser quits). The server still expires the token after 30 days.
 
@@ -146,12 +146,14 @@ Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every oth
 ```json
 {
 	"displayName": "Alex Dev",
-	"handle": "@alexdev",
+	"email": "alex@example.com",
 	"avatarUrl": null
 }
 ```
 
-`avatarUrl` is JSON `null` when absent. When set it is an absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` the browser can load as `<img src>`. The stored value is the path only; the origin is prefixed at read time.
+`displayName` may be `""` when the user did not set a name. `email` is the login identifier (not writable after register). `avatarUrl` is JSON `null` when absent. When set it is an absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` the browser can load as `<img src>`. The stored value is the path only; the origin is prefixed at read time.
+
+There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix).
 
 `UpdateProfileDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`.
 
@@ -159,8 +161,8 @@ Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every oth
 { "displayName": "Alex Dev" }
 ```
 
-- `displayName`: trim; 1–80 characters. Omit = leave unchanged. `null` or `""` → `invalid_body`.
-- Do not send `handle` or `avatarUrl` on this body. Handle stays derived from the username. Avatar is only `PUT` / `DELETE /me/avatar`.
+- `displayName`: trim; at most 80 characters. Omit = leave unchanged. `""` (after trim) clears the name so the UI falls back to email. `null` → `invalid_body`.
+- Do not send `email` or `avatarUrl` on this body. Email is not user-editable. Avatar is only `PUT` / `DELETE /me/avatar`.
 
 `PUT /me/avatar`:
 

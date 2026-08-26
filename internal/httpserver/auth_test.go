@@ -10,7 +10,7 @@ import (
 func TestLoginInvalidCredentials(t *testing.T) {
 	r := testRouter(t)
 	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
-		"username": "alexdev", "password": "wrong-password",
+		"email": "alexdev@vynno.local", "password": "wrong-password",
 	})
 	assertCode(t, w, http.StatusUnauthorized, "invalid_credentials")
 }
@@ -30,7 +30,7 @@ func TestRegisterAndIsolation(t *testing.T) {
 	aliceProject := aliceList.Items[0].ID
 
 	w = doJSON(t, r, http.MethodPost, "/v1/auth/register", map[string]any{
-		"username": "bob_user", "password": "bob-pass-1", "displayName": "Bob",
+		"email": "bob@example.com", "password": "bob-pass-1", "displayName": "Bob",
 	})
 	if w.Code != http.StatusCreated {
 		t.Fatalf("register = %d %s", w.Code, w.Body.String())
@@ -39,7 +39,7 @@ func TestRegisterAndIsolation(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
 		t.Fatal(err)
 	}
-	if created.Profile.DisplayName != "Bob" || created.Profile.Handle != "@bob_user" {
+	if created.Profile.DisplayName != "Bob" || created.Profile.Email != "bob@example.com" {
 		t.Fatalf("profile: %+v", created.Profile)
 	}
 	var bobCookie *http.Cookie
@@ -65,9 +65,22 @@ func TestRegisterAndIsolation(t *testing.T) {
 	}
 
 	w = doJSON(t, r, http.MethodPost, "/v1/auth/register", map[string]any{
-		"username": "bob_user", "password": "other-pass-1",
+		"email": "bob@example.com", "password": "other-pass-1",
 	})
-	assertCode(t, w, http.StatusConflict, "username_in_use")
+	assertCode(t, w, http.StatusConflict, "email_in_use")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/register", map[string]any{
+		"email": "  Pat@Example.COM  ", "password": "pat-pass-1",
+	})
+	if w.Code != http.StatusCreated {
+		t.Fatalf("register omitted displayName = %d %s", w.Code, w.Body.String())
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil {
+		t.Fatal(err)
+	}
+	if created.Profile.DisplayName != "" || created.Profile.Email != "pat@example.com" {
+		t.Fatalf("omitted displayName profile: %+v", created.Profile)
+	}
 }
 
 func TestLogoutRevokesSession(t *testing.T) {
@@ -84,7 +97,7 @@ func TestLogoutRevokesSession(t *testing.T) {
 func TestRememberMeCookieMaxAge(t *testing.T) {
 	r := testRouter(t)
 	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
-		"username": "alexdev", "password": testPassword,
+		"email": "alexdev@vynno.local", "password": testPassword,
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("login default = %d %s", w.Code, w.Body.String())
@@ -106,7 +119,7 @@ func TestRememberMeCookieMaxAge(t *testing.T) {
 	}
 
 	w = doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
-		"username": "alexdev", "password": testPassword, "rememberMe": false,
+		"email": "alexdev@vynno.local", "password": testPassword, "rememberMe": false,
 	})
 	if w.Code != http.StatusOK {
 		t.Fatalf("login rememberMe false = %d %s", w.Code, w.Body.String())
@@ -121,7 +134,7 @@ func TestRememberMeCookieMaxAge(t *testing.T) {
 func TestBearerAuth(t *testing.T) {
 	r := testRouter(t)
 	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", map[string]any{
-		"username": "alexdev", "password": testPassword,
+		"email": "alexdev@vynno.local", "password": testPassword,
 	})
 	var token string
 	for _, c := range w.Result().Cookies() {

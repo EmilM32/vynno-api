@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-21
+**Last updated:** 2026-08-26
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -20,7 +20,7 @@ Inherited from the frontend domain model and from the mock engine the SPA alread
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
 | **Tag** | Secondary string labels on a session. Distinct from project color. |
-| **Profile** | Display name, handle, optional avatar. Display name and avatar are writable after register. |
+| **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier. |
 | **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active` or `paused`. |
 
@@ -33,10 +33,10 @@ v1 does **not** have a Task table. “Recent tasks” on the client are reconstr
 ```
 User* (many personal accounts; isolated; no teams)
  │
- ├── username / password hash (not on the wire)
+ ├── email / password hash (email is on ProfileDto; hash is not)
  ├── Profile
  │    ├── displayName
- │    ├── handle
+ │    ├── email
  │    └── avatarUrl?
  │
  ├── Project*
@@ -185,17 +185,19 @@ Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `displayName` | string | Required, trimmed, 1–80. Writable via `PATCH /me`. |
-| `handle` | string | Required, non-empty (client shows e.g. `@alexdev`). Derived from username; not user-editable. |
+| `displayName` | string | Trimmed, at most 80. May be empty. Writable via `PATCH /me`. |
+| `email` | string | Login identifier. Unique, lowercase. Not writable after register. |
 | `avatarUrl` | string? | JSON `null` when absent. Absolute public URL when set. |
 
 Each account has its own profile. A fresh production database has no users; the first account is `POST /auth/register`. `scripts/reset` / `scripts/seed` are operator-only against `vynno_dev`.
 
+Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix). There is no handle.
+
 | Rule | Description |
 | --- | --- |
-| **Register** | Creates the profile with `avatarUrl` null. No photo on `POST /auth/register`. |
-| **Display name** | `PATCH /me`. Omit leaves it unchanged. Empty / null is `invalid_body`. |
-| **Handle** | `@` + username. Not accepted on `PATCH /me`. |
+| **Register** | Creates the profile with `avatarUrl` null. Omitted / empty `displayName` is stored `""`. No photo on `POST /auth/register`. |
+| **Display name** | `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
+| **Email** | Trim, lowercase, 3–254, a single address whose domain contains a `.`. Unique. Not accepted on `PATCH /me`. |
 | **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
 | **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
 | **Avatar GET** | `GET /avatars/:id` is public. Unknown id is `404 not_found`. Bytes are not on the profile row. |
@@ -225,8 +227,8 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `activity_type_has_sessions` | Hard-delete of an activity type that has sessions |
 | `invalid_transition` | Verb in a bad state (session or project) |
 | `unauthorized` | Missing, unknown, or expired session |
-| `invalid_credentials` | Login username/password do not match |
-| `username_in_use` | Register with a taken username |
+| `invalid_credentials` | Login email/password do not match |
+| `email_in_use` | Register with a taken email |
 
 `invalid_json`, `invalid_response`, and `http_error` are transport/client codes. The server still returns the envelope for malformed JSON (`invalid_json` / `invalid_body` as appropriate).
 

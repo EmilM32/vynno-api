@@ -13,7 +13,7 @@ const defaultAddr = ":8080"
 type Config struct {
 	Addr              string
 	DatabaseURL       string
-	BootstrapUsername string
+	BootstrapEmail    string
 	BootstrapPassword string
 	SPAOrigins        []string
 	CookieSecure      bool
@@ -40,10 +40,7 @@ func Load() (Config, error) {
 		return Config{}, fmt.Errorf("DATABASE_URL is required")
 	}
 
-	username := strings.TrimSpace(os.Getenv("BOOTSTRAP_USERNAME"))
-	if username == "" {
-		username = "alexdev"
-	}
+	email := bootstrapEmailFromEnv()
 
 	password := os.Getenv("BOOTSTRAP_PASSWORD")
 
@@ -60,13 +57,27 @@ func Load() (Config, error) {
 	return Config{
 		Addr:              addr,
 		DatabaseURL:       databaseURL,
-		BootstrapUsername: username,
+		BootstrapEmail:    email,
 		BootstrapPassword: password,
 		SPAOrigins:        origins,
 		CookieSecure:      boolEnv("COOKIE_SECURE"),
 		PublicAPIOrigin:   publicOrigin,
 		LogFormat:         parseLogFormat(os.Getenv("LOG_FORMAT")),
 	}, nil
+}
+
+func bootstrapEmailFromEnv() string {
+	email := strings.TrimSpace(os.Getenv("BOOTSTRAP_EMAIL"))
+	if email == "" {
+		email = strings.TrimSpace(os.Getenv("BOOTSTRAP_USERNAME"))
+	}
+	if email == "" {
+		return "alexdev@vynno.local"
+	}
+	if !strings.Contains(email, "@") {
+		return strings.ToLower(email) + "@vynno.local"
+	}
+	return strings.ToLower(email)
 }
 
 func parseLogFormat(raw string) string {

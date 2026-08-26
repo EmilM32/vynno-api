@@ -70,8 +70,8 @@ After pulling API changes, run `scripts/build` again. Start does not rebuild.
 ```sh
 ./scripts/dev             # go run on 127.0.0.1:8081 → vynno_dev; Swagger at http://127.0.0.1:8081/swagger/
 ./scripts/stop --dev      # playground API only; Postgres stays up
-./scripts/seed            # wipe vynno_dev, load alexdev / maya / rio
-./scripts/reset           # wipe vynno_dev, alexdev + Identity only
+./scripts/seed            # wipe vynno_dev, load alexdev@vynno.local / maya@vynno.local / rio@vynno.local
+./scripts/reset           # wipe vynno_dev, alexdev@vynno.local + Identity only
 ```
 
 Foreground: Ctrl-C in the `scripts/dev` terminal stops it. A leftover `go run` child (closed terminal, `bind: address already in use` on `:8081`) is `scripts/stop --dev`. `scripts/stop` without `--dev` only stops the production binary in `var/api.pid`. `--dev` and `--postgres` cannot be combined.
@@ -94,7 +94,7 @@ Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in th
 1. Browser URL is `http://localhost:3000`, not `http://127.0.0.1:3000`.
 2. This repo `SPA_ORIGIN` lists that exact origin (restart the API after editing `.env`).
 3. `COOKIE_SECURE=false` (loopback HTTP).
-4. Production has no `alexdev` unless you registered that name. Seed users live on `vynno_dev`.
+4. Production has no `alexdev@vynno.local` unless you registered that address. Seed users live on `vynno_dev`. After the email-login migration, a leftover username `alexdev` logs in as `alexdev@vynno.local`.
 
 ## What this does not do
 
