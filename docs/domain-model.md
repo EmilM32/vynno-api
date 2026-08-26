@@ -195,9 +195,11 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 
 | Rule | Description |
 | --- | --- |
-| **Register** | Creates the profile with `avatarUrl` null. Omitted / empty `displayName` is stored `""`. No photo on `POST /auth/register`. |
+| **Register** | Two steps. `POST /auth/register/code` sends a 6-digit code when the email is free. `POST /auth/register` with that code creates the profile (`avatarUrl` null). Omitted / empty `displayName` is stored `""`. No photo on register. No user row exists until the code is accepted. |
 | **Display name** | `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
 | **Email** | Trim, lowercase, 3–254, a single address whose domain contains a `.`. Unique. Not accepted on `PATCH /me`. |
+| **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset`). Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. Never on the wire except in the mail body. |
+| **Password reset** | `POST /auth/password/forgot` always succeeds for a well-formed email; mail only if the account exists. `POST /auth/password/reset` sets a new hash and deletes every session token for that user. No cookie. Login afterwards. |
 | **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
 | **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
 | **Avatar GET** | `GET /avatars/:id` is public. Unknown id is `404 not_found`. Bytes are not on the profile row. |
@@ -229,6 +231,8 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `unauthorized` | Missing, unknown, or expired session |
 | `invalid_credentials` | Login email/password do not match |
 | `email_in_use` | Register with a taken email |
+| `invalid_code` | Wrong, expired, or already used one-time code |
+| `rate_limited` | Send cooldown, send cap, or too many code guesses |
 
 `invalid_json`, `invalid_response`, and `http_error` are transport/client codes. The server still returns the envelope for malformed JSON (`invalid_json` / `invalid_body` as appropriate).
 
@@ -251,3 +255,6 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 - [api-contract.md](./api-contract.md)
 - [adr/0004-project-lifecycle.md](./adr/0004-project-lifecycle.md)
 - [adr/0005-session-lifecycle.md](./adr/0005-session-lifecycle.md)
+- [adr/0008-authentication.md](./adr/0008-authentication.md)
+- [adr/0015-outbound-email.md](./adr/0015-outbound-email.md)
+- [plans/email.md](./plans/email.md)

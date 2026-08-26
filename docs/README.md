@@ -27,6 +27,7 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | Language / HTTP | Go + Gin | [ADR-0001](./adr/0001-backend-stack.md) (Accepted) |
 | Persistence | PostgreSQL, goose, sqlc | [ADR-0009](./adr/0009-persistence.md) (Accepted) |
 | Auth | HttpOnly session cookie + remember-me | [ADR-0008](./adr/0008-authentication.md) (Accepted) |
+| Mail | SMTP via `Mailer` port; Mailpit locally | [ADR-0015](./adr/0015-outbound-email.md) (Accepted) |
 | Avatars | BYTEA + public `/v1/avatars/:id` | [ADR-0010](./adr/0010-avatar-storage.md) (Accepted) |
 | Host | Owner’s machine; binary + Compose Postgres | [ADR-0011](./adr/0011-local-production-host.md) (Accepted) |
 | Operator docs | OpenAPI from Gin routes; Swagger UI at `/swagger/` | [ADR-0013](./adr/0013-openapi-swagger.md) (Accepted) |
@@ -39,9 +40,10 @@ Also decided:
 - Single-user v1 — [ADR-0006](./adr/0006-single-user-tenancy.md)
 - User-defined activity types — [ADR-0012](./adr/0012-activity-types.md)
 - OpenAPI / Swagger UI — [ADR-0013](./adr/0013-openapi-swagger.md)
+- Outbound email — [ADR-0015](./adr/0015-outbound-email.md)
 
 ## Status
 
-Phase 0–4 and profile/avatar are done. Session edit/delete/manual entry (LOG-6 / LOG-7) and session list pagination (PAGE) are done. Phase 5 is later (prefs, insights).
+Phase 0–4 and profile/avatar are done. Session edit/delete/manual entry (LOG-6 / LOG-7) and session list pagination (PAGE) are done. Email login identifier is done. Outbound mail / register confirmation / password reset is in progress ([plans/email.md](./plans/email.md)). Phase 5 is later (prefs, insights).
 
 See [roadmap.md](./roadmap.md).

@@ -1,6 +1,6 @@
 # Open questions — Vynno API
 
-**Last updated:** 2026-08-20
+**Last updated:** 2026-08-26
 
 Undecided items and the **default we ship with** until an ADR or PRD update says otherwise. When a question is resolved, move the outcome into an ADR (or the PRD) and mark the row resolved — do not delete the history.
 
@@ -21,6 +21,7 @@ Undecided items and the **default we ship with** until an ADR or PRD update says
 | 13 | Auto-stop previous session on start? | **No** | [ADR-0005](./adr/0005-session-lifecycle.md) |
 | 14 | Shared DTO package with the frontend? | **No** — dual docs until we extract one | New ADR |
 | 15 | Seed data for a fresh database | **Resolved:** production `vynno` starts empty; the first user is `POST /v1/auth/register`. Playground history is `scripts/seed` / `scripts/reset` against `vynno_dev` only ([plans/dev-data.md](./plans/dev-data.md), [plans/local-prod-runtime.md](./plans/local-prod-runtime.md)). | Operator tooling |
+| 16 | How does the API send mail? | **Resolved:** SMTP via a `Mailer` port; `MAIL_MODE` `smtp` \| `log` \| `discard`; local catcher is Mailpit. | [ADR-0015](./adr/0015-outbound-email.md) (Accepted) |
 
 Rows 6, 8, 9, 11–13 already have defaults that are Accepted behavior. They stay here so Phase 0 does not re-ask them.
 

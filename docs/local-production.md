@@ -30,7 +30,7 @@ cp .env.example .env   # if you do not already have one
 ./scripts/build
 ```
 
-The API does **not** create a user. First visit: open the SPA and use the register tab.
+The API does **not** create a user. First visit: open the SPA and use the register tab. After [plans/email.md](./plans/email.md) slice 2, that tab emails a 6-digit code (Mailpit at [http://127.0.0.1:8025](http://127.0.0.1:8025) when SMTP points at Compose, or a real inbox). Until then register is still one-shot.
 
 `BOOTSTRAP_*` / `SEED_PASSWORD` are only for `scripts/reset` and `scripts/seed` against `vynno_dev`. They are not production credentials.
 

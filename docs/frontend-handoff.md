@@ -38,7 +38,7 @@ The SPA already:
 
 The API process must list the SPA origin in `SPA_ORIGIN` (comma-separated). Cookies will not be stored if CORS is `*`. On the owner’s machine that is the Vite origin (`:5173`), the Playwright preview (`:4173`), and the local production Node server (`http://localhost:3000`); see [ADR-0011](./adr/0011-local-production-host.md) and [local-production.md](./local-production.md).
 
-A fresh production database has no users. First daily login is the SPA **register** tab (`POST /v1/auth/register`), not a bootstrap account. Seed users (`alexdev@vynno.local` / `maya@vynno.local` / `rio@vynno.local`) exist only on `vynno_dev`.
+A fresh production database has no users. First daily login is the SPA **register** tab: `POST /v1/auth/register/code` then `POST /v1/auth/register` with the 6-digit code from mail (Mailpit locally). Not a bootstrap account. Seed users (`alexdev@vynno.local` / `maya@vynno.local` / `rio@vynno.local`) exist only on `vynno_dev` and skip mail.
 
 Playwright still defaults to `API_ORIGIN` (`:8080`). While the daily binary is on that port, set `E2E_API_BASE=http://localhost:8081/v1` and run `vynno-api` `scripts/dev`, or e2e will register throwaway users into production. Do not change committed `API_ORIGIN` — that is the production BFF.
 
@@ -50,7 +50,8 @@ Paths are relative to `/v1`:
 
 | Method | Path |
 | --- | --- |
-| POST | `/auth/login` , `/auth/register` , `/auth/logout` |
+| POST | `/auth/login` , `/auth/register/code` , `/auth/register` , `/auth/logout` |
+| POST | `/auth/password/forgot` , `/auth/password/reset` |
 | GET | `/me` |
 | PATCH | `/me` |
 | PUT | `/me/avatar` (multipart field `file`) |
@@ -96,7 +97,7 @@ Do not add these to “complete” the API. They are client-local or deferred.
 | Insights KPIs, donut, weekly bars | Computed from loaded session pages |
 | Command palette, nav chrome | Pure UI |
 | `X-Mock-Workspace` | Mock isolation only; never send to this API |
-| Forgot-password UI | Later screen |
+| Logged-in change-password | Later authenticated route (forgot-password is `/auth/password/*`) |
 
 ---
 
@@ -106,6 +107,7 @@ Do not add these to “complete” the API. They are client-local or deferred.
 | --- | --- | --- |
 | Phase 0–2 (historical) | Stub login, no credentials | Contract had no auth |
 | Phase 3 / 5c (now) | `credentials: 'include'`; login POST; remember-me; mock gone | ADR-0008 implemented; unauthenticated `/v1` rejected |
+| Email confirmation (next) | Two-step register + forgot-password; [plans/email.md](./plans/email.md) slices 2–3 | Contract already lists the routes; live API still one-shot register until those slices |
 
 ---
 

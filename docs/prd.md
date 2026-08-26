@@ -156,6 +156,9 @@ Priorities: **P0** = live API the SPA can swap to, **P1** = auth + durability fo
 | AUTH-2 | Unauthenticated access to reads and writes is rejected (`unauthorized`) | P1 |
 | AUTH-3 | SPA attaches credentials in `ApiClient` only (`credentials: 'include'`) | P1 |
 | AUTH-4 | CORS / cookie / token choices documented in the auth ADR | P1 |
+| AUTH-5 | Outbound mail over SMTP ([ADR-0015](./adr/0015-outbound-email.md)) | P1 |
+| AUTH-6 | Register sends a one-time code; the account is created only when that code is accepted | P1 |
+| AUTH-7 | Password reset via one-time code (never email the current password); existing sessions revoked | P1 |
 
 ### 8.5 Platform
 
@@ -209,8 +212,9 @@ Canonical table: [open-questions.md](./open-questions.md). Highlights:
 | 2 | Database | **Resolved:** PostgreSQL — [ADR-0009](./adr/0009-persistence.md) |
 | 3 | Auth mechanism | **Resolved:** HttpOnly cookie — [ADR-0008](./adr/0008-authentication.md) |
 | 4 | Restrict `color` to the UI palette? | No — any `#rrggbb` |
-| 5 | Pagination | Not until history size requires it |
+| 5 | Pagination | **Resolved:** cursor on `GET /sessions` |
 | Hosting | **Resolved:** owner’s machine — [ADR-0011](./adr/0011-local-production-host.md) |
+| 16 | Outbound mail | **Resolved:** SMTP + Mailpit — [ADR-0015](./adr/0015-outbound-email.md) |
 
 ## 13. Related documents
 
