@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	defaultAddr     = ":8080"
+	defaultAddr     = "127.0.0.1:27182"
 	defaultSMTPPort = 1025
 )
 

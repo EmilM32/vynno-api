@@ -3,10 +3,12 @@
 Daily driver for the production API **on this machine**. No cloud host. Decision: [ADR-0011](./adr/0011-local-production-host.md). Pair with the SPA runbook in the `vynno` repo.
 
 ```
-browser  →  http://localhost:3000  (vynno, adapter-node)
-                └── /v1 BFF  ──►  http://127.0.0.1:8080  (this repo, bin/vynno-api → database vynno)
-                                        ├── Postgres (Docker Compose, port 5433)
-                                        └── Mailpit SMTP :1025 / UI :8025  (first register + password reset)
+browser  →  http://vynno.local            (vynno repo, Caddy 127.0.0.1:80)
+                └── reverse_proxy ──►  127.0.0.1:27180  (adapter-node)
+                                          └── /v1 BFF ──►  127.0.0.1:27182  (this repo, bin/vynno-api → database vynno)
+                                                                ├── Postgres (Docker Compose, port 5433)
+                                                                └── Mailpit SMTP :1025 / UI :8025  (first register + password reset)
+browser  →  http://vynno.local:27182      (this process; /swagger/, avatar URLs)
 ```
 
 Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:8081`. It does not share rows with daily history.
@@ -15,19 +17,27 @@ Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:
 | --- | --- | --- |
 | Start | `scripts/start` | `scripts/dev` |
 | Stop | `scripts/stop` | `scripts/stop --dev` |
-| Bind | `127.0.0.1:8080` | `127.0.0.1:8081` |
+| Bind | `127.0.0.1:27182` | `127.0.0.1:8081` |
 | Database | `vynno` | `vynno_dev` |
 
-Use **`http://localhost:3000`** in the browser and in `SPA_ORIGIN`. `localhost` and `127.0.0.1` are different origins and do not share the session cookie.
+Use **`http://vynno.local`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.local:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`.
+
+Ports **27180** (SPA Node) and **27182** (this API) are uncommon on purpose so Vite, Next, and other local APIs do not steal them. Playground stays `:8081`.
 
 ## Once (or after API source changes)
 
 ```sh
+# /etc/hosts — IPv4 only. Do not add ::1 while ADDR is 127.0.0.1.
+sudo sh -c 'grep -qE "(^|[[:space:]])vynno\.local($|[[:space:]])" /etc/hosts || echo "127.0.0.1 vynno.local" >> /etc/hosts'
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+
 cp .env.example .env   # if you do not already have one
-# ADDR=127.0.0.1:8080
+# ADDR=127.0.0.1:27182
 # DATABASE_URL → database vynno
 # DEV_DATABASE_URL → database vynno_dev
-# SPA_ORIGIN includes http://localhost:3000
+# SPA_ORIGIN includes http://vynno.local
+# PUBLIC_API_ORIGIN=http://vynno.local:27182
 # MAIL_MODE=smtp + SMTP_* pointing at Mailpit (existing .env: copy that block)
 ./scripts/build
 ```
@@ -47,7 +57,7 @@ If this volume already has playground rows in `vynno` and you have not isolated 
 3. Restore that dump into `vynno_dev`.
 4. Drop and create empty `vynno` (same SQL `scripts/restore` uses, targeting `vynno` only).
 5. `./scripts/build && ./scripts/start --detach` — migrates, no users.
-6. Register from `http://localhost:3000`.
+6. Register from `http://vynno.local`.
 
 Do not add a production wipe script. Do not `docker compose down -v`.
 
@@ -58,7 +68,7 @@ Do not add a production wipe script. Do not `docker compose down -v`.
 ./scripts/start --detach  # pid in var/api.pid, logs in logs/api.log
 ```
 
-Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://localhost:3000](http://localhost:3000). Operator API docs: [http://localhost:8080/swagger/](http://localhost:8080/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`).
+Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://vynno.local](http://vynno.local). Operator API docs: [http://vynno.local:27182/swagger/](http://vynno.local:27182/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`). `.local` is Bonjour; if the first Chrome load hangs a few seconds, wait or flush mDNS again.
 
 ```sh
 ./scripts/stop            # detached production API only; Postgres stays up
@@ -111,7 +121,7 @@ Foreground: Ctrl-C in the `scripts/dev` terminal stops it. A leftover `go run` c
 
 Seed and reset refuse `vynno`. They do not stop the production API. Stop the playground first (`scripts/stop --dev`) before a wipe if `scripts/dev` is up.
 
-Playwright in the SPA repo talks to `API_ORIGIN` (`:8080`) unless you set `E2E_API_BASE=http://localhost:8081/v1`. Use that override while the daily binary is on `:8080`, or e2e registers throwaway users into production.
+Playwright in the SPA repo talks to `API_ORIGIN` (`:27182`) unless you set `E2E_API_BASE=http://localhost:8081/v1`. Use that override while the daily binary is on `:27182`, or e2e registers throwaway users into production.
 
 ## Backups
 
@@ -124,7 +134,7 @@ Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in th
 
 ## If login fails
 
-1. Browser URL is `http://localhost:3000`, not `http://127.0.0.1:3000`.
+1. Browser URL is `http://vynno.local`, not `http://127.0.0.1`, `http://localhost:3000`, or `http://vynno.local:27180`.
 2. This repo `SPA_ORIGIN` lists that exact origin (restart the API after editing `.env`).
 3. `COOKIE_SECURE=false` (loopback HTTP).
 4. Production has no `alexdev@vynno.local` unless you registered that address. Seed users live on `vynno_dev`. After the email-login migration, a leftover username `alexdev` logs in as `alexdev@vynno.local`.
@@ -133,7 +143,7 @@ Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in th
 ## What this does not do
 
 - Does not start the SPA. That is the `vynno` repo.
-- Does not listen on the LAN (`ADDR=127.0.0.1:8080`).
+- Does not listen on the LAN (`ADDR=127.0.0.1:27182`).
 - Does not rebuild on start.
 - Does not create accounts. Register is the SPA (and needs SMTP; see [Mail](#mail)).
 - Does not `docker compose down -v`.

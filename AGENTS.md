@@ -18,7 +18,7 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 - New expensive choice (stack, host, auth mechanism) → new or amended ADR under `docs/adr/`. New multi-day feature → a plan under `docs/plans/` while the work is in flight; delete the plan once its facts are in the contract, domain, ADR, or runbook.
 - Auth follows [ADR-0008](./docs/adr/0008-authentication.md): HttpOnly cookie `vynno_session`, remember-me, optional Bearer for curl/tests. Do not return the token in JSON.
 - Enforce domain rules on the server. Single-user v1 ([ADR-0006](./docs/adr/0006-single-user-tenancy.md)). No team workspaces.
-- SPA attach: `PUBLIC_API_BASE=/v1`, `credentials: 'include'`, never `Authorization`. List SPA origins in `SPA_ORIGIN`. Frontend e2e must use `E2E_API_BASE=http://localhost:8081/v1` while the daily binary is on `:8080`.
+- SPA attach: `PUBLIC_API_BASE=/v1`, `credentials: 'include'`, never `Authorization`. List SPA origins in `SPA_ORIGIN`. Frontend e2e must use `E2E_API_BASE=http://localhost:8081/v1` while the daily binary is on `:27182`.
 - Do not add `Truncate` to `store.Store`. `cmd/devdata` (reset/seed) refuses any database except `vynno_dev`. Do not add a production wipe script. Do not `docker compose down -v`.
 
 ### Stack conventions

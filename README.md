@@ -40,7 +40,7 @@ Production and playground can run at the same time. They do **not** share rows.
 | --- | --- | --- |
 | Start | `./scripts/start` | `./scripts/dev` |
 | Stop | `./scripts/stop` | `./scripts/stop --dev` |
-| Bind | `127.0.0.1:8080` (`ADDR`) | `127.0.0.1:8081` (`DEV_ADDR`) |
+| Bind | `127.0.0.1:27182` (`ADDR`) | `127.0.0.1:8081` (`DEV_ADDR`) |
 | Database | `vynno` | `vynno_dev` |
 | Process | `bin/vynno-api` | `go run ./cmd/api` |
 
@@ -59,13 +59,13 @@ cp .env.example .env
 ./scripts/restore backups/vynno-YYYYMMDD-HHMMSS.sql
 ```
 
-`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`http://localhost:3000`). Database `vynno` is daily history.
+`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`http://vynno.local`). Database `vynno` is daily history.
 
-`GET http://127.0.0.1:8080/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
+`GET http://127.0.0.1:27182/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
 
-Operator API docs (generated from the Gin routes): [http://localhost:8080/swagger/](http://localhost:8080/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
+Operator API docs (generated from the Gin routes): [http://vynno.local:27182/swagger/](http://vynno.local:27182/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
 
-`/v1` requires a session (`GET /v1/avatars/:id` is the public exception, plus login/register/password-reset). Production: register from the SPA (`POST /v1/auth/register/code` then `/auth/register` with the 6-digit code). The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`. Local mail catcher: Mailpit at http://127.0.0.1:8025 (Compose, SMTP `:1025`). First register needs Mailpit or real SMTP.
+`/v1` requires a session (`GET /v1/avatars/:id` is the public exception, plus login/register/password-reset). Production: register from the SPA (`POST /v1/auth/register/code` then `/auth/register` with the 6-digit code). The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://vynno.local:27182` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:27182`. Local mail catcher: Mailpit at http://127.0.0.1:8025 (Compose, SMTP `:1025`). First register needs Mailpit or real SMTP. Needs `/etc/hosts` `127.0.0.1 vynno.local`.
 
 ### Playground
 
