@@ -56,7 +56,8 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 	paths, _ := doc["paths"].(map[string]any)
 	for _, p := range []string{
 		"/healthz", "/readyz",
-		"/v1/auth/login", "/v1/auth/register", "/v1/auth/logout",
+		"/v1/auth/login", "/v1/auth/register", "/v1/auth/register/code", "/v1/auth/logout",
+		"/v1/auth/password/forgot", "/v1/auth/password/reset",
 		"/v1/me", "/v1/me/avatar", "/v1/avatars/{id}",
 		"/v1/projects", "/v1/projects/{id}",
 		"/v1/activity-types", "/v1/activity-types/{id}",
@@ -77,6 +78,7 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 	for _, name := range []string{
 		"Profile", "Project", "ProjectList", "Session", "SessionList",
 		"ActivityType", "ErrorEnvelope", "RegisterRequest", "LoginRequest",
+		"PasswordForgotRequest", "ResetPasswordRequest",
 		"StartSessionRequest", "UpdateSessionRequest", "CreateManualSessionRequest",
 		"Count", "HealthResponse",
 	} {

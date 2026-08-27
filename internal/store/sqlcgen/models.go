@@ -37,6 +37,17 @@ type Avatar struct {
 	CreatedAt   time.Time
 }
 
+type EmailChallenge struct {
+	Email           string
+	Purpose         string
+	CodeHash        string
+	ExpiresAt       time.Time
+	AttemptCount    int32
+	SentAt          time.Time
+	SendCount       int32
+	SendWindowStart time.Time
+}
+
 type Profile struct {
 	UserID      uuid.UUID
 	DisplayName string

@@ -80,15 +80,25 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 
 	v1 := r.Group("/v1")
+	s.route(v1, http.MethodPost, "/auth/register/code", s.requestRegisterCode, op{
+		Summary:     "Request register confirmation code",
+		Description: "Emails a 6-digit code when the address is free. 204 empty. Account is not created yet.",
+		Tags:        []string{"Auth"},
+		Public:      true,
+		Body:        registerCodeBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeEmailInUse, domain.CodeRateLimited},
+	})
 	s.route(v1, http.MethodPost, "/auth/register", s.register, op{
 		Summary:     "Register",
-		Description: "Creates an account, signs in, and sets cookie vynno_session. JSON body is { profile } only.",
+		Description: "Requires a valid unused register code. Creates an account, signs in, and sets cookie vynno_session. JSON body is { profile } only.",
 		Tags:        []string{"Auth"},
 		Public:      true,
 		Body:        registerBody{},
 		Success:     authResponse{},
 		SuccessCode: http.StatusCreated,
-		Errors:      []string{domain.CodeEmailInUse},
+		Errors:      []string{domain.CodeEmailInUse, domain.CodeInvalidCode, domain.CodeRateLimited},
 		SetCookie:   true,
 	})
 	s.route(v1, http.MethodPost, "/auth/login", s.login, op{
@@ -100,6 +110,26 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Success:     authResponse{},
 		Errors:      []string{domain.CodeInvalidCredentials},
 		SetCookie:   true,
+	})
+	s.route(v1, http.MethodPost, "/auth/password/forgot", s.requestPasswordReset, op{
+		Summary:     "Request password reset code",
+		Description: "Always 204 for a well-formed email. Sends a 6-digit code only when the account exists.",
+		Tags:        []string{"Auth"},
+		Public:      true,
+		Body:        passwordForgotBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeRateLimited},
+	})
+	s.route(v1, http.MethodPost, "/auth/password/reset", s.resetPassword, op{
+		Summary:     "Reset password",
+		Description: "Sets a new password and revokes every session for that user. 204 empty. No cookie; log in afterwards.",
+		Tags:        []string{"Auth"},
+		Public:      true,
+		Body:        resetPasswordBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeInvalidCode, domain.CodeRateLimited},
 	})
 	s.route(v1, http.MethodGet, "/avatars/:id", s.getAvatar, op{
 		Summary:     "Avatar bytes",

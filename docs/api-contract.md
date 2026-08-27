@@ -94,7 +94,7 @@ These are product rules the API must enforce. Details: [domain-model.md](./domai
 
 ## Auth
 
-Mechanism: [ADR-0008](./adr/0008-authentication.md). Mail: [ADR-0015](./adr/0015-outbound-email.md). Until [plans/email.md](./plans/email.md) slices 2–3 ship, the live process still one-shot-registers and has no password-reset routes.
+Mechanism: [ADR-0008](./adr/0008-authentication.md). Mail: [ADR-0015](./adr/0015-outbound-email.md). Register is two-step (code, then create). Password reset is two-step (forgot, then reset).
 
 Login and register set an HttpOnly cookie `vynno_session`. The JSON body is `{ "profile": ProfileDto }` only — the session secret is not in the response.
 

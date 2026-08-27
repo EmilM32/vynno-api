@@ -174,6 +174,56 @@ func (p *Postgres) DeleteTokenByHash(ctx context.Context, hash string) error {
 	return p.q.DeleteAuthTokenByHash(ctx, hash)
 }
 
+func (p *Postgres) DeleteTokensByUser(ctx context.Context, userID uuid.UUID) error {
+	return p.q.DeleteAuthTokensByUser(ctx, userID)
+}
+
+func (p *Postgres) GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error) {
+	row, err := p.q.GetEmailChallenge(ctx, sqlcgen.GetEmailChallengeParams{Email: email, Purpose: purpose})
+	if err != nil {
+		return EmailChallenge{}, mapNotFound(err)
+	}
+	return challengeFromRow(row), nil
+}
+
+func (p *Postgres) UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) error {
+	return p.q.UpsertEmailChallenge(ctx, sqlcgen.UpsertEmailChallengeParams{
+		Email:           ch.Email,
+		Purpose:         ch.Purpose,
+		CodeHash:        ch.CodeHash,
+		ExpiresAt:       ch.ExpiresAt,
+		AttemptCount:    int32(ch.AttemptCount),
+		SentAt:          ch.SentAt,
+		SendCount:       int32(ch.SendCount),
+		SendWindowStart: ch.SendWindowStart,
+	})
+}
+
+func (p *Postgres) DeleteEmailChallenge(ctx context.Context, email, purpose string) error {
+	return p.q.DeleteEmailChallenge(ctx, sqlcgen.DeleteEmailChallengeParams{Email: email, Purpose: purpose})
+}
+
+func (p *Postgres) IncrementChallengeAttempts(ctx context.Context, email, purpose string) (int, error) {
+	n, err := p.q.IncrementChallengeAttempts(ctx, sqlcgen.IncrementChallengeAttemptsParams{Email: email, Purpose: purpose})
+	if err != nil {
+		return 0, mapNotFound(err)
+	}
+	return int(n), nil
+}
+
+func challengeFromRow(row sqlcgen.EmailChallenge) EmailChallenge {
+	return EmailChallenge{
+		Email:           row.Email,
+		Purpose:         row.Purpose,
+		CodeHash:        row.CodeHash,
+		ExpiresAt:       row.ExpiresAt,
+		AttemptCount:    int(row.AttemptCount),
+		SentAt:          row.SentAt,
+		SendCount:       int(row.SendCount),
+		SendWindowStart: row.SendWindowStart,
+	}
+}
+
 func (p *Postgres) ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {
 	rows, err := p.q.ListProjects(ctx, sqlcgen.ListProjectsParams{
 		UserID:          userID,
