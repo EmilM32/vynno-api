@@ -6,6 +6,7 @@ DEV_PIDFILE="$ROOT/var/dev.pid"
 COMPOSE=(docker compose --project-directory "$ROOT")
 PROD_DB=vynno
 DEV_DB=vynno_dev
+DEFAULT_PROD_ADDR=127.0.0.1:27182
 DEFAULT_DEV_ADDR=127.0.0.1:8081
 
 die() {
@@ -116,16 +117,60 @@ kill_pid_tree() {
 	kill_pid_wait "$pid"
 }
 
+prod_addr() {
+	printf '%s\n' "${ADDR:-$DEFAULT_PROD_ADDR}"
+}
+
+prod_listen_port() {
+	local addr
+	addr="$(prod_addr)"
+	printf '%s\n' "${addr##*:}"
+}
+
 api_pid() {
-	pidfile_pid "$PIDFILE"
+	local pid pids
+	if pid="$(pidfile_pid "$PIDFILE")"; then
+		echo "$pid"
+		return 0
+	fi
+	if pids="$(listen_pids_on_port "$(prod_listen_port)")"; then
+		read -r pid <<< "$pids"
+		echo "$pid"
+		return 0
+	fi
+	return 1
 }
 
 stop_api() {
-	local pid
-	if pid="$(api_pid)"; then
+	local pid pids
+	if pid="$(pidfile_pid "$PIDFILE")"; then
 		kill_pid_wait "$pid"
-		rm -f "$PIDFILE"
 	fi
+	if pids="$(listen_pids_on_port "$(prod_listen_port)")"; then
+		while IFS= read -r pid; do
+			[[ -n "$pid" ]] || continue
+			kill_pid_wait "$pid"
+		done <<<"$pids"
+	fi
+	rm -f "$PIDFILE"
+}
+
+# Probe 127.0.0.1 (IPv4). ADDR is 127.0.0.1:port; localhost can prefer ::1.
+wait_for_healthz() {
+	local port="${1-}" pid="${2-}" i
+	if [[ -z "$port" ]]; then
+		die "wait_for_healthz: missing port"
+	fi
+	for i in $(seq 1 40); do
+		if [[ -n "$pid" ]] && ! alive_pid "$pid"; then
+			die "API process ${pid} exited before /healthz — see $ROOT/logs/api.log"
+		fi
+		if curl -sf --ipv4 -m 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1; then
+			return 0
+		fi
+		sleep 0.25
+	done
+	die "API did not become ready on 127.0.0.1:${port}/healthz — see $ROOT/logs/api.log"
 }
 
 dev_addr() {
