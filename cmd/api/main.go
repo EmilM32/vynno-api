@@ -13,6 +13,7 @@ import (
 
 	"github.com/EmilM32/vynno-api/internal/config"
 	"github.com/EmilM32/vynno-api/internal/httpserver"
+	"github.com/EmilM32/vynno-api/internal/mail"
 	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/EmilM32/vynno-api/internal/store"
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -42,7 +43,21 @@ func main() {
 		os.Exit(1)
 	}
 
-	r := httpserver.NewRouter(service.New(store.NewPostgres(db)), httpserver.Options{
+	mailer, err := mail.New(cfg.Mail.Mode, mail.SMTP{
+		Host:     cfg.Mail.Host,
+		Port:     cfg.Mail.Port,
+		Username: cfg.Mail.Username,
+		Password: cfg.Mail.Password,
+		StartTLS: cfg.Mail.StartTLS,
+		From:     cfg.Mail.From,
+		FromName: cfg.Mail.FromName,
+	})
+	if err != nil {
+		slog.Error("mailer", "err", err)
+		os.Exit(1)
+	}
+
+	r := httpserver.NewRouter(service.New(store.NewPostgres(db), mailer), httpserver.Options{
 		SPAOrigins:      cfg.SPAOrigins,
 		CookieSecure:    cfg.CookieSecure,
 		PublicAPIOrigin: cfg.PublicAPIOrigin,
