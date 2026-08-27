@@ -1,7 +1,7 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-26  
+**Last updated:** 2026-08-27  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, auth)
 

@@ -44,6 +44,8 @@ cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_AP
 ./scripts/stop --postgres     # production API + Compose stop (keeps the volume)
 ./scripts/dev                 # go run on :8081 → vynno_dev
 ./scripts/stop --dev          # playground API only (leftover :8081 bind)
+# Goose is per-database at process start: start migrates vynno, dev migrates vynno_dev.
+# Mailpit UI http://127.0.0.1:8025 (Compose). First daily register needs SMTP.
 ./scripts/backup              # pg_dump vynno into backups/
 ./scripts/reset               # wipe vynno_dev → alexdev@vynno.local + Identity
 ./scripts/seed                # wipe vynno_dev → 3 demo users

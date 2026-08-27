@@ -1,8 +1,8 @@
 # Plan — Outbound email, register confirmation, password reset
 
-**Status:** Draft (slice 0 docs landed; slices 1–3 not started)  
-**Last updated:** 2026-08-26  
-**Tracking:** Backlog AUTH-EXT (verification + reset only)  
+**Status:** Done  
+**Last updated:** 2026-08-27  
+**Tracking:** AUTH-EXT remainder is OAuth / passwordless / 2FA / change-email / logged-in change-password  
 **Depends on:** [ADR-0008](../adr/0008-authentication.md) Accepted; [email-login.md](./email-login.md) Done; [ADR-0015](../adr/0015-outbound-email.md) Accepted
 
 ---
@@ -13,7 +13,7 @@ The API can send mail over SMTP. Registration does not create an account until t
 
 OAuth, magic links, 2FA, passwordless login, and changing email after register stay backlog.
 
-The live process still one-shot-registers until slices 1–3 land. This plan is the working agreement for that work. Do not deploy the breaking `RegisterDto.code` change without the SPA pairing.
+Register is confirm-before-create. The mailer, SMTP, Mailpit, two-step SPA register, password reset, and operator runbook are in place. Do not deploy a later breaking auth change without the SPA pairing.
 
 ## Why now
 
@@ -98,15 +98,15 @@ OAuth, passkeys, magic links, 2FA, change-email, logged-in change-password, emai
 
 ## Exit checklist
 
-- [ ] ADR-0015 Accepted; ADR-0008 amended; contract + domain + PRD + backlog + roadmap + handoff updated in **both** repos
-- [ ] Mailer port with smtp / log / discard; Mailpit in Compose; `.env.example` documents `MAIL_*` / `SMTP_*`
-- [ ] `POST /v1/auth/register` creates an account only with a valid unused register code
-- [ ] `POST /v1/auth/register/code` and password forgot/reset exist with the documented codes
-- [ ] Reset does not leak account existence; reset revokes sessions; old password fails
-- [ ] Seed/reset/login of existing users do not require mail
-- [ ] SPA register is two-step; forgot-password works; Paraglide maps `invalid_code` and `rate_limited`
-- [ ] `go test ./...` green; OpenAPI from `route()` includes the new public ops
-- [ ] No code values in smtp-mode logs; no secret in JSON
+- [x] ADR-0015 Accepted; ADR-0008 amended; contract + domain + PRD + backlog + roadmap + handoff updated in **both** repos
+- [x] Mailer port with smtp / log / discard; Mailpit in Compose; `.env.example` documents `MAIL_*` / `SMTP_*`
+- [x] `POST /v1/auth/register` creates an account only with a valid unused register code
+- [x] `POST /v1/auth/register/code` and password forgot/reset exist with the documented codes
+- [x] Reset does not leak account existence; reset revokes sessions; old password fails
+- [x] Seed/reset/login of existing users do not require mail
+- [x] SPA register is two-step; forgot-password works; Paraglide maps `invalid_code` and `rate_limited`
+- [x] `go test ./...` green; OpenAPI from `route()` includes the new public ops
+- [x] No code values in smtp-mode logs; no secret in JSON
 
 ## Related
 

@@ -44,6 +44,6 @@ Also decided:
 
 ## Status
 
-Phase 0–4 and profile/avatar are done. Session edit/delete/manual entry (LOG-6 / LOG-7) and session list pagination (PAGE) are done. Email login identifier is done. Outbound mail / register confirmation / password reset is in progress ([plans/email.md](./plans/email.md)). Phase 5 is later (prefs, insights).
+Phase 0–4 and profile/avatar are done. Session edit/delete/manual entry (LOG-6 / LOG-7) and session list pagination (PAGE) are done. Email login identifier is done. Outbound mail / register confirmation / password reset is done ([plans/email.md](./plans/email.md)). Phase 5 is later (prefs, insights).
 
 See [roadmap.md](./roadmap.md).
