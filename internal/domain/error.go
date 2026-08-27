@@ -19,6 +19,8 @@ const (
 	CodeUnauthorized            = "unauthorized"
 	CodeInvalidCredentials      = "invalid_credentials"
 	CodeEmailInUse              = "email_in_use"
+	CodeInvalidCode             = "invalid_code"
+	CodeRateLimited             = "rate_limited"
 )
 
 // Error is a contract error code plus a log/DevTools message.
@@ -108,4 +110,12 @@ func ErrInvalidCredentials() *Error {
 
 func ErrEmailInUse() *Error {
 	return NewError(CodeEmailInUse, "That email is already in use.")
+}
+
+func ErrInvalidCode() *Error {
+	return NewError(CodeInvalidCode, "That code is invalid or has expired.")
+}
+
+func ErrRateLimited() *Error {
+	return NewError(CodeRateLimited, "Too many attempts. Try again later.")
 }

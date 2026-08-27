@@ -13,8 +13,13 @@ import (
 type registerBody struct {
 	Email       string  `json:"email"`
 	Password    string  `json:"password"`
+	Code        string  `json:"code"`
 	DisplayName *string `json:"displayName"`
 	RememberMe  *bool   `json:"rememberMe"`
+}
+
+type registerCodeBody struct {
+	Email string `json:"email"`
 }
 
 type loginBody struct {
@@ -23,8 +28,31 @@ type loginBody struct {
 	RememberMe *bool  `json:"rememberMe"`
 }
 
+type passwordForgotBody struct {
+	Email string `json:"email"`
+}
+
+type resetPasswordBody struct {
+	Email    string `json:"email"`
+	Code     string `json:"code"`
+	Password string `json:"password"`
+}
+
 type authResponse struct {
 	Profile profileDTO `json:"profile"`
+}
+
+func (s *Server) requestRegisterCode(c *gin.Context) {
+	var body registerCodeBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.svc.RequestRegisterCode(c.Request.Context(), body.Email); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s *Server) register(c *gin.Context) {
@@ -36,6 +64,7 @@ func (s *Server) register(c *gin.Context) {
 	res, err := s.svc.Register(c.Request.Context(), service.RegisterInput{
 		Email:       body.Email,
 		Password:    body.Password,
+		Code:        body.Code,
 		DisplayName: body.DisplayName,
 		RememberMe:  body.RememberMe,
 	})
@@ -45,6 +74,36 @@ func (s *Server) register(c *gin.Context) {
 	}
 	s.setSessionCookie(c, res.Token, res.RememberMe)
 	c.JSON(http.StatusCreated, authResponse{Profile: s.toProfileDTO(res.Profile)})
+}
+
+func (s *Server) requestPasswordReset(c *gin.Context) {
+	var body passwordForgotBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.svc.RequestPasswordReset(c.Request.Context(), body.Email); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) resetPassword(c *gin.Context) {
+	var body resetPasswordBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.svc.ResetPassword(c.Request.Context(), service.ResetPasswordInput{
+		Email:    body.Email,
+		Code:     body.Code,
+		Password: body.Password,
+	}); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func (s *Server) login(c *gin.Context) {

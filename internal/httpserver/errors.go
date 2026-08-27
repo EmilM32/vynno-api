@@ -47,8 +47,10 @@ func statusFor(code string) int {
 		domain.CodeNameInUse, domain.CodeLastActiveProject, domain.CodeProjectHasSessions,
 		domain.CodeActivityTypeHasSessions, domain.CodeInvalidTransition, domain.CodeEmailInUse:
 		return http.StatusConflict
-	case domain.CodeUnauthorized, domain.CodeInvalidCredentials:
+	case domain.CodeUnauthorized, domain.CodeInvalidCredentials, domain.CodeInvalidCode:
 		return http.StatusUnauthorized
+	case domain.CodeRateLimited:
+		return http.StatusTooManyRequests
 	default:
 		return http.StatusInternalServerError
 	}

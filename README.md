@@ -25,6 +25,7 @@ The frontend lives in a separate repo ([`vynno`](https://github.com/EmilM32/vynn
 | HTTP | Gin |
 | Database | PostgreSQL (goose + sqlc, local Docker Compose) |
 | Auth | HttpOnly session cookie ([ADR-0008](./docs/adr/0008-authentication.md) Accepted) |
+| Mail | SMTP via `Mailer` port ([ADR-0015](./docs/adr/0015-outbound-email.md) Accepted) |
 | Host | Owner’s machine ([ADR-0011](./docs/adr/0011-local-production-host.md) Accepted) |
 
 Decisions: [ADR-0001](./docs/adr/0001-backend-stack.md), [ADR-0009](./docs/adr/0009-persistence.md), [ADR-0011](./docs/adr/0011-local-production-host.md).
@@ -64,7 +65,7 @@ cp .env.example .env
 
 Operator API docs (generated from the Gin routes): [http://localhost:8080/swagger/](http://localhost:8080/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
 
-`/v1` requires a session (`GET /v1/avatars/:id` is the public exception). Production: `POST /v1/auth/register` then login. The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`.
+`/v1` requires a session (`GET /v1/avatars/:id` is the public exception, plus login/register/password-reset). Production: register from the SPA (`POST /v1/auth/register/code` then `/auth/register` with the 6-digit code). The SPA lists this origin in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://localhost:8080` so `avatarUrl` is an absolute URL. Leave `COOKIE_SECURE=false` on loopback HTTP. `ADDR=127.0.0.1:8080`. Local mail catcher: Mailpit at http://127.0.0.1:8025 (Compose, SMTP `:1025`). First register needs Mailpit or real SMTP.
 
 ### Playground
 
@@ -117,3 +118,4 @@ How we write PRDs, ADRs, and plans: **[docs/working-agreement.md](./docs/working
 - **Phase 2:** Contract v1 — done. See [docs/plans/phase-2-contract.md](./docs/plans/phase-2-contract.md).
 - **Phase 3:** Auth — done. See [docs/plans/phase-3-auth.md](./docs/plans/phase-3-auth.md).
 - **Phase 4:** Local production — done. See [docs/plans/phase-4-production.md](./docs/plans/phase-4-production.md).
+- **Outbound email:** Register confirmation + password reset — done. See [docs/plans/email.md](./docs/plans/email.md).

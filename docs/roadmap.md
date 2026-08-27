@@ -1,7 +1,7 @@
 # Roadmap — Vynno API
 
 **Status:** Draft  
-**Last updated:** 2026-08-26  
+**Last updated:** 2026-08-27  
 **Scope:** This repository only (API). Frontend is a separate project.
 
 ---
@@ -167,6 +167,16 @@ Plan: [plans/email-login.md](./plans/email-login.md). Amends [ADR-0008](./adr/00
 - [x] Display name may be empty; chrome shows email when unset
 - [x] Frontend pairing (login/register, Settings, SideNav)
 
+### Outbound email, register confirmation, password reset
+
+Plan: [plans/email.md](./plans/email.md). ADR: [ADR-0015](./adr/0015-outbound-email.md). Amends [ADR-0008](./adr/0008-authentication.md).
+
+- [x] Docs (plan, ADR-0015, contract, domain, PRD)
+- [x] Mailer port + SMTP + Mailpit; register still one-shot until the next box
+- [x] Register requires a 6-digit code; account created only after confirm; SPA two-step register
+- [x] Password forgot/reset; sessions revoked; SPA forgot-password
+- [x] Operator runbook (Mailpit / real SMTP); AUTH-EXT shrinks; plan Done
+
 ### Local production runtime
 
 Plan: [plans/local-prod-runtime.md](./plans/local-prod-runtime.md).
@@ -184,6 +194,7 @@ Only via contract amendments. Candidates: [backlog.md](./backlog.md).
 - Prefs persistence
 - Insights aggregation endpoints
 - Multi-user workspaces
+- OAuth / 2FA / change-email / logged-in change-password (AUTH-EXT remainder)
 
 ---
 

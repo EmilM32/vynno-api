@@ -24,6 +24,18 @@ type Token struct {
 	ExpiresAt time.Time
 }
 
+// EmailChallenge is a one-time code for register or password reset. No user FK.
+type EmailChallenge struct {
+	Email           string
+	Purpose         string
+	CodeHash        string
+	ExpiresAt       time.Time
+	AttemptCount    int
+	SentAt          time.Time
+	SendCount       int
+	SendWindowStart time.Time
+}
+
 // Store is the persistence port. Postgres is the system of record; Memory is a test double.
 type Store interface {
 	GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error)
@@ -42,6 +54,12 @@ type Store interface {
 	CreateToken(ctx context.Context, tok Token) error
 	GetTokenByHash(ctx context.Context, hash string) (Token, error)
 	DeleteTokenByHash(ctx context.Context, hash string) error
+	DeleteTokensByUser(ctx context.Context, userID uuid.UUID) error
+
+	GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error)
+	UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) error
+	DeleteEmailChallenge(ctx context.Context, email, purpose string) error
+	IncrementChallengeAttempts(ctx context.Context, email, purpose string) (int, error)
 
 	ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error)
 	GetProject(ctx context.Context, userID, id uuid.UUID) (domain.Project, error)

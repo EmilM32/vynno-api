@@ -6,15 +6,19 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"regexp"
 	"strconv"
 	"testing"
 
+	"github.com/EmilM32/vynno-api/internal/mail"
 	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
+
+var otpPat = regexp.MustCompile(`\b(\d{6})\b`)
 
 const testPassword = "test-pass-1"
 
@@ -27,6 +31,17 @@ func testOpts() Options {
 
 func testRouter(t *testing.T) *gin.Engine {
 	t.Helper()
+	return testRouterWithMailer(t, mail.Discard())
+}
+
+func testRouterWithMailer(t *testing.T, m mail.Mailer) *gin.Engine {
+	t.Helper()
+	r, _ := testAuth(t, m)
+	return r
+}
+
+func testAuth(t *testing.T, m mail.Mailer) (*gin.Engine, *service.Service) {
+	t.Helper()
 	gin.SetMode(gin.TestMode)
 	user := store.DefaultUserID()
 	mem := store.NewMemory(user, store.DefaultProfile(), store.DefaultProject())
@@ -37,7 +52,33 @@ func testRouter(t *testing.T) *gin.Engine {
 	if err := mem.Bootstrap(context.Background(), user, "alexdev@vynno.local", string(hash), store.DefaultProfile(), store.DefaultProject()); err != nil {
 		t.Fatal(err)
 	}
-	return NewRouter(service.New(mem), testOpts())
+	svc := service.New(mem, m)
+	return NewRouter(svc, testOpts()), svc
+}
+
+func otpFromRecorder(t *testing.T, rec *mail.Recorder) string {
+	t.Helper()
+	if len(rec.Messages) == 0 {
+		t.Fatal("no mail sent")
+	}
+	m := otpPat.FindStringSubmatch(rec.Messages[len(rec.Messages)-1].Text)
+	if m == nil {
+		t.Fatalf("no code in mail %q", rec.Messages[len(rec.Messages)-1].Text)
+	}
+	return m[1]
+}
+
+func registerWithCode(t *testing.T, r http.Handler, rec *mail.Recorder, email, password string, extra map[string]any) *httptest.ResponseRecorder {
+	t.Helper()
+	w := doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": email})
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("register/code = %d %s", w.Code, w.Body.String())
+	}
+	body := map[string]any{"email": email, "password": password, "code": otpFromRecorder(t, rec)}
+	for k, v := range extra {
+		body[k] = v
+	}
+	return doJSON(t, r, http.MethodPost, "/v1/auth/register", body)
 }
 
 func doJSON(t *testing.T, r http.Handler, method, path string, body any, opts ...reqOpt) *httptest.ResponseRecorder {

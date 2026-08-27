@@ -29,20 +29,26 @@ type memAccount struct {
 
 // Memory is an in-memory Store for tests. Data is scoped by user.
 type Memory struct {
-	mu       sync.Mutex
-	accounts map[uuid.UUID]*memAccount
-	byName   map[string]uuid.UUID
-	tokens   map[string]Token
-	avatars  map[uuid.UUID]memAvatar
+	mu         sync.Mutex
+	accounts   map[uuid.UUID]*memAccount
+	byName     map[string]uuid.UUID
+	tokens     map[string]Token
+	avatars    map[uuid.UUID]memAvatar
+	challenges map[string]EmailChallenge
+}
+
+func challengeKey(email, purpose string) string {
+	return email + "\x00" + purpose
 }
 
 // NewEmptyMemory is an in-memory Store with no accounts. Used by operator-tooling tests.
 func NewEmptyMemory() *Memory {
 	return &Memory{
-		accounts: map[uuid.UUID]*memAccount{},
-		byName:   map[string]uuid.UUID{},
-		tokens:   map[string]Token{},
-		avatars:  map[uuid.UUID]memAvatar{},
+		accounts:   map[uuid.UUID]*memAccount{},
+		byName:     map[string]uuid.UUID{},
+		tokens:     map[string]Token{},
+		avatars:    map[uuid.UUID]memAvatar{},
+		challenges: map[string]EmailChallenge{},
 	}
 }
 
@@ -62,9 +68,10 @@ func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project)
 				sessions:      map[uuid.UUID]domain.Session{},
 			},
 		},
-		byName:  map[string]uuid.UUID{},
-		tokens:  map[string]Token{},
-		avatars: map[uuid.UUID]memAvatar{},
+		byName:     map[string]uuid.UUID{},
+		tokens:     map[string]Token{},
+		avatars:    map[uuid.UUID]memAvatar{},
+		challenges: map[string]EmailChallenge{},
 	}
 }
 
@@ -254,6 +261,54 @@ func (m *Memory) DeleteTokenByHash(_ context.Context, hash string) error {
 	defer m.mu.Unlock()
 	delete(m.tokens, hash)
 	return nil
+}
+
+func (m *Memory) DeleteTokensByUser(_ context.Context, userID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for hash, tok := range m.tokens {
+		if tok.UserID == userID {
+			delete(m.tokens, hash)
+		}
+	}
+	return nil
+}
+
+func (m *Memory) GetEmailChallenge(_ context.Context, email, purpose string) (EmailChallenge, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	ch, ok := m.challenges[challengeKey(email, purpose)]
+	if !ok {
+		return EmailChallenge{}, domain.ErrNotFound()
+	}
+	return ch, nil
+}
+
+func (m *Memory) UpsertEmailChallenge(_ context.Context, ch EmailChallenge) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.challenges[challengeKey(ch.Email, ch.Purpose)] = ch
+	return nil
+}
+
+func (m *Memory) DeleteEmailChallenge(_ context.Context, email, purpose string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.challenges, challengeKey(email, purpose))
+	return nil
+}
+
+func (m *Memory) IncrementChallengeAttempts(_ context.Context, email, purpose string) (int, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := challengeKey(email, purpose)
+	ch, ok := m.challenges[key]
+	if !ok {
+		return 0, domain.ErrNotFound()
+	}
+	ch.AttemptCount++
+	m.challenges[key] = ch
+	return ch.AttemptCount, nil
 }
 
 func (m *Memory) ListProjects(_ context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {

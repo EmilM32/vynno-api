@@ -9,6 +9,7 @@ require (
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/pressly/goose/v3 v3.27.3
 	github.com/swaggest/swgui v1.8.9
+	github.com/wneessen/go-mail v0.8.1
 	golang.org/x/crypto v0.55.0
 )
 

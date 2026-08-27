@@ -5,7 +5,8 @@ Daily driver for the production API **on this machine**. No cloud host. Decision
 ```
 browser  →  http://localhost:3000  (vynno, adapter-node)
                 └── /v1 BFF  ──►  http://127.0.0.1:8080  (this repo, bin/vynno-api → database vynno)
-                                        └── Postgres (Docker Compose, port 5433)
+                                        ├── Postgres (Docker Compose, port 5433)
+                                        └── Mailpit SMTP :1025 / UI :8025  (first register + password reset)
 ```
 
 Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:8081`. It does not share rows with daily history.
@@ -27,10 +28,13 @@ cp .env.example .env   # if you do not already have one
 # DATABASE_URL → database vynno
 # DEV_DATABASE_URL → database vynno_dev
 # SPA_ORIGIN includes http://localhost:3000
+# MAIL_MODE=smtp + SMTP_* pointing at Mailpit (existing .env: copy that block)
 ./scripts/build
 ```
 
-The API does **not** create a user. First visit: open the SPA and use the register tab.
+An existing `.env` without `MAIL_MODE` still boots (`discard`; nothing is sent). Copy the `MAIL_*` / `SMTP_*` block from `.env.example` to use Mailpit. Daily driver is `MAIL_MODE=smtp`.
+
+The API does **not** create a user. First visit: open the SPA register tab, request a code, then submit it. See [Mail](#mail).
 
 `BOOTSTRAP_*` / `SEED_PASSWORD` are only for `scripts/reset` and `scripts/seed` against `vynno_dev`. They are not production credentials.
 
@@ -65,6 +69,35 @@ Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [http://localh
 
 After pulling API changes, run `scripts/build` again. Start does not rebuild.
 
+Goose runs at process start against **that process’s** database only. `scripts/dev` migrates `vynno_dev`; `scripts/start` migrates `vynno`. After a new migration, start both once or the other database stays behind.
+
+## Mail
+
+Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation and password reset share it ([plans/email.md](./plans/email.md)).
+
+| `MAIL_MODE` | Who | What happens |
+| --- | --- | --- |
+| `smtp` | Daily driver (`scripts/start`) | Sends over `SMTP_*`. Boot fails if `SMTP_HOST` or `MAIL_FROM` is missing. |
+| `log` | Playground-only | Prints the body, **including the one-time code**, to process logs. Do not use on production. |
+| `unset` / `discard` | Tests; an old `.env` | Accepts the message and sends nothing. Register/reset appear to work until you look for mail. |
+
+`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it.
+
+**First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
+
+**Password reset.** Login → Forgot password? → same inbox → new password. Reset revokes every session and does not set a cookie; sign in afterwards. Unknown emails still get `204` and no mail.
+
+**Do not put codes on disk in `smtp` mode.** Request logs are method/path/status only. Successful SMTP logs `mail sent to=…` — not the body. `log` mode is the exception (playground). JSON never includes the code.
+
+**Real mailbox later.** Change `SMTP_HOST` / port / username / password / `SMTP_STARTTLS` / `MAIL_FROM`. Gmail app password, Fastmail, or a provider’s SMTP endpoint are env-only. Do not point production SMTP at `@vynno.local` seed addresses — those exist only on `vynno_dev` and will bounce on a public MX. Seed/reset insert users without mail; forgot-password **does** email them if SMTP is up.
+
+**If send-code or forgot fails**
+
+1. Compose Mailpit is up (`docker compose ps`; UI at `:8025`).
+2. `.env` has the `MAIL_*` / `SMTP_*` block; `MAIL_MODE=smtp`; API was restarted after the edit.
+3. `SMTP_HOST=127.0.0.1` and `SMTP_PORT=1025` for the local catcher (`localhost` vs `127.0.0.1` does not matter for SMTP here).
+4. Open Mailpit, search `to:you@example.com`. Playwright uses the same HTTP API.
+
 ## Playground (not daily history)
 
 ```sh
@@ -95,11 +128,12 @@ Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in th
 2. This repo `SPA_ORIGIN` lists that exact origin (restart the API after editing `.env`).
 3. `COOKIE_SECURE=false` (loopback HTTP).
 4. Production has no `alexdev@vynno.local` unless you registered that address. Seed users live on `vynno_dev`. After the email-login migration, a leftover username `alexdev` logs in as `alexdev@vynno.local`.
+5. First register needs reachable SMTP (see [Mail](#mail)). Existing accounts do not.
 
 ## What this does not do
 
 - Does not start the SPA. That is the `vynno` repo.
 - Does not listen on the LAN (`ADDR=127.0.0.1:8080`).
 - Does not rebuild on start.
-- Does not create accounts. Register is the SPA.
+- Does not create accounts. Register is the SPA (and needs SMTP; see [Mail](#mail)).
 - Does not `docker compose down -v`.

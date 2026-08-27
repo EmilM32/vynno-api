@@ -52,7 +52,7 @@ func TestReadyzReportsDatabase(t *testing.T) {
 
 	user := store.DefaultUserID()
 	mem := store.NewMemory(user, store.DefaultProfile(), store.DefaultProject())
-	r := NewRouter(service.New(mem), Options{
+	r := NewRouter(service.New(mem, nil), Options{
 		SPAOrigins:      []string{"http://localhost:5173"},
 		PublicAPIOrigin: "http://localhost:8080",
 		Ready: func(context.Context) error {

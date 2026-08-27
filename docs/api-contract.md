@@ -3,7 +3,7 @@
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
 **Last updated:** 2026-08-26  
-**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier (drop username / handle)
+**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier (drop username / handle); register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md), [plans/email.md](./plans/email.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -54,6 +54,8 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `unauthorized` | 401 | Missing, unknown, or expired session on a protected route | `error_unauthorized` |
 | `invalid_credentials` | 401 | Login email/password do not match | `error_invalid_credentials` |
 | `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
+| `invalid_code` | 401 | Wrong, expired, or already used one-time code | `error_invalid_code` |
+| `rate_limited` | 429 | Register/reset send cooldown, send cap, or too many code guesses | `error_rate_limited` |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
@@ -92,7 +94,7 @@ These are product rules the API must enforce. Details: [domain-model.md](./domai
 
 ## Auth
 
-Mechanism: [ADR-0008](./adr/0008-authentication.md).
+Mechanism: [ADR-0008](./adr/0008-authentication.md). Mail: [ADR-0015](./adr/0015-outbound-email.md). Register is two-step (code, then create). Password reset is two-step (forgot, then reset).
 
 Login and register set an HttpOnly cookie `vynno_session`. The JSON body is `{ "profile": ProfileDto }` only — the session secret is not in the response.
 
@@ -105,17 +107,22 @@ Anything else on a protected route is `401 unauthorized`. A project or session i
 
 | Method | Path | Auth | Body | Success | Typical errors |
 | --- | --- | --- | --- | --- | --- |
-| POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `email_in_use` |
+| POST | `/auth/register/code` | no | `{ "email" }` | `204` empty | `invalid_body`, `email_in_use`, `rate_limited` |
+| POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `email_in_use`, `invalid_code`, `rate_limited` |
 | POST | `/auth/login` | no | `LoginDto` | `{ profile }` `200` + `Set-Cookie` | `invalid_body`, `invalid_credentials` |
 | POST | `/auth/logout` | yes | — | `204` + clear cookie | `unauthorized` |
+| POST | `/auth/password/forgot` | no | `{ "email" }` | `204` empty | `invalid_body`, `rate_limited` |
+| POST | `/auth/password/reset` | no | `ResetPasswordDto` | `204` empty | `invalid_body`, `invalid_code`, `rate_limited` |
+
+Register is two steps. `POST /auth/register/code` emails a 6-digit code (15 minute TTL) when the address is free. Taken email is `409 email_in_use`. The account is **not** created until `POST /auth/register` accepts that code.
 
 `RegisterDto`:
 
 ```json
-{ "email": "alex@example.com", "password": "a-long-enough-secret", "displayName": "Alex Dev", "rememberMe": true }
+{ "email": "alex@example.com", "password": "a-long-enough-secret", "code": "123456", "displayName": "Alex Dev", "rememberMe": true }
 ```
 
-`displayName` and `rememberMe` may be omitted. Omitted or empty `displayName` is stored as `""` (the SPA shows the email). Omitted `rememberMe` is `true`. Do not send `username`.
+`code` is required: exactly six digits, matching the unused register challenge for that email. `displayName` and `rememberMe` may be omitted. Omitted or empty `displayName` is stored as `""` (the SPA shows the email). Omitted `rememberMe` is `true`. Do not send `username`. Do not return `code` in any JSON body.
 
 `LoginDto`:
 
@@ -127,11 +134,21 @@ Email: trim, lowercase, 3–254 characters; must be a single address (`net/mail.
 
 `rememberMe: true` (default) sets cookie `Max-Age` to 30 days. `false` sets a session cookie (cleared when the browser quits). The server still expires the token after 30 days.
 
+Password reset is also two steps. `POST /auth/password/forgot` always returns `204` for a well-formed email (including unknown addresses) and sends a code only when the account exists. `POST /auth/password/reset` sets a new password and revokes every session for that user. It does not set a cookie; the user logs in afterwards.
+
+`ResetPasswordDto`:
+
+```json
+{ "email": "alex@example.com", "code": "123456", "password": "a-new-long-enough-secret" }
+```
+
+Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required. A resend replaces the previous code. Operator seed/reset accounts skip this flow.
+
 Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is configured for HTTPS.
 
 CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
 
-Public: `POST /auth/login`, `POST /auth/register`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public. Operator Swagger UI (`GET /swagger/`, `GET /openapi.json`) is also outside `/v1` and public on this loopback process.
+Public: `POST /auth/login`, `POST /auth/register`, `POST /auth/register/code`, `POST /auth/password/forgot`, `POST /auth/password/reset`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public. Operator Swagger UI (`GET /swagger/`, `GET /openapi.json`) is also outside `/v1` and public on this loopback process.
 
 ### Profile
 

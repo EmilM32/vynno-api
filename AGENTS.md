@@ -30,12 +30,13 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 - Wire format is [docs/api-contract.md](./docs/api-contract.md). No extra endpoints, fields, or error codes.
 - OpenAPI is generated from `Server.route(...)` in `internal/httpserver` ([ADR-0013](./docs/adr/0013-openapi-swagger.md)). Do not add a hand-written spec or swaggo comments. Contract amendments update `route()` metadata in the same change.
 - Auth is Accepted ([docs/adr/0008-authentication.md](./docs/adr/0008-authentication.md)). Session cookie `vynno_session`; do not return the token in JSON.
+- Outbound mail is Accepted ([docs/adr/0015-outbound-email.md](./docs/adr/0015-outbound-email.md)): SMTP via `internal/mail`. Register confirmation and password reset: [docs/plans/email.md](./docs/plans/email.md). Do not log one-time codes in `smtp` mode.
 - IDs are UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes.
 
 ### Useful commands
 
 ```sh
-cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_API_ORIGIN
+cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_API_ORIGIN, MAIL_* / SMTP_*
 ./scripts/build               # bin/vynno-api
 ./scripts/start               # daily driver; does not rebuild; database vynno
 ./scripts/start --detach
@@ -43,6 +44,8 @@ cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_AP
 ./scripts/stop --postgres     # production API + Compose stop (keeps the volume)
 ./scripts/dev                 # go run on :8081 → vynno_dev
 ./scripts/stop --dev          # playground API only (leftover :8081 bind)
+# Goose is per-database at process start: start migrates vynno, dev migrates vynno_dev.
+# Mailpit UI http://127.0.0.1:8025 (Compose). First daily register needs SMTP.
 ./scripts/backup              # pg_dump vynno into backups/
 ./scripts/reset               # wipe vynno_dev → alexdev@vynno.local + Identity
 ./scripts/seed                # wipe vynno_dev → 3 demo users

@@ -9,3 +9,6 @@ WHERE token_hash = $1;
 
 -- name: DeleteAuthTokenByHash :exec
 DELETE FROM auth_tokens WHERE token_hash = $1;
+
+-- name: DeleteAuthTokensByUser :exec
+DELETE FROM auth_tokens WHERE user_id = $1;
