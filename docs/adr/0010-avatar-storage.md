@@ -8,7 +8,7 @@
 
 `profiles.avatar_url` has existed since Phase 2 as a nullable TEXT column, and `ProfileDto.avatarUrl` is already on the wire. Nothing wrote either. Settings needs a real photo: pick a file, persist it, show it in chrome.
 
-A client-supplied URL is hotlinking (SSRF if we fetch it, broken images if the remote dies). Base64 in `PATCH /me` inflates the JSON contract. Hosting is still undecided ([ADR-0009](./0009-persistence.md)); there is no volume and no object-storage bucket yet. One image per user, hard-capped at 1 MiB.
+A client-supplied URL is hotlinking (SSRF if we fetch it, broken images if the remote dies). Base64 in `PATCH /me` inflates the JSON contract. v1 has no object-storage bucket ([ADR-0011](./0011-local-production-host.md)). One image per user, hard-capped at 1 MiB.
 
 `<img src>` from the SPA origin to the API origin is a cross-site subresource. `SameSite=Lax` cookies are not sent on that request, so a cookie-gated `/me/avatar` would be a broken image.
 
@@ -50,6 +50,6 @@ A client-supplied URL is hotlinking (SSRF if we fetch it, broken images if the r
 ## Related
 
 - [../api-contract.md](../api-contract.md)
-- [../plans/profile-avatar.md](../plans/profile-avatar.md)
+- [../domain-model.md](../domain-model.md)
 - [0008-authentication.md](./0008-authentication.md)
 - [0009-persistence.md](./0009-persistence.md)

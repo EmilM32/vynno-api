@@ -17,7 +17,7 @@ Coupling API, database, and UI in one repo now would have slowed the frontend an
 2. **UI, design system, and i18n** stay in the frontend repository.
 3. The shared language is [../api-contract.md](../api-contract.md), not a shared package (until both sides explicitly extract one).
 4. No SvelteKit routes, Stitch assets, or frontend build tooling are introduced here.
-5. After a live API exists, the frontend deletes `/mock/v1`. This repo never becomes a BFF for the SPA.
+5. This repo never becomes a BFF for the SPA. The frontend deleted `/mock/v1`.
 
 ## Consequences
 
@@ -44,5 +44,5 @@ Coupling API, database, and UI in one repo now would have slowed the frontend an
 ## Related
 
 - [0003-http-json-contract.md](./0003-http-json-contract.md)
-- [../frontend-handoff.md](../frontend-handoff.md)
+- [../api-contract.md](../api-contract.md)
 - [../prd.md](../prd.md)

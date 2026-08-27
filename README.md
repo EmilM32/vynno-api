@@ -100,22 +100,10 @@ golangci-lint run ./...
 
 Start here: **[docs/README.md](./docs/README.md)**
 
-How we write PRDs, ADRs, and plans: **[docs/working-agreement.md](./docs/working-agreement.md)**
-
 | Doc | Description |
 | --- | --- |
-| [docs/prd.md](./docs/prd.md) | Product requirements for the API |
-| [docs/domain-model.md](./docs/domain-model.md) | Entities and server-enforced rules |
 | [docs/api-contract.md](./docs/api-contract.md) | Wire JSON the SPA already speaks |
-| [docs/roadmap.md](./docs/roadmap.md) | Delivery phases |
+| [docs/domain-model.md](./docs/domain-model.md) | Entities and server-enforced rules |
+| [docs/local-production.md](./docs/local-production.md) | Daily driver runbook |
 | [docs/adr/](./docs/adr/) | Architecture decisions |
-| [docs/plans/](./docs/plans/) | Implementation plans |
-
-## Status
-
-- **Phase 0:** Planning — done.
-- **Phase 1:** Scaffold — done. See [docs/plans/phase-1-scaffold.md](./docs/plans/phase-1-scaffold.md).
-- **Phase 2:** Contract v1 — done. See [docs/plans/phase-2-contract.md](./docs/plans/phase-2-contract.md).
-- **Phase 3:** Auth — done. See [docs/plans/phase-3-auth.md](./docs/plans/phase-3-auth.md).
-- **Phase 4:** Local production — done. See [docs/plans/phase-4-production.md](./docs/plans/phase-4-production.md).
-- **Outbound email:** Register confirmation + password reset — done. See [docs/plans/email.md](./docs/plans/email.md).
+| [docs/backlog.md](./docs/backlog.md) | Deferred work |

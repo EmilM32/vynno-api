@@ -23,11 +23,11 @@ An in-memory store is allowed **only** as a test double.
 | Where it runs | Local Docker Compose (PostgreSQL 16). App reads `DATABASE_URL`. v1 production is the same Compose Postgres on the owner’s machine ([ADR-0011](./0011-local-production-host.md)). |
 | IDs | UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes. |
 
-Schema may include an internal `user_id` so Phase 3 auth is a migration, not a rewrite ([ADR-0006](./0006-single-user-tenancy.md)). That column is not exposed on the wire in v1.
+Schema includes an internal `user_id` ([ADR-0006](./0006-single-user-tenancy.md)). That column is not exposed on the wire.
 
 Constraints the choice must satisfy:
 
-1. Process restart does not lose projects or stopped sessions ([../prd.md](../prd.md) PLAT-1).
+1. Process restart does not lose projects or stopped sessions.
 2. Domain invariants are enforced in application code (and/or DB constraints that match them). Do not rely on the HTTP layer alone.
 3. Wire DTOs stay as specified; column names may differ.
 4. Single-user v1, but avoid a process-wide singleton ([ADR-0006](./0006-single-user-tenancy.md)).
@@ -65,5 +65,3 @@ The production host is no longer TBD. [ADR-0011](./0011-local-production-host.md
 - [0001-backend-stack.md](./0001-backend-stack.md)
 - [0006-single-user-tenancy.md](./0006-single-user-tenancy.md)
 - [../domain-model.md](../domain-model.md)
-- [../plans/phase-0-planning.md](../plans/phase-0-planning.md)
-- [../plans/phase-1-scaffold.md](../plans/phase-1-scaffold.md)

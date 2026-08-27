@@ -7,9 +7,7 @@
 
 ## Context
 
-The SPA loads and mutates data through `fetch` against a documented REST contract. Mock `/mock/v1` implements the same paths and DTOs. The remaining frontend swap is a base URL (and auth), not a data-layer rewrite.
-
-If this backend invented GraphQL, RPC, or different field names, the SPA would have to change schemas, mappers, and possibly stores. That is the opposite of why the contract was written.
+The SPA loads and mutates data through `fetch` against a documented REST contract. If this backend invented GraphQL, RPC, or different field names, the SPA would have to change schemas, mappers, and possibly stores.
 
 ## Decision
 
@@ -26,7 +24,7 @@ If this backend invented GraphQL, RPC, or different field names, the SPA would h
 
 ### Positive
 
-- Frontend Phase 5c is a configuration change plus auth.
+- The SPA talks to this origin with a base URL plus cookie credentials.
 - Domain tests can assert on codes and state without HTTP.
 - A later OpenAPI file can be generated from this contract; it is not a prerequisite. (Done: generated from Gin `route()` registration, [0013-openapi-swagger.md](./0013-openapi-swagger.md).)
 
@@ -52,7 +50,6 @@ Operator OpenAPI is generated from the handlers that implement this contract ([0
 ## Related
 
 - [../api-contract.md](../api-contract.md)
-- [../frontend-handoff.md](../frontend-handoff.md)
 - [0002-separate-repository.md](./0002-separate-repository.md)
 - [0005-session-lifecycle.md](./0005-session-lifecycle.md)
 - [0013-openapi-swagger.md](./0013-openapi-swagger.md)

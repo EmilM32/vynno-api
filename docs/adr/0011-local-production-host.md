@@ -6,9 +6,9 @@
 
 ## Context
 
-Phase 4 needs a deploy target. [ADR-0001](./0001-backend-stack.md) left hosting open (VPS, Fly, Cloud Run, …). [ADR-0009](./0009-persistence.md) said the production host would be a Phase 4 ADR. Open question #4 was the same item.
+[ADR-0001](./0001-backend-stack.md) left hosting open (VPS, Fly, Cloud Run, …). [ADR-0009](./0009-persistence.md) deferred the production host.
 
-The product is still a single-operator tool ([ADR-0006](./0006-single-user-tenancy.md)). The owner will be the only user for now and will run the stack on their own machine: a built API binary and PostgreSQL in Docker. Cloud hosting is not ruled out later.
+The product is still a single-operator tool ([ADR-0006](./0006-single-user-tenancy.md)). The owner runs the stack on their own machine: a built API binary and PostgreSQL in Docker. Cloud hosting is not ruled out later.
 
 The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS assume `SPA_ORIGIN` is a real browser origin; loopback HTTP is the current setup.
 
@@ -16,7 +16,7 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 
 1. **v1 production is the owner’s machine**, not a public cloud. A later public host amends this ADR (or writes a new one that supersedes it).
 2. **PostgreSQL stays in Docker Compose** — the same `postgres` service as local development. Durable data is the Compose named volume. Do not `docker compose down -v` on that machine.
-3. **The API is a compiled host binary** (`bin/vynno-api` from `./cmd/api`). It is not containerized in this decision. `scripts/start` builds it, starts Compose, waits for Postgres, and runs the process.
+3. **The API is a compiled host binary** (`bin/vynno-api` from `./cmd/api`). It is not containerized in this decision. `scripts/build` writes the binary. `scripts/start` starts Compose, waits for Postgres, and runs the process; it does not rebuild.
 4. **Secrets stay in a gitignored `.env`.** There is no cloud secret manager until there is a cloud host. `.env.example` remains the documented shape, not production values.
 5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** Loopback HTTP means `COOKIE_SECURE=false`. Production origins are the local SPA (Vite, preview, and adapter-node `http://localhost:3000`) listed in `SPA_ORIGIN`.
 6. **Backups are `pg_dump` through Compose** (`scripts/backup`, `scripts/restore`). Avatars are BYTEA, so they are in the dump. A restore drill is part of shipping this decision.
@@ -63,8 +63,4 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 - [0001-backend-stack.md](./0001-backend-stack.md)
 - [0008-authentication.md](./0008-authentication.md)
 - [0009-persistence.md](./0009-persistence.md)
-- [../plans/phase-4-production.md](../plans/phase-4-production.md)
-- [../plans/local-prod-runtime.md](../plans/local-prod-runtime.md)
 - [../local-production.md](../local-production.md)
-- [../roadmap.md](../roadmap.md) Phase 4
-- [../open-questions.md](../open-questions.md) #4

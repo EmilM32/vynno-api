@@ -55,5 +55,4 @@ CSRF for Try-it-out: mutating cookie requests from the API’s own origin are al
 - [../api-contract.md](../api-contract.md)
 - [0003-http-json-contract.md](./0003-http-json-contract.md)
 - [0008-authentication.md](./0008-authentication.md)
-- [../plans/swagger.md](../plans/swagger.md)
 - [../backlog.md](../backlog.md) `OPENAPI`

@@ -1,9 +1,9 @@
 # Backlog — Vynno API
 
 **Last updated:** 2026-08-27  
-**Context:** Work we are deliberately **not** doing now. Phase 4 (local production) is done. Do not pull these in without a contract amendment and a roadmap change.
+**Context:** Work we are deliberately **not** doing now. Do not pull these in without a contract amendment and a roadmap change.
 
-IDs that start with frontend requirement codes (`LOG-6`, …) are the same items as in the frontend PRD / P2 backlog. They imply API work only when the SPA is ready to call new endpoints.
+IDs that start with frontend requirement codes are the same items as in the frontend PRD / P2 backlog. They imply API work only when the SPA is ready to call new endpoints.
 
 ---
 
@@ -11,10 +11,7 @@ IDs that start with frontend requirement codes (`LOG-6`, …) are the same items
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| LOG-6 | Edit / delete a session | **Done** — [plans/session-edit.md](./plans/session-edit.md). `PATCH` / `DELETE /sessions/:id`. |
-| LOG-7 | Manual time entry | **Done** — same plan. `POST /sessions/manual`. |
 | PREFS | Persist daily target and default project | Client `prefsStore` is in-memory. New resource. |
-| PAGE | Cursor / offset pagination | **Done** — [plans/session-pagination.md](./plans/session-pagination.md). Cursor on `GET /sessions`. |
 | INS | Insights / dashboard aggregate endpoints | Client computes these from sessions. |
 | TMR-9 | Session target duration UI | Field already exists on `StartSessionDto`; no API change until the UI ships. |
 
@@ -22,9 +19,9 @@ IDs that start with frontend requirement codes (`LOG-6`, …) are the same items
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| AUTH-EXT | OAuth / passwordless / 2FA / change-email / logged-in change-password | Cookie session, register confirmation, and password reset shipped ([plans/email.md](./plans/email.md) Done). |
+| AUTH-EXT | OAuth / passwordless / 2FA / change-email / logged-in change-password | Cookie session, register confirmation, and password reset already shipped. |
 | MULTI | Team workspaces | Contradicts [ADR-0006](./adr/0006-single-user-tenancy.md) until we supersede it. |
-| RATE | Rate limiting | Production hardening; not a contract field. |
+| RATE | Rate limiting | Production hardening; not a contract field. Revisit before any internet-facing host. |
 | OPENAPI | Generated TypeScript / Valibot client | Spec + Swagger UI shipped ([ADR-0013](./adr/0013-openapi-swagger.md)). SPA already has Valibot schemas. |
 | WEBHOOK | Outbound webhooks | No product request. |
 
@@ -36,6 +33,6 @@ Invoicing, payroll, calendar sync, IDE plugins, native mobile APIs. Same non-goa
 
 ## Related
 
-- [prd.md](./prd.md) §4 and §8
+- [prd.md](./prd.md)
 - [roadmap.md](./roadmap.md) Phase 5
 - [api-contract.md](./api-contract.md) Out of scope

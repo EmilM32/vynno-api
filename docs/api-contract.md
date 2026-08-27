@@ -3,7 +3,7 @@
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
 **Last updated:** 2026-08-26  
-**Amended:** Profile writes + public avatar GET (ME-3 / ME-4 / ME-5); user-defined activity types (ADR-0012); session edit / delete / manual entry (LOG-6 / LOG-7); session list cursor pagination (PAGE, [ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier (drop username / handle); register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md), [plans/email.md](./plans/email.md))
+**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -402,13 +402,8 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 ---
 
-## Swap to a live API
+## SPA attach
 
-See [frontend-handoff.md](./frontend-handoff.md). Short version:
+The SPA (`vynno`) calls this contract with `PUBLIC_API_BASE=/v1` and `credentials: 'include'`. It does not send `Authorization`. CORS must list the SPA origin in `SPA_ORIGIN`; cookies will not be stored if CORS is `*`. Cookie flags: [ADR-0008](./adr/0008-authentication.md).
 
-1. Implement this contract.
-2. Frontend sets `PUBLIC_API_BASE=https://…/v1`.
-3. Frontend `ApiClient` sends `credentials: 'include'` (Phase 3 / [ADR-0008](./adr/0008-authentication.md)).
-4. Frontend deletes its mock tree.
-
-The SPA already uses `HttpTimeTrackingRepository` for every read and write. No view or store rewrite.
+A contract change is a paired change: this file + frontend `docs/api-contract.md` + `src/lib/api/schemas`.

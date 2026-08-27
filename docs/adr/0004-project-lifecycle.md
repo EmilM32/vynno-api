@@ -48,5 +48,5 @@ The frontend mock already enforces these rules. The API must enforce them too; t
 
 - [../domain-model.md](../domain-model.md)
 - [../api-contract.md](../api-contract.md)
-- [../prd.md](../prd.md) §8.2
+- [../prd.md](../prd.md)
 - [0005-session-lifecycle.md](./0005-session-lifecycle.md)

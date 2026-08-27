@@ -73,7 +73,7 @@ Goose runs at process start against **that process’s** database only. `scripts
 
 ## Mail
 
-Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation and password reset share it ([plans/email.md](./plans/email.md)).
+Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation and password reset share it.
 
 | `MAIL_MODE` | Who | What happens |
 | --- | --- | --- |

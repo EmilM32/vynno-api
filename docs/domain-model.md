@@ -1,13 +1,13 @@
 # Domain Model — Vynno API
 
-**Status:** Draft  
-**Last updated:** 2026-08-26
+**Status:** Accepted  
+**Last updated:** 2026-08-27
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
 Wire JSON lives in [api-contract.md](./api-contract.md). On the wire, projects use `archived` (not `isArchived`) and absent optionals are JSON `null`.
 
-Inherited from the frontend domain model and from the mock engine the SPA already ships. If this file and the live mock disagree, treat the documented rules here plus [api-contract.md](./api-contract.md) as what the API must do.
+If this file and the live API disagree, treat the documented rules here plus [api-contract.md](./api-contract.md) as what the API must do.
 
 ---
 
@@ -127,7 +127,7 @@ Full decision: [ADR-0004](./adr/0004-project-lifecycle.md).
 | **Hard delete** | Permanent remove, only when **zero** sessions reference the project. Otherwise `409 project_has_sessions`. |
 | **Code** | Optional. When set: trim, uppercase, `^[A-Z0-9-]{1,8}$`, unique case-insensitively among all non-deleted projects. Empty / null means “no code”. |
 | **Name** | Required, trimmed, 1–80 characters. |
-| **Color** | `#rrggbb`. The SPA palette is a UI concern; the API default is any valid hex ([open-questions.md](./open-questions.md) #5). |
+| **Color** | `#rrggbb`. The SPA palette is a UI concern; the API accepts any valid hex unless [ADR-0004](./adr/0004-project-lifecycle.md) is amended. |
 | **progressPercent** | Optional 0–100. Not user-edited in project CRUD v1. May be `null`. |
 
 ---
@@ -257,4 +257,3 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 - [adr/0005-session-lifecycle.md](./adr/0005-session-lifecycle.md)
 - [adr/0008-authentication.md](./adr/0008-authentication.md)
 - [adr/0015-outbound-email.md](./adr/0015-outbound-email.md)
-- [plans/email.md](./plans/email.md)

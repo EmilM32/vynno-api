@@ -13,24 +13,23 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 
 ### Working rules
 
-- Read [docs/README.md](./docs/README.md) and [docs/working-agreement.md](./docs/working-agreement.md) before changing product or architecture.
-- Docs-first: update PRD / ADR / plan / contract **before** or **with** the code they describe. Large work gets a plan under `docs/plans/`.
-- Do **not** add endpoints, fields, query params, or error codes that are not in [docs/api-contract.md](./docs/api-contract.md). Amend the contract first (and the frontend schemas once both repos exist).
-- Do **not** pick a language, framework, database, or host unless [ADR-0001](./docs/adr/0001-backend-stack.md) / [ADR-0009](./docs/adr/0009-persistence.md) are Accepted (or the user explicitly decides them).
-- Auth follows [ADR-0008](./docs/adr/0008-authentication.md) (Accepted): HttpOnly cookie, remember-me, optional Bearer for curl/tests.
-- Enforce the domain rules in [docs/domain-model.md](./docs/domain-model.md) on the server. The SPA already assumes them.
-- Single-user product for v1 ([ADR-0006](./docs/adr/0006-single-user-tenancy.md)). No team workspaces.
+- Wire change → [docs/api-contract.md](./docs/api-contract.md) first, plus the frontend schemas. Do **not** add endpoints, fields, query params, or error codes that are not in the contract.
+- Lifecycle / invariant change → [docs/domain-model.md](./docs/domain-model.md), then the matching ADR if it is a decision with alternatives.
+- New expensive choice (stack, host, auth mechanism) → new or amended ADR under `docs/adr/`. New multi-day feature → a plan under `docs/plans/` while the work is in flight; delete the plan once its facts are in the contract, domain, ADR, or runbook.
+- Auth follows [ADR-0008](./docs/adr/0008-authentication.md): HttpOnly cookie `vynno_session`, remember-me, optional Bearer for curl/tests. Do not return the token in JSON.
+- Enforce domain rules on the server. Single-user v1 ([ADR-0006](./docs/adr/0006-single-user-tenancy.md)). No team workspaces.
+- SPA attach: `PUBLIC_API_BASE=/v1`, `credentials: 'include'`, never `Authorization`. List SPA origins in `SPA_ORIGIN`. Frontend e2e must use `E2E_API_BASE=http://localhost:8081/v1` while the daily binary is on `:8080`.
+- Do not add `Truncate` to `store.Store`. `cmd/devdata` (reset/seed) refuses any database except `vynno_dev`. Do not add a production wipe script. Do not `docker compose down -v`.
 
 ### Stack conventions
 
 - Language: Go. Module: `github.com/EmilM32/vynno-api`.
 - HTTP: Gin. Handlers live in `internal/httpserver`. Domain rules live in `internal/domain` and must not import Gin or the database driver.
 - Validation is hand-written. Do not treat Gin `binding` tags as the source of truth for contract or lifecycle errors.
-- Persistence (Phase 2): PostgreSQL, goose SQL migrations, sqlc, `pgx` via `database/sql`. Local DB is Docker Compose. App reads `DATABASE_URL`.
-- Wire format is [docs/api-contract.md](./docs/api-contract.md). No extra endpoints, fields, or error codes.
+- Persistence: PostgreSQL, goose SQL migrations, sqlc, `pgx` via `database/sql`. Local DB is Docker Compose. App reads `DATABASE_URL`.
+- Wire format is [docs/api-contract.md](./docs/api-contract.md).
 - OpenAPI is generated from `Server.route(...)` in `internal/httpserver` ([ADR-0013](./docs/adr/0013-openapi-swagger.md)). Do not add a hand-written spec or swaggo comments. Contract amendments update `route()` metadata in the same change.
-- Auth is Accepted ([docs/adr/0008-authentication.md](./docs/adr/0008-authentication.md)). Session cookie `vynno_session`; do not return the token in JSON.
-- Outbound mail is Accepted ([docs/adr/0015-outbound-email.md](./docs/adr/0015-outbound-email.md)): SMTP via `internal/mail`. Register confirmation and password reset: [docs/plans/email.md](./docs/plans/email.md). Do not log one-time codes in `smtp` mode.
+- Outbound mail is [ADR-0015](./docs/adr/0015-outbound-email.md): SMTP via `internal/mail`. Do not log one-time codes in `smtp` mode.
 - IDs are UUID strings. Opaque on the wire; do not require `proj-` / `sess-` prefixes.
 
 ### Useful commands
@@ -64,4 +63,9 @@ Migrations run automatically at process start (goose).
 
 ### Docs
 
-Product and architecture: `docs/README.md`. ADRs: `docs/adr/`. Plans: `docs/plans/`.
+- Wire: `docs/api-contract.md`
+- Rules: `docs/domain-model.md`
+- Decisions: `docs/adr/`
+- Runbook: `docs/local-production.md`
+- Process: `docs/working-agreement.md`
+- Later work: `docs/backlog.md`

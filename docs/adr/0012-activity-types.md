@@ -10,8 +10,6 @@ v1 treated `activityType` as a closed enum (`deep_work` | `meeting` | …). Disp
 
 The product needs a per-user dictionary: add, rename, recolor, delete. Labels must keep working when the UI locale switches. Colors must stay on the design-system tokens, not arbitrary hex.
 
-Open question #11 default was “fixed enum until a contract amendment.” This is that amendment.
-
 ## Decision
 
 1. **Dedicated `activity_types` table**, owned by `user_id`. Not a generic dictionaries framework.
@@ -51,8 +49,6 @@ Open question #11 default was “fixed enum until a contract amendment.” This 
 
 - [../domain-model.md](../domain-model.md)
 - [../api-contract.md](../api-contract.md)
-- [../open-questions.md](../open-questions.md) #11
-- [../plans/activity-types.md](../plans/activity-types.md)
 
 ## Amendment (2026-08-20)
 

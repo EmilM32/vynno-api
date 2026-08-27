@@ -6,7 +6,7 @@
 
 ## Context
 
-The API repository does not exist yet. The frontend already speaks a stack-agnostic HTTP JSON contract ([ADR-0003](./0003-http-json-contract.md)). We need a language, HTTP framework, and module layout before Phase 1 scaffold.
+The frontend already speaks a stack-agnostic HTTP JSON contract ([ADR-0003](./0003-http-json-contract.md)). This ADR records the language, HTTP framework, and module layout.
 
 This ADR does **not** choose a database ([ADR-0009](./0009-persistence.md)) or an auth mechanism ([ADR-0008](./0008-authentication.md)). Those are separate decisions. Hosting for v1 is the owner’s machine ([ADR-0011](./0011-local-production-host.md)). A public cloud host would be a later amendment.
 
@@ -29,11 +29,14 @@ Constraints the choice must satisfy:
 Module layout:
 
 ```
-cmd/api/            # main, listen, wiring
+cmd/api/             # main, listen, wiring
+cmd/devdata/         # reset/seed against vynno_dev only
 internal/httpserver/ # Gin router, handlers, error envelope
-internal/domain/    # session + project rules (no HTTP, no SQL)
-internal/store/     # sqlc queries, migrations applied at boot
-internal/config/    # env loading, no secrets in git
+internal/domain/     # session + project rules (no HTTP, no SQL)
+internal/service/    # use cases; depends on Store and Mailer
+internal/store/      # sqlc queries, migrations applied at boot
+internal/mail/       # Mailer port (SMTP / log / discard)
+internal/config/     # env loading, no secrets in git
 ```
 
 `internal/domain` must not import Gin or the database driver.
@@ -60,7 +63,7 @@ v1 production host is the owner’s machine: compiled `bin/vynno-api` + Compose 
 
 | Option | Why not |
 | --- | --- |
-| TypeScript (Node / Bun) + a small HTTP framework | Same language as the frontend; easy to share DTO examples. Owner chose Go. Shared DTO package is already rejected ([../open-questions.md](../open-questions.md) #14). |
+| TypeScript (Node / Bun) + a small HTTP framework | Same language as the frontend; easy to share DTO examples. Owner chose Go. Shared DTO package is rejected ([../prd.md](../prd.md) non-goals). |
 | Echo | Official CORS / JWT / CSRF / Secure middleware. Viable. Owner chose Gin for community and start speed. |
 | chi or `net/http` only | Thin and close to the stdlib. Too little later support for CORS, auth, and security as product work. |
 | Fiber | fasthttp, not `net/http`. Worse ecosystem fit. |
@@ -72,6 +75,4 @@ v1 production host is the owner’s machine: compiled `bin/vynno-api` + Compose 
 
 - [0002-separate-repository.md](./0002-separate-repository.md)
 - [0009-persistence.md](./0009-persistence.md)
-- [../plans/phase-0-planning.md](../plans/phase-0-planning.md)
-- [../plans/phase-1-scaffold.md](../plans/phase-1-scaffold.md)
 - [../prd.md](../prd.md)

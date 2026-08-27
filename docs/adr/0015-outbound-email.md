@@ -51,5 +51,6 @@ The API runs on the owner’s machine ([0011-local-production-host.md](./0011-lo
 
 - [0008-authentication.md](./0008-authentication.md)
 - [0011-local-production-host.md](./0011-local-production-host.md)
-- [../plans/email.md](../plans/email.md)
 - [../api-contract.md](../api-contract.md)
+- [../domain-model.md](../domain-model.md)
+- [../local-production.md](../local-production.md)

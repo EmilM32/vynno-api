@@ -88,7 +88,7 @@ Existing non-email usernames migrate to `{old}@vynno.local`.
 
 ## Amendment (2026-08-26) — register confirmation and password reset
 
-Outbound mail: [0015-outbound-email.md](./0015-outbound-email.md). Plan: [../plans/email.md](../plans/email.md).
+Outbound mail: [0015-outbound-email.md](./0015-outbound-email.md).
 
 1. **Register is confirm-before-create.** `POST /v1/auth/register/code` `{ email }` sends a 6-digit code (15 min TTL) when the address is free. `POST /v1/auth/register` requires that `code`. The user row is created only after the code is accepted. Success still sets `vynno_session` and returns `{ profile }`. Taken email on send is `409 email_in_use`. Wrong or expired code is `401 invalid_code`.
 2. **Password reset, not reminder.** `POST /v1/auth/password/forgot` `{ email }` always returns `204` for a well-formed address and sends a code only if the account exists. `POST /v1/auth/password/reset` `{ email, code, password }` sets a new bcrypt hash and **deletes every `auth_tokens` row for that user**. No session cookie. The user logs in afterwards.
@@ -99,12 +99,9 @@ Public-route list and the routes table in the Decision section are updated in pl
 
 ## Related
 
-- [../frontend-handoff.md](../frontend-handoff.md)
-- [../prd.md](../prd.md) §8.4
+- [../prd.md](../prd.md)
 - [0006-single-user-tenancy.md](./0006-single-user-tenancy.md)
 - [../api-contract.md](../api-contract.md)
-- [../roadmap.md](../roadmap.md) Phase 3
-- [../plans/phase-3-auth.md](../plans/phase-3-auth.md)
-- [../plans/email.md](../plans/email.md)
+- [../domain-model.md](../domain-model.md)
 - [0013-openapi-swagger.md](./0013-openapi-swagger.md)
 - [0015-outbound-email.md](./0015-outbound-email.md)

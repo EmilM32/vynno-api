@@ -8,7 +8,7 @@
 
 `GET /v1/sessions` returned the full newest-first list. Optional `limit` was a cap, not a page: there was no way to ask for the next slice. The SPA hydrated every row on boot, so Logs, Dashboard, and Insights all paid for the entire history.
 
-Open question #10 default was “none — `limit` only.” Large histories make that default too expensive. Offset pages (`?offset=&limit=`) skip or duplicate rows when a timer starts or a log is deleted, and `OFFSET n` walks n rows.
+Unbounded `limit` dumps the table. Offset pages (`?offset=&limit=`) skip or duplicate rows when a timer starts or a log is deleted, and `OFFSET n` walks n rows.
 
 ## Decision
 
@@ -47,7 +47,5 @@ Open question #10 default was “none — `limit` only.” Large histories make 
 ## Related
 
 - [../api-contract.md](../api-contract.md)
-- [../open-questions.md](../open-questions.md) #10
-- [../plans/session-pagination.md](../plans/session-pagination.md)
 - [0003-http-json-contract.md](./0003-http-json-contract.md)
 - [0005-session-lifecycle.md](./0005-session-lifecycle.md)
