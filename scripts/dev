@@ -11,7 +11,8 @@ Run the API with go run against vynno_dev (does not use the release binary).
 
 Listens on DEV_ADDR (default 127.0.0.1:8081). Foreground; Ctrl-C stops it.
 Leftover after a closed terminal: scripts/stop --dev.
-Does not touch database vynno or the production process on :8080.
+Does not touch database vynno or the production process on :27182.
+Does not edit .env; remaps ADDR, DATABASE_URL, PUBLIC_API_ORIGIN, MAIL_MODE.
 EOF
 }
 
@@ -38,8 +39,10 @@ ensure_postgres
 
 export DATABASE_URL="$DEV_DATABASE_URL"
 export ADDR="$(dev_addr)"
-# Same-origin Swagger Try-it-out (CSRF + CORS) must match this process, not production :8080.
+# Same-origin Swagger Try-it-out (CSRF + CORS) must match this process, not production :27182.
 export PUBLIC_API_ORIGIN="http://${ADDR}"
+# Playground default is log (OTP codes in process logs). Daily scripts/start keeps MAIL_MODE from .env (smtp).
+export MAIL_MODE="${DEV_MAIL_MODE:-log}"
 unset GIN_MODE || true
 
 cd "$ROOT"

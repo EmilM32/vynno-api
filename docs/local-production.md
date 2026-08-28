@@ -19,6 +19,7 @@ Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:
 | Stop | `scripts/stop` | `scripts/stop --dev` |
 | Bind | `127.0.0.1:27182` | `127.0.0.1:8081` |
 | Database | `vynno` | `vynno_dev` |
+| Mail | `MAIL_MODE` from `.env` (`smtp`) | `MAIL_MODE=log` (or `DEV_MAIL_MODE`) |
 
 Use **`http://vynno.local`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.local:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`.
 
@@ -32,13 +33,14 @@ sudo sh -c 'grep -qE "(^|[[:space:]])vynno\.local($|[[:space:]])" /etc/hosts || 
 sudo dscacheutil -flushcache
 sudo killall -HUP mDNSResponder
 
-cp .env.example .env   # if you do not already have one
+cp .env.example .env   # if you do not already have one — static; do not edit to switch modes
 # ADDR=127.0.0.1:27182
 # DATABASE_URL → database vynno
 # DEV_DATABASE_URL → database vynno_dev
 # SPA_ORIGIN includes http://vynno.local
 # PUBLIC_API_ORIGIN=http://vynno.local:27182
 # MAIL_MODE=smtp + SMTP_* pointing at Mailpit (existing .env: copy that block)
+# scripts/dev remaps ADDR / DATABASE_URL / PUBLIC_API_ORIGIN / MAIL_MODE (log)
 ./scripts/build
 ```
 
@@ -87,11 +89,11 @@ Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation
 
 | `MAIL_MODE` | Who | What happens |
 | --- | --- | --- |
-| `smtp` | Daily driver (`scripts/start`) | Sends over `SMTP_*`. Boot fails if `SMTP_HOST` or `MAIL_FROM` is missing. |
-| `log` | Playground-only | Prints the body, **including the one-time code**, to process logs. Do not use on production. |
+| `smtp` | Daily driver (`scripts/start`; `MAIL_MODE` in `.env`) | Sends over `SMTP_*`. Boot fails if `SMTP_HOST` or `MAIL_FROM` is missing. |
+| `log` | Playground (`scripts/dev`; default, or `DEV_MAIL_MODE`) | Prints the body, **including the one-time code**, to process logs. Do not use on production. |
 | `unset` / `discard` | Tests; an old `.env` | Accepts the message and sends nothing. Register/reset appear to work until you look for mail. |
 
-`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it.
+`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=log` (unless `DEV_MAIL_MODE` is set) so playground OTP codes land in process logs without changing `.env`.
 
 **First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
 
@@ -121,7 +123,7 @@ Foreground: Ctrl-C in the `scripts/dev` terminal stops it. A leftover `go run` c
 
 Seed and reset refuse `vynno`. They do not stop the production API. Stop the playground first (`scripts/stop --dev`) before a wipe if `scripts/dev` is up.
 
-Playwright in the SPA repo talks to `API_ORIGIN` (`:27182`) unless you set `E2E_API_BASE=http://localhost:8081/v1`. Use that override while the daily binary is on `:27182`, or e2e registers throwaway users into production.
+Playwright in the SPA repo talks to playground `:8081` (that repo’s `.env.development`). Daily `vynno` is not touched. `scripts/dev` can run while `scripts/start` is up; do not edit this `.env` to switch modes.
 
 ## Backups
 

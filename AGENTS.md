@@ -18,7 +18,7 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 - New expensive choice (stack, host, auth mechanism) → new or amended ADR under `docs/adr/`. New multi-day feature → a plan under `docs/plans/` while the work is in flight; delete the plan once its facts are in the contract, domain, ADR, or runbook.
 - Auth follows [ADR-0008](./docs/adr/0008-authentication.md): HttpOnly cookie `vynno_session`, remember-me, optional Bearer for curl/tests. Do not return the token in JSON.
 - Enforce domain rules on the server. Single-user v1 ([ADR-0006](./docs/adr/0006-single-user-tenancy.md)). No team workspaces.
-- SPA attach: `PUBLIC_API_BASE=/v1`, `credentials: 'include'`, never `Authorization`. List SPA origins in `SPA_ORIGIN`. Frontend e2e must use `E2E_API_BASE=http://localhost:8081/v1` while the daily binary is on `:27182`.
+- SPA attach: `PUBLIC_API_BASE=/v1`, `credentials: 'include'`, never `Authorization`. List SPA origins in `SPA_ORIGIN`. Frontend e2e talks to playground `:8081` (that repo’s `.env.development`). Do not edit this `.env` to switch modes — `scripts/start` vs `scripts/dev`.
 - Do not add `Truncate` to `store.Store`. `cmd/devdata` (reset/seed) refuses any database except `vynno_dev`. Do not add a production wipe script. Do not `docker compose down -v`.
 
 ### Stack conventions
@@ -35,13 +35,13 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 ### Useful commands
 
 ```sh
-cp .env.example .env          # ADDR, DATABASE_URL, DEV_*, SPA_ORIGIN, PUBLIC_API_ORIGIN, MAIL_* / SMTP_*
+cp .env.example .env          # static; scripts/start vs scripts/dev select the process
 ./scripts/build               # bin/vynno-api
 ./scripts/start               # daily driver; does not rebuild; database vynno
 ./scripts/start --detach
 ./scripts/stop                # production API only
 ./scripts/stop --postgres     # production API + Compose stop (keeps the volume)
-./scripts/dev                 # go run on :8081 → vynno_dev
+./scripts/dev                 # go run on :8081 → vynno_dev; MAIL_MODE=log; does not touch .env
 ./scripts/stop --dev          # playground API only (leftover :8081 bind)
 # Goose is per-database at process start: start migrates vynno, dev migrates vynno_dev.
 # Mailpit UI http://127.0.0.1:8025 (Compose). First daily register needs SMTP.

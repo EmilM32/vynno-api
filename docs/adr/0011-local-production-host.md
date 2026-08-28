@@ -17,7 +17,7 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 1. **v1 production is the owner’s machine**, not a public cloud. A later public host amends this ADR (or writes a new one that supersedes it).
 2. **PostgreSQL stays in Docker Compose** — the same `postgres` service as local development. Durable data is the Compose named volume. Do not `docker compose down -v` on that machine.
 3. **The API is a compiled host binary** (`bin/vynno-api` from `./cmd/api`). It is not containerized in this decision. `scripts/build` writes the binary. `scripts/start` starts Compose, waits for Postgres, and runs the process; it does not rebuild.
-4. **Secrets stay in a gitignored `.env`.** There is no cloud secret manager until there is a cloud host. `.env.example` remains the documented shape, not production values.
+4. **Secrets stay in a gitignored `.env`.** There is no cloud secret manager until there is a cloud host. `.env.example` remains the documented shape, not production values. The file is static: `scripts/start` and `scripts/dev` remap process env (bind, database, public origin, mail mode). Do not edit `.env` to switch modes.
 5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** Loopback HTTP means `COOKIE_SECURE=false`. The daily SPA origin is `http://vynno.local` (Caddy on `127.0.0.1:80` in the SPA repo). Vite and preview stay on localhost. The operator API origin is `http://vynno.local:27182`.
 6. **Backups are `pg_dump` through Compose** (`scripts/backup`, `scripts/restore`). Avatars are BYTEA, so they are in the dump. A restore drill is part of shipping this decision.
 7. **Observability is structured logs on stdout** (JSON when `LOG_FORMAT=json`). No third-party error service. Unexpected handler errors are logged; the client still sees the contract envelope.
@@ -63,6 +63,10 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 Daily browser origin is **`http://vynno.local`**. Operator API origin is **`http://vynno.local:27182`**. `/etc/hosts` maps `vynno.local` to `127.0.0.1` only (do not add `::1` while listeners are IPv4). The `:80` reverse proxy is owned by the SPA repo.
 
 Production `ADDR` moved off `:8080` to **`127.0.0.1:27182`** so a typical development day (other APIs on 8080) does not steal the bind. Playground stays `:8081`. Decision clause 5 and amendment-2019 clause 4 are updated in place.
+
+## Amendment (2026-08-28)
+
+`.env` is not a mode switch. `scripts/dev` remaps `ADDR`, `DATABASE_URL`, `PUBLIC_API_ORIGIN`, and `MAIL_MODE` (`log` unless `DEV_MAIL_MODE` is set). `scripts/start` keeps the file values (`smtp`, `:27182`, database `vynno`) and already exports `GIN_MODE` / `LOG_FORMAT`. Daily binary and playground can run together without editing the file. Decision clause 4 updated in place.
 
 ## Related
 

@@ -34,7 +34,7 @@ Decisions: [ADR-0001](./docs/adr/0001-backend-stack.md), [ADR-0009](./docs/adr/0
 
 Requires Go 1.26+ and Docker (for Postgres). Full runbook: **[docs/local-production.md](./docs/local-production.md)**.
 
-Production and playground can run at the same time. They do **not** share rows.
+Production and playground can run at the same time. They do **not** share rows. Do not edit `.env` to switch modes — `scripts/start` vs `scripts/dev` remap bind, database, public origin, and mail mode.
 
 | | Production (daily) | Playground |
 | --- | --- | --- |

@@ -45,6 +45,9 @@ ensure_postgres
 
 export GIN_MODE=release
 export LOG_FORMAT=json
+# ADDR, DATABASE_URL, PUBLIC_API_ORIGIN, MAIL_* are already exported by load_env (set -a).
+# loadDotEnv in the binary will not override them. Do not edit .env to switch modes —
+# scripts/dev remaps ADDR / DATABASE_URL / PUBLIC_API_ORIGIN / MAIL_MODE.
 
 cd "$ROOT"
 
