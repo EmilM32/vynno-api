@@ -12,7 +12,7 @@ Run the API with go run against vynno_dev (does not use the release binary).
 Listens on DEV_ADDR (default 127.0.0.1:8081). Foreground; Ctrl-C stops it.
 Leftover after a closed terminal: scripts/stop --dev.
 Does not touch database vynno or the production process on :27182.
-Does not edit .env; remaps ADDR, DATABASE_URL, PUBLIC_API_ORIGIN, MAIL_MODE.
+Does not edit .env; remaps ADDR, DATABASE_URL, PUBLIC_API_ORIGIN, MAIL_MODE, COOKIE_SECURE.
 EOF
 }
 
@@ -43,6 +43,8 @@ export ADDR="$(dev_addr)"
 export PUBLIC_API_ORIGIN="http://${ADDR}"
 # Playground default is log (OTP codes in process logs). Daily scripts/start keeps MAIL_MODE from .env (smtp).
 export MAIL_MODE="${DEV_MAIL_MODE:-log}"
+# Production .env has COOKIE_SECURE=true (HTTPS SPA). Vite and preview are HTTP.
+export COOKIE_SECURE=false
 unset GIN_MODE || true
 
 cd "$ROOT"

@@ -11,6 +11,7 @@ func requiredEnv(t *testing.T) {
 	t.Setenv("BOOTSTRAP_PASSWORD", "local-only-password")
 	t.Setenv("SPA_ORIGIN", "http://localhost:5173")
 	t.Setenv("PUBLIC_API_ORIGIN", "http://localhost:8080")
+	t.Setenv("COOKIE_SECURE", "")
 	t.Setenv("MAIL_MODE", "")
 	t.Setenv("SMTP_HOST", "")
 	t.Setenv("SMTP_PORT", "")
