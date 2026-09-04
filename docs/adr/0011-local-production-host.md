@@ -72,6 +72,14 @@ Production `ADDR` moved off `:8080` to **`127.0.0.1:27182`** so a typical develo
 
 Daily SPA origin is **`https://vynno.local`**. Production `COOKIE_SECURE=true`. `scripts/dev` also remaps `COOKIE_SECURE=false`. This API remains HTTP on `127.0.0.1:27182`. TLS is the SPA repo’s loopback Caddy. Decision clause 5 updated in place.
 
+## Amendment (2026-09-03)
+
+`scripts/dev` remaps `MAIL_MODE` to **`smtp`** (Mailpit) unless `DEV_MAIL_MODE` is set. Frontend e2e registers throwaway users and reads the confirmation code from Mailpit; `log` left those codes in process stdout and broke the suite. `DEV_MAIL_MODE=log` remains the opt-in for terminal OTPs. Amendment-2026-08-28 (static `.env`) updated in place for the mail remap only.
+
+## Amendment (2026-09-04)
+
+Operator correlation: accept `X-Request-ID` (generate if missing) and add `request_id` to `request` / `handler` slog lines. `scripts/start` size-rotates `logs/api.log` at 1 MiB (keep 7) and mirrors foreground stdout there. `scripts/status` probes `/healthz` and `/readyz`. SPA-side files and Caddy logs are [vynno ADR-0020](https://github.com/EmilM32/vynno/blob/main/docs/adr/0020-local-operator-logs.md). Decision clause 7 unchanged (structured stdout, no third-party service).
+
 ## Related
 
 - [0001-backend-stack.md](./0001-backend-stack.md)

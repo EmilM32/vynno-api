@@ -30,6 +30,7 @@ func writeError(c *gin.Context, err error) {
 		"err", err,
 		"method", c.Request.Method,
 		"path", c.Request.URL.Path,
+		"request_id", requestIDFrom(c),
 	)
 	c.JSON(http.StatusInternalServerError, errorEnvelope{Error: errorBody{
 		Code:    domain.CodeInvalidBody,

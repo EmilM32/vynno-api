@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+	cat <<'EOF'
+Show whether the production API and Postgres are up.
+
+  scripts/status
+EOF
+}
+
+for arg in "$@"; do
+	case "$arg" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+if [[ -f "$ROOT/.env" ]]; then
+	load_env
+fi
+
+FAILED=0
+port="$(prod_listen_port)"
+
+report() {
+	local name="$1" state="$2" detail="$3"
+	printf '%-8s %-4s %s\n' "$name" "$state" "$detail"
+	if [[ "$state" != "ok" ]]; then
+		FAILED=1
+	fi
+}
+
+if pid="$(api_pid)"; then
+	if curl -sf --ipv4 -m 1 "http://127.0.0.1:${port}/healthz" >/dev/null 2>&1; then
+		report api ok "pid $pid  127.0.0.1:${port}/healthz"
+	else
+		report api down "pid $pid  healthz failed"
+	fi
+else
+	report api down "not listening on 127.0.0.1:${port}"
+fi
+
+if curl -sf --ipv4 -m 1 "http://127.0.0.1:${port}/readyz" >/dev/null 2>&1; then
+	report readyz ok "postgres"
+else
+	report readyz down "127.0.0.1:${port}/readyz"
+fi
+
+if [[ "$FAILED" -ne 0 ]]; then
+	echo "not ok  see $API_LOG" >&2
+	exit 1
+fi
+echo "ok"

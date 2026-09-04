@@ -8,10 +8,36 @@ PROD_DB=vynno
 DEV_DB=vynno_dev
 DEFAULT_PROD_ADDR=127.0.0.1:27182
 DEFAULT_DEV_ADDR=127.0.0.1:8081
+API_LOG="$ROOT/logs/api.log"
+LOG_MAX_BYTES="${LOG_MAX_BYTES:-1048576}"
+LOG_KEEP="${LOG_KEEP:-7}"
 
 die() {
 	echo "$*" >&2
 	exit 1
+}
+
+rotate_log() {
+	local file="$1"
+	local max_bytes="${2:-$LOG_MAX_BYTES}"
+	local keep="${3:-$LOG_KEEP}"
+	[[ -f "$file" ]] || return 0
+	local size
+	size="$(wc -c <"$file" | tr -d '[:space:]')"
+	if [[ "$size" -lt "$max_bytes" ]]; then
+		return 0
+	fi
+	mv "$file" "${file}.$(date +%Y%m%d%H%M%S)"
+	local extras
+	extras="$(
+		{ ls -1t "$file".* 2>/dev/null || true; } | tail -n +"$((keep + 1))"
+	)"
+	if [[ -n "$extras" ]]; then
+		while IFS= read -r old; do
+			[[ -n "$old" ]] || continue
+			rm -f "$old"
+		done <<<"$extras"
+	fi
 }
 
 require_env_file() {

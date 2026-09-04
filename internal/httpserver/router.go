@@ -55,12 +55,14 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	}
 	r := gin.New()
 	r.MaxMultipartMemory = maxAvatarMultipart
+	r.Use(requestID())
 	r.Use(requestLog())
 	r.Use(gin.Recovery())
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     corsAllowOrigins(origins, publicOrigin),
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", requestIDHeader},
+		ExposeHeaders:    []string{requestIDHeader},
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))

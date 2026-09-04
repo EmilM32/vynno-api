@@ -53,6 +53,7 @@ cp .env.example .env
 ./scripts/build
 ./scripts/start              # foreground; does not rebuild
 ./scripts/start --detach     # pid in var/api.pid, logs in logs/api.log
+./scripts/status             # /healthz + /readyz
 ./scripts/stop               # production API only; Postgres stays up
 ./scripts/stop --postgres    # production API + Compose stop (named volume kept)
 ./scripts/backup

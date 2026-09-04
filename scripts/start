@@ -7,7 +7,7 @@ usage() {
 	cat <<'EOF'
 Start Postgres (Docker Compose) and the API binary. Does not build.
 
-  scripts/start           run in the foreground
+  scripts/start           run in the foreground (mirrors logs/api.log)
   scripts/start --detach  background; pid in var/api.pid, logs in logs/api.log
 
 Run scripts/build first when the binary is missing or stale.
@@ -51,14 +51,16 @@ export LOG_FORMAT=json
 
 cd "$ROOT"
 
+mkdir -p "$ROOT/logs" "$ROOT/var"
+rotate_log "$API_LOG"
+
 if [[ "$DETACH" -eq 1 ]]; then
-	mkdir -p "$ROOT/logs" "$ROOT/var"
-	nohup "$ROOT/bin/vynno-api" >>"$ROOT/logs/api.log" 2>&1 &
+	nohup "$ROOT/bin/vynno-api" >>"$API_LOG" 2>&1 &
 	pid=$!
 	echo "$pid" >"$PIDFILE"
 	wait_for_healthz "$(prod_listen_port)" "$pid"
-	echo "started pid $pid  log $ROOT/logs/api.log"
+	echo "started pid $pid  log $API_LOG"
 	exit 0
 fi
 
-exec "$ROOT/bin/vynno-api"
+"$ROOT/bin/vynno-api" 2>&1 | tee -a "$API_LOG"

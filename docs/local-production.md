@@ -20,7 +20,7 @@ Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:
 | Stop | `scripts/stop` | `scripts/stop --dev` |
 | Bind | `127.0.0.1:27182` | `127.0.0.1:8081` |
 | Database | `vynno` | `vynno_dev` |
-| Mail | `MAIL_MODE` from `.env` (`smtp`) | `MAIL_MODE=log` (or `DEV_MAIL_MODE`) |
+| Mail | `MAIL_MODE` from `.env` (`smtp`) | `MAIL_MODE=smtp` (Mailpit; `DEV_MAIL_MODE=log` for process OTPs) |
 
 Use **`https://vynno.local`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.local`, `http://vynno.local:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`. Production `COOKIE_SECURE=true`; `scripts/dev` forces `false`.
 
@@ -68,8 +68,9 @@ Do not add a production wipe script. Do not `docker compose down -v`.
 ## Every day
 
 ```sh
-./scripts/start           # foreground; Ctrl-C stops the API (Postgres stays up)
+./scripts/start           # foreground; Ctrl-C stops the API (Postgres stays up); mirrors logs/api.log
 ./scripts/start --detach  # pid in var/api.pid, logs in logs/api.log
+./scripts/status          # /healthz + /readyz
 ```
 
 Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [https://vynno.local](https://vynno.local). Operator API docs: [http://vynno.local:27182/swagger/](http://vynno.local:27182/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`). `.local` is Bonjour; if the first Chrome load hangs a few seconds, wait or flush mDNS again. Switching from `http://vynno.local` is a new origin — sign in again. `COOKIE_SECURE=true` means Swagger on HTTP will not see the SPA session cookie; use Bearer for Try-it-out.
@@ -91,11 +92,11 @@ Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation
 
 | `MAIL_MODE` | Who | What happens |
 | --- | --- | --- |
-| `smtp` | Daily driver (`scripts/start`; `MAIL_MODE` in `.env`) | Sends over `SMTP_*`. Boot fails if `SMTP_HOST` or `MAIL_FROM` is missing. |
-| `log` | Playground (`scripts/dev`; default, or `DEV_MAIL_MODE`) | Prints the body, **including the one-time code**, to process logs. Do not use on production. |
+| `smtp` | Daily driver (`scripts/start`) and playground (`scripts/dev`) | Sends over `SMTP_*`. Boot fails if `SMTP_HOST` or `MAIL_FROM` is missing. |
+| `log` | Opt-in playground (`DEV_MAIL_MODE=log`) | Prints the body, **including the one-time code**, to process logs. Breaks frontend e2e (Mailpit never sees the code). Do not use on production. |
 | `unset` / `discard` | Tests; an old `.env` | Accepts the message and sends nothing. Register/reset appear to work until you look for mail. |
 
-`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=log` (unless `DEV_MAIL_MODE` is set) so playground OTP codes land in process logs without changing `.env`.
+`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=smtp` (unless `DEV_MAIL_MODE` is set) so playground OTP codes reach Mailpit without changing `.env`. Frontend e2e scrapes that inbox.
 
 **First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
 
