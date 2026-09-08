@@ -60,13 +60,13 @@ cp .env.example .env
 ./scripts/restore backups/vynno-YYYYMMDD-HHMMSS.sql
 ```
 
-`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`https://vynno.local`). Database `vynno` is daily history.
+`scripts/start` requires `bin/vynno-api` (`scripts/build` first). It does not create users: register from the SPA (`https://vynno.localhost`). Database `vynno` is daily history.
 
 `GET http://127.0.0.1:27182/healthz` → `{"status":"ok"}` (process). `GET /readyz` is `200` when Postgres answers.
 
-Operator API docs (generated from the Gin routes): [http://vynno.local:27182/swagger/](http://vynno.local:27182/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
+Operator API docs (generated from the Gin routes): [http://vynno.localhost:27182/swagger/](http://vynno.localhost:27182/swagger/) — open it at `PUBLIC_API_ORIGIN`, not `127.0.0.1`, so login cookies work. Spec: `GET /openapi.json`.
 
-`/v1` requires a session (`GET /v1/avatars/:id` is the public exception, plus login/register/password-reset). Production: register from the SPA (`POST /v1/auth/register/code` then `/auth/register` with the 6-digit code). The SPA lists `https://vynno.local` in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://vynno.local:27182` so `avatarUrl` is an absolute URL (the SPA rewrites it to `/v1/avatars/…` on HTTPS). Set `COOKIE_SECURE=true` for the daily binary; `scripts/dev` forces `false`. `ADDR=127.0.0.1:27182`. Local mail catcher: Mailpit at http://127.0.0.1:8025 (Compose, SMTP `:1025`). First register needs Mailpit or real SMTP. Needs `/etc/hosts` `127.0.0.1 vynno.local`.
+`/v1` requires a session (`GET /v1/avatars/:id` is the public exception, plus login/register/password-reset). Production: register from the SPA (`POST /v1/auth/register/code` then `/auth/register` with the 6-digit code). The SPA lists `https://vynno.localhost` in `SPA_ORIGIN` and uses same-origin `/v1`. Set `PUBLIC_API_ORIGIN=http://vynno.localhost:27182` so `avatarUrl` is an absolute URL (the SPA rewrites it to `/v1/avatars/…` on HTTPS). Set `COOKIE_SECURE=true` for the daily binary; `scripts/dev` forces `false`. `ADDR=127.0.0.1:27182`. Local mail catcher: Mailpit at http://127.0.0.1:8025 (Compose, SMTP `:1025`). First register needs Mailpit or real SMTP. `*.localhost` is RFC 6761 loopback (no `/etc/hosts`).
 
 ### Playground
 

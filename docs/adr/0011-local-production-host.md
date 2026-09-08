@@ -18,7 +18,7 @@ The SPA already talks to this API locally (frontend Phase 5c). Cookies and CORS 
 2. **PostgreSQL stays in Docker Compose** — the same `postgres` service as local development. Durable data is the Compose named volume. Do not `docker compose down -v` on that machine.
 3. **The API is a compiled host binary** (`bin/vynno-api` from `./cmd/api`). It is not containerized in this decision. `scripts/build` writes the binary. `scripts/start` starts Compose, waits for Postgres, and runs the process; it does not rebuild.
 4. **Secrets stay in a gitignored `.env`.** There is no cloud secret manager until there is a cloud host. `.env.example` remains the documented shape, not production values. The file is static: `scripts/start` and `scripts/dev` remap process env (bind, database, public origin, mail mode, cookie secure). Do not edit `.env` to switch modes.
-5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** The daily SPA origin is `https://vynno.local` (Caddy TLS on `127.0.0.1:443` in the SPA repo). Production `COOKIE_SECURE=true`. `scripts/dev` forces `COOKIE_SECURE=false` for Vite and preview. This API stays HTTP on loopback. The operator API origin is `http://vynno.local:27182`.
+5. **CORS and cookies stay as [ADR-0008](./0008-authentication.md).** The daily SPA origin is `https://vynno.localhost` (Caddy TLS on loopback `:443` in the SPA repo). Production `COOKIE_SECURE=true`. `scripts/dev` forces `COOKIE_SECURE=false` for Vite and preview. This API stays HTTP on loopback. The operator API origin is `http://vynno.localhost:27182`.
 6. **Backups are `pg_dump` through Compose** (`scripts/backup`, `scripts/restore`). Avatars are BYTEA, so they are in the dump. A restore drill is part of shipping this decision.
 7. **Observability is structured logs on stdout** (JSON when `LOG_FORMAT=json`). No third-party error service. Unexpected handler errors are logged; the client still sees the contract envelope.
 8. **`GET /healthz` is process liveness** (no DB). **`GET /readyz` pings Postgres.** Both are implementation details, not SPA contract resources.
@@ -79,6 +79,10 @@ Daily SPA origin is **`https://vynno.local`**. Production `COOKIE_SECURE=true`. 
 ## Amendment (2026-09-04)
 
 Operator correlation: accept `X-Request-ID` (generate if missing) and add `request_id` to `request` / `handler` slog lines. `scripts/start` size-rotates `logs/api.log` at 1 MiB (keep 7) and mirrors foreground stdout there. `scripts/status` probes `/healthz` and `/readyz`. SPA-side files and Caddy logs are [vynno ADR-0020](https://github.com/EmilM32/vynno/blob/main/docs/adr/0020-local-operator-logs.md). Decision clause 7 unchanged (structured stdout, no third-party service).
+
+## Amendment (2026-09-08)
+
+Daily SPA origin is **`https://vynno.localhost`**. Operator API origin is **`http://vynno.localhost:27182`**. `.local` is Bonjour/mDNS and dual-stack Chromium lookups stall 5–10 s; `*.localhost` is RFC 6761 loopback (no `/etc/hosts`). Decision clause 5 updated in place.
 
 ## Related
 

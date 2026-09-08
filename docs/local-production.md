@@ -3,13 +3,13 @@
 Daily driver for the production API **on this machine**. No cloud host. Decision: [ADR-0011](./adr/0011-local-production-host.md). Pair with the SPA runbook in the `vynno` repo.
 
 ```
-browser  →  https://vynno.local            (vynno repo, Caddy 127.0.0.1:443)
+browser  →  https://vynno.localhost        (vynno repo, Caddy loopback :443)
                 └── reverse_proxy ──►  127.0.0.1:27180  (adapter-node)
                                           └── /v1 BFF ──►  127.0.0.1:27182  (this repo, bin/vynno-api → database vynno)
                                                                 ├── Postgres (Docker Compose, port 5433)
                                                                 └── Mailpit SMTP :1025 / UI :8025  (first register + password reset)
-browser  →  http://vynno.local             (Caddy :80 → 308 to HTTPS)
-browser  →  http://vynno.local:27182      (this process; /swagger/)
+browser  →  http://vynno.localhost         (Caddy :80 → 308 to HTTPS)
+browser  →  http://vynno.localhost:27182   (this process; /swagger/)
 ```
 
 Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:8081`. It does not share rows with daily history.
@@ -22,25 +22,22 @@ Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:
 | Database | `vynno` | `vynno_dev` |
 | Mail | `MAIL_MODE` from `.env` (`smtp`) | `MAIL_MODE=smtp` (Mailpit; `DEV_MAIL_MODE=log` for process OTPs) |
 
-Use **`https://vynno.local`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.local`, `http://vynno.local:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`. Production `COOKIE_SECURE=true`; `scripts/dev` forces `false`.
+Use **`https://vynno.localhost`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.localhost`, `http://vynno.localhost:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`. Production `COOKIE_SECURE=true`; `scripts/dev` forces `false`. `*.localhost` is RFC 6761 loopback — do not use `.local` (Bonjour/mDNS).
 
 Ports **27180** (SPA Node) and **27182** (this API) are uncommon on purpose so Vite, Next, and other local APIs do not steal them. Playground stays `:8081`.
 
 ## Once (or after API source changes)
 
 ```sh
-# /etc/hosts — IPv4 only. Do not add ::1 while ADDR is 127.0.0.1.
-sudo sh -c 'grep -qE "(^|[[:space:]])vynno\.local($|[[:space:]])" /etc/hosts || echo "127.0.0.1 vynno.local" >> /etc/hosts'
-sudo dscacheutil -flushcache
-sudo killall -HUP mDNSResponder
+# No /etc/hosts. vynno.localhost is RFC 6761; a leftover vynno.local hosts line is unused.
 
 cp .env.example .env   # if you do not already have one — static; do not edit to switch modes
 # ADDR=127.0.0.1:27182
 # DATABASE_URL → database vynno
 # DEV_DATABASE_URL → database vynno_dev
-# SPA_ORIGIN includes https://vynno.local
+# SPA_ORIGIN includes https://vynno.localhost
 # COOKIE_SECURE=true (scripts/dev forces false)
-# PUBLIC_API_ORIGIN=http://vynno.local:27182
+# PUBLIC_API_ORIGIN=http://vynno.localhost:27182
 # MAIL_MODE=smtp + SMTP_* pointing at Mailpit (existing .env: copy that block)
 # scripts/dev remaps ADDR / DATABASE_URL / PUBLIC_API_ORIGIN / MAIL_MODE (log) / COOKIE_SECURE
 ./scripts/build
@@ -61,7 +58,7 @@ If this volume already has playground rows in `vynno` and you have not isolated 
 3. Restore that dump into `vynno_dev`.
 4. Drop and create empty `vynno` (same SQL `scripts/restore` uses, targeting `vynno` only).
 5. `./scripts/build && ./scripts/start --detach` — migrates, no users.
-6. Register from `https://vynno.local`.
+6. Register from `https://vynno.localhost`.
 
 Do not add a production wipe script. Do not `docker compose down -v`.
 
@@ -73,7 +70,7 @@ Do not add a production wipe script. Do not `docker compose down -v`.
 ./scripts/status          # /healthz + /readyz
 ```
 
-Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [https://vynno.local](https://vynno.local). Operator API docs: [http://vynno.local:27182/swagger/](http://vynno.local:27182/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`). `.local` is Bonjour; if the first Chrome load hangs a few seconds, wait or flush mDNS again. Switching from `http://vynno.local` is a new origin — sign in again. `COOKIE_SECURE=true` means Swagger on HTTP will not see the SPA session cookie; use Bearer for Try-it-out.
+Then in the `vynno` repo: `./scripts/start` (or `--detach`). Open [https://vynno.localhost](https://vynno.localhost). Operator API docs: [http://vynno.localhost:27182/swagger/](http://vynno.localhost:27182/swagger/) (must be this origin, matching `PUBLIC_API_ORIGIN`). Switching from `https://vynno.local` is a new origin — sign in again. `COOKIE_SECURE=true` means Swagger on HTTP will not see the SPA session cookie; use Bearer for Try-it-out.
 
 ```sh
 ./scripts/stop            # detached production API only; Postgres stays up
@@ -139,7 +136,7 @@ Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in th
 
 ## If login fails
 
-1. Browser URL is `https://vynno.local`, not `http://vynno.local`, `http://127.0.0.1`, `http://localhost:3000`, or `http://vynno.local:27180`.
+1. Browser URL is `https://vynno.localhost`, not `http://vynno.localhost`, `http://127.0.0.1`, `http://localhost:3000`, or `http://vynno.localhost:27180`.
 2. This repo `SPA_ORIGIN` lists that exact origin (restart the API after editing `.env`).
 3. `COOKIE_SECURE=true` on the production process (`scripts/dev` forces `false`).
 4. Production has no `alexdev@vynno.local` unless you registered that address. Seed users live on `vynno_dev`. After the email-login migration, a leftover username `alexdev` logs in as `alexdev@vynno.local`.
