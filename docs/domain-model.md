@@ -128,7 +128,7 @@ Full decision: [ADR-0004](./adr/0004-project-lifecycle.md).
 | **Code** | Optional. When set: trim, uppercase, `^[A-Z0-9-]{1,8}$`, unique case-insensitively among all non-deleted projects. Empty / null means “no code”. |
 | **Name** | Required, trimmed, 1–80 characters. |
 | **Color** | `#rrggbb`. The SPA palette is a UI concern; the API accepts any valid hex unless [ADR-0004](./adr/0004-project-lifecycle.md) is amended. |
-| **progressPercent** | Optional 0–100. Not user-edited in project CRUD v1. May be `null`. |
+| **progressPercent** | Optional 0–100. Writable on create/update. `null` means unset. Not derived from estimates. |
 
 ---
 
@@ -142,7 +142,7 @@ Full decision: [ADR-0004](./adr/0004-project-lifecycle.md).
 | `name` | string | Required, trimmed, 1–80 |
 | `color` | string | `#rrggbb` |
 | `code` | string? | Chip code (`AUTH`); unique when set |
-| `progressPercent` | number? | 0–100; mock metadata today |
+| `progressPercent` | number? | 0–100; optional dashboard metadata |
 | `archived` | boolean | Soft-hide flag |
 
 The frontend domain type uses `isArchived`. The wire and this API use `archived`.

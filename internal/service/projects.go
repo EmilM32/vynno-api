@@ -8,16 +8,19 @@ import (
 )
 
 type CreateProjectInput struct {
-	Name  string
-	Color string
-	Code  *string
+	Name            string
+	Color           string
+	Code            *string
+	ProgressPercent *int
 }
 
 type UpdateProjectInput struct {
-	Name    *string
-	Color   *string
-	Code    *string
-	CodeSet bool
+	Name            *string
+	Color           *string
+	Code            *string
+	CodeSet         bool
+	ProgressPercent *int
+	ProgressSet     bool
 }
 
 func (s *Service) ListProjects(ctx context.Context, includeArchived bool) ([]domain.Project, error) {
@@ -50,12 +53,17 @@ func (s *Service) CreateProject(ctx context.Context, in CreateProjectInput) (dom
 			return domain.Project{}, domain.ErrCodeInUse()
 		}
 	}
+	progress, err := domain.NormalizeProgressPercent(in.ProgressPercent)
+	if err != nil {
+		return domain.Project{}, err
+	}
 	p := domain.Project{
-		ID:       s.NewID().String(),
-		Name:     name,
-		Color:    color,
-		Code:     code,
-		Archived: false,
+		ID:              s.NewID().String(),
+		Name:            name,
+		Color:           color,
+		Code:            code,
+		ProgressPercent: progress,
+		Archived:        false,
 	}
 	return s.Store.CreateProject(ctx, s.User, p)
 }
@@ -94,6 +102,13 @@ func (s *Service) UpdateProject(ctx context.Context, id uuid.UUID, in UpdateProj
 				return domain.Project{}, domain.ErrCodeInUse()
 			}
 		}
+	}
+	if in.ProgressSet {
+		progress, err := domain.NormalizeProgressPercent(in.ProgressPercent)
+		if err != nil {
+			return domain.Project{}, err
+		}
+		p.ProgressPercent = progress
 	}
 	return s.Store.UpdateProject(ctx, s.User, p)
 }

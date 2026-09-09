@@ -50,9 +50,10 @@ type sessionListDTO struct {
 }
 
 type createProjectBody struct {
-	Name  string  `json:"name"`
-	Color string  `json:"color"`
-	Code  *string `json:"code"`
+	Name            string  `json:"name"`
+	Color           string  `json:"color"`
+	Code            *string `json:"code"`
+	ProgressPercent *int    `json:"progressPercent"`
 }
 
 type countDTO struct {
@@ -60,10 +61,12 @@ type countDTO struct {
 }
 
 type updateProjectBody struct {
-	Name    *string `json:"name"`
-	Color   *string `json:"color"`
-	Code    *string `json:"code"`
-	CodeSet bool    `json:"-"`
+	Name            *string `json:"name"`
+	Color           *string `json:"color"`
+	Code            *string `json:"code"`
+	CodeSet         bool    `json:"-"`
+	ProgressPercent *int    `json:"progressPercent"`
+	ProgressSet     bool    `json:"-"`
 }
 
 func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
@@ -93,6 +96,16 @@ func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
 				return err
 			}
 			u.Code = &s
+		}
+	}
+	if v, ok := raw["progressPercent"]; ok {
+		u.ProgressSet = true
+		if string(v) != "null" {
+			var n int
+			if err := json.Unmarshal(v, &n); err != nil {
+				return err
+			}
+			u.ProgressPercent = &n
 		}
 	}
 	return nil

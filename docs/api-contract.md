@@ -223,15 +223,15 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 `CreateProjectDto`:
 
 ```json
-{ "name": "New tool", "color": "#3b82f6", "code": "TOOL" }
+{ "name": "New tool", "color": "#3b82f6", "code": "TOOL", "progressPercent": 60 }
 ```
 
-`code` may be `null` or omitted. `color` is a `#rrggbb` hex.
+`code` may be `null` or omitted. `color` is a `#rrggbb` hex. `progressPercent` is optional 0–100; `null` or omit leaves it unset.
 
-`UpdateProjectDto` — all fields optional; `code: null` clears the chip:
+`UpdateProjectDto` — all fields optional; `code: null` clears the chip; `progressPercent: null` clears the dashboard bar:
 
 ```json
-{ "name": "Renamed", "code": null }
+{ "name": "Renamed", "code": null, "progressPercent": 80 }
 ```
 
 Optional timestamps `createdAt` / `updatedAt` (ISO-8601) are accepted by the client schema if present. The SPA does not require them. Do not add other extra fields.

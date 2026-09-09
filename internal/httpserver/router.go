@@ -203,7 +203,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPatch, "/projects/:id", s.updateProject, op{
 		Summary:     "Update project",
-		Description: "All fields optional. code: null clears the chip.",
+		Description: "All fields optional. code: null clears the chip. progressPercent: null clears the dashboard bar.",
 		Tags:        []string{"Projects"},
 		Body:        updateProjectBody{},
 		Success:     projectDTO{},

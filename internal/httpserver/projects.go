@@ -49,7 +49,7 @@ func (s *Server) createProject(c *gin.Context) {
 		return
 	}
 	p, err := s.userSvc(c).CreateProject(c.Request.Context(), service.CreateProjectInput{
-		Name: body.Name, Color: body.Color, Code: body.Code,
+		Name: body.Name, Color: body.Color, Code: body.Code, ProgressPercent: body.ProgressPercent,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -71,6 +71,7 @@ func (s *Server) updateProject(c *gin.Context) {
 	}
 	p, err := s.userSvc(c).UpdateProject(c.Request.Context(), id, service.UpdateProjectInput{
 		Name: body.Name, Color: body.Color, Code: body.Code, CodeSet: body.CodeSet,
+		ProgressPercent: body.ProgressPercent, ProgressSet: body.ProgressSet,
 	})
 	if err != nil {
 		writeError(c, err)

@@ -54,6 +54,32 @@ func TestNormalizeCode(t *testing.T) {
 	}
 }
 
+func TestNormalizeProgressPercent(t *testing.T) {
+	t.Parallel()
+	got, err := NormalizeProgressPercent(nil)
+	if err != nil || got != nil {
+		t.Fatalf("nil: %#v %v", got, err)
+	}
+	in := 60
+	got, err = NormalizeProgressPercent(&in)
+	if err != nil || got == nil || *got != 60 {
+		t.Fatalf("60: %#v %v", got, err)
+	}
+	zero := 0
+	got, err = NormalizeProgressPercent(&zero)
+	if err != nil || got == nil || *got != 0 {
+		t.Fatalf("0: %#v %v", got, err)
+	}
+	high := 101
+	if _, err := NormalizeProgressPercent(&high); err == nil {
+		t.Fatal("expected invalid 101")
+	}
+	low := -1
+	if _, err := NormalizeProgressPercent(&low); err == nil {
+		t.Fatal("expected invalid -1")
+	}
+}
+
 func TestCanArchiveLastActive(t *testing.T) {
 	t.Parallel()
 	p := Project{Archived: false}

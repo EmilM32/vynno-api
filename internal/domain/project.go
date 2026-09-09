@@ -7,8 +7,10 @@ import (
 )
 
 const (
-	projectNameMin = 1
-	projectNameMax = 80
+	projectNameMin     = 1
+	projectNameMax     = 80
+	progressPercentMin = 0
+	progressPercentMax = 100
 )
 
 var (
@@ -57,6 +59,17 @@ func NormalizeCode(code *string) (*string, error) {
 		return nil, ErrInvalidBody("Code must match A–Z, 0–9, hyphen; 1–8 characters.")
 	}
 	return &c, nil
+}
+
+// NormalizeProgressPercent accepts 0–100. Nil means unset.
+func NormalizeProgressPercent(v *int) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	if *v < progressPercentMin || *v > progressPercentMax {
+		return nil, ErrInvalidBody("progressPercent must be 0–100.")
+	}
+	return v, nil
 }
 
 // CanArchive returns last_active_project when this is the last non-archived project,
