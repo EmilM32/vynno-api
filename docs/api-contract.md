@@ -299,7 +299,6 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 	"note": "Database schema migration script",
 	"ticketId": null,
 	"activityTypeId": "8f3e0c1a-2b4d-4e6f-8a90-b1c2d3e4f567",
-	"tags": [],
 	"status": "stopped",
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z",
@@ -317,7 +316,6 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 	"note": "Refactoring Auth Service",
 	"ticketId": null,
 	"activityTypeId": null,
-	"tags": [],
 	"targetDurationMs": null
 }
 ```
@@ -348,7 +346,6 @@ Session list body:
 	"note": "Renamed task",
 	"ticketId": null,
 	"activityTypeId": null,
-	"tags": [],
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z",
 	"pausedMs": 0,
@@ -359,7 +356,6 @@ Session list body:
 - `note`: trim; empty → `"Untitled session"`.
 - `projectId`: must exist for this user. Archived is allowed.
 - `activityTypeId` / `ticketId` / `targetDurationMs`: `null` clears.
-- `tags`: `null` or `[]` → `[]`.
 - `endedAt`: required to stay set on stopped sessions; must stay `null` on live (use `/stop`).
 - `pausedMs`: `>= 0` and must not exceed the interval (`endedAt - startedAt` when stopped; `pausedAt - startedAt` when paused; `now - startedAt` when active).
 
@@ -371,7 +367,6 @@ Session list body:
 	"note": "Forgot to start the timer",
 	"ticketId": null,
 	"activityTypeId": null,
-	"tags": [],
 	"targetDurationMs": null,
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z",

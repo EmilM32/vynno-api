@@ -26,18 +26,17 @@ type projectDTO struct {
 }
 
 type sessionDTO struct {
-	ID               string   `json:"id"`
-	ProjectID        string   `json:"projectId"`
-	Note             string   `json:"note"`
-	TicketID         *string  `json:"ticketId"`
-	ActivityTypeID   *string  `json:"activityTypeId"`
-	Tags             []string `json:"tags"`
-	Status           string   `json:"status"`
-	StartedAt        string   `json:"startedAt"`
-	EndedAt          *string  `json:"endedAt"`
-	PausedMs         int64    `json:"pausedMs"`
-	PausedAt         *string  `json:"pausedAt"`
-	TargetDurationMs *int64   `json:"targetDurationMs"`
+	ID               string  `json:"id"`
+	ProjectID        string  `json:"projectId"`
+	Note             string  `json:"note"`
+	TicketID         *string `json:"ticketId"`
+	ActivityTypeID   *string `json:"activityTypeId"`
+	Status           string  `json:"status"`
+	StartedAt        string  `json:"startedAt"`
+	EndedAt          *string `json:"endedAt"`
+	PausedMs         int64   `json:"pausedMs"`
+	PausedAt         *string `json:"pausedAt"`
+	TargetDurationMs *int64  `json:"targetDurationMs"`
 }
 
 type listDTO[T any] struct {
@@ -112,40 +111,37 @@ func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
 }
 
 type startSessionBody struct {
-	ProjectID        string   `json:"projectId"`
-	Note             string   `json:"note"`
-	TicketID         *string  `json:"ticketId"`
-	ActivityTypeID   *string  `json:"activityTypeId"`
-	Tags             []string `json:"tags"`
-	TargetDurationMs *int64   `json:"targetDurationMs"`
+	ProjectID        string  `json:"projectId"`
+	Note             string  `json:"note"`
+	TicketID         *string `json:"ticketId"`
+	ActivityTypeID   *string `json:"activityTypeId"`
+	TargetDurationMs *int64  `json:"targetDurationMs"`
 }
 
 type createManualSessionBody struct {
-	ProjectID        string   `json:"projectId"`
-	Note             string   `json:"note"`
-	TicketID         *string  `json:"ticketId"`
-	ActivityTypeID   *string  `json:"activityTypeId"`
-	Tags             []string `json:"tags"`
-	TargetDurationMs *int64   `json:"targetDurationMs"`
-	StartedAt        string   `json:"startedAt"`
-	EndedAt          string   `json:"endedAt"`
-	PausedMs         *int64   `json:"pausedMs"`
+	ProjectID        string  `json:"projectId"`
+	Note             string  `json:"note"`
+	TicketID         *string `json:"ticketId"`
+	ActivityTypeID   *string `json:"activityTypeId"`
+	TargetDurationMs *int64  `json:"targetDurationMs"`
+	StartedAt        string  `json:"startedAt"`
+	EndedAt          string  `json:"endedAt"`
+	PausedMs         *int64  `json:"pausedMs"`
 }
 
 type updateSessionBody struct {
-	ProjectID        *string   `json:"projectId"`
-	Note             *string   `json:"note"`
-	TicketID         *string   `json:"ticketId"`
-	TicketSet        bool      `json:"-"`
-	ActivityTypeID   *string   `json:"activityTypeId"`
-	ActivityTypeSet  bool      `json:"-"`
-	Tags             *[]string `json:"tags"`
-	StartedAt        *string   `json:"startedAt"`
-	EndedAt          *string   `json:"endedAt"`
-	EndedSet         bool      `json:"-"`
-	PausedMs         *int64    `json:"pausedMs"`
-	TargetDurationMs *int64    `json:"targetDurationMs"`
-	TargetSet        bool      `json:"-"`
+	ProjectID        *string `json:"projectId"`
+	Note             *string `json:"note"`
+	TicketID         *string `json:"ticketId"`
+	TicketSet        bool    `json:"-"`
+	ActivityTypeID   *string `json:"activityTypeId"`
+	ActivityTypeSet  bool    `json:"-"`
+	StartedAt        *string `json:"startedAt"`
+	EndedAt          *string `json:"endedAt"`
+	EndedSet         bool    `json:"-"`
+	PausedMs         *int64  `json:"pausedMs"`
+	TargetDurationMs *int64  `json:"targetDurationMs"`
+	TargetSet        bool    `json:"-"`
 }
 
 func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
@@ -197,18 +193,6 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 				return err
 			}
 			u.ActivityTypeID = &s
-		}
-	}
-	if v, ok := raw["tags"]; ok {
-		if string(v) == "null" {
-			empty := []string{}
-			u.Tags = &empty
-		} else {
-			var tags []string
-			if err := json.Unmarshal(v, &tags); err != nil {
-				return err
-			}
-			u.Tags = &tags
 		}
 	}
 	if v, ok := raw["startedAt"]; ok {
@@ -324,17 +308,12 @@ func toProjectDTO(p domain.Project) projectDTO {
 }
 
 func toSessionDTO(s domain.Session) sessionDTO {
-	tags := s.Tags
-	if tags == nil {
-		tags = []string{}
-	}
 	return sessionDTO{
 		ID:               s.ID,
 		ProjectID:        s.ProjectID,
 		Note:             s.Note,
 		TicketID:         s.TicketID,
 		ActivityTypeID:   s.ActivityTypeID,
-		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        formatTime(s.StartedAt),
 		EndedAt:          formatTimePtr(s.EndedAt),

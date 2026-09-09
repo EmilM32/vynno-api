@@ -18,7 +18,7 @@ func TestNormalizeNote(t *testing.T) {
 func TestPauseResumeStop(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 
 	pausedAt := start.Add(10 * time.Minute)
 	paused, err := Pause(s, pausedAt)
@@ -60,7 +60,7 @@ func TestPauseResumeStop(t *testing.T) {
 func TestStopFromPausedFoldsPause(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	paused, err := Pause(s, start.Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
@@ -80,7 +80,7 @@ func TestStopFromPausedFoldsPause(t *testing.T) {
 func TestPauseWhilePaused(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, now)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, now)
 	paused, err := Pause(s, now)
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestApplySessionPatchNoteAndTimes(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
 	end := start.Add(2 * time.Hour)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	stopped, err := Stop(s, end)
 	if err != nil {
 		t.Fatal(err)
@@ -125,7 +125,7 @@ func TestApplySessionPatchNoteAndTimes(t *testing.T) {
 func TestApplySessionPatchRejectsLiveEndedAt(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	end := start.Add(time.Hour)
 	if _, err := ApplySessionPatch(s, SessionPatch{EndedAt: &end, EndedSet: true}, start.Add(30*time.Minute)); err == nil {
 		t.Fatal("expected invalid_body")
@@ -135,7 +135,7 @@ func TestApplySessionPatchRejectsLiveEndedAt(t *testing.T) {
 func TestApplySessionPatchRejectsStoppedEndedAtClear(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	stopped, err := Stop(s, start.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
@@ -148,7 +148,7 @@ func TestApplySessionPatchRejectsStoppedEndedAtClear(t *testing.T) {
 func TestApplySessionPatchPausedMsExceedsInterval(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	stopped, err := Stop(s, start.Add(time.Hour))
 	if err != nil {
 		t.Fatal(err)
@@ -162,7 +162,7 @@ func TestApplySessionPatchPausedMsExceedsInterval(t *testing.T) {
 func TestApplySessionPatchPausedStartedAtAfterPausedAt(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
-	s := StartSession("s1", "p1", "Work", nil, nil, nil, nil, start)
+	s := StartSession("s1", "p1", "Work", nil, nil, nil, start)
 	paused, err := Pause(s, start.Add(10*time.Minute))
 	if err != nil {
 		t.Fatal(err)
@@ -177,14 +177,14 @@ func TestManualSession(t *testing.T) {
 	t.Parallel()
 	start := time.Date(2026, 3, 11, 8, 0, 0, 0, time.UTC)
 	end := start.Add(90 * time.Minute)
-	s, err := ManualSession("s1", "p1", "  Forgot  ", nil, nil, nil, nil, start, end, 0)
+	s, err := ManualSession("s1", "p1", "  Forgot  ", nil, nil, nil, start, end, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if s.Status != StatusStopped || s.Note != "Forgot" || s.EndedAt == nil {
 		t.Fatalf("%#v", s)
 	}
-	if _, err := ManualSession("s1", "p1", "x", nil, nil, nil, nil, end, start, 0); err == nil {
+	if _, err := ManualSession("s1", "p1", "x", nil, nil, nil, end, start, 0); err == nil {
 		t.Fatal("expected invalid_body for reversed times")
 	}
 }

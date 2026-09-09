@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
@@ -87,22 +86,4 @@ type Store interface {
 
 	FirstUserID(ctx context.Context) (uuid.UUID, bool, error)
 	Bootstrap(ctx context.Context, userID uuid.UUID, email, passwordHash string, profile domain.Profile, project domain.Project) error
-}
-
-func encodeTags(tags []string) (json.RawMessage, error) {
-	if tags == nil {
-		tags = []string{}
-	}
-	return json.Marshal(tags)
-}
-
-func decodeTags(raw json.RawMessage) []string {
-	if len(raw) == 0 {
-		return []string{}
-	}
-	var tags []string
-	if err := json.Unmarshal(raw, &tags); err != nil || tags == nil {
-		return []string{}
-	}
-	return tags
 }

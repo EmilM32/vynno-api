@@ -63,8 +63,6 @@ type projectSpec struct {
 	activities     []string
 }
 
-var tagBank = []string{"review", "pair", "hotfix", "spike", "oncall"}
-
 func seedPersonas() []persona {
 	p42 := 42
 	p68 := 68

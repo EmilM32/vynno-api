@@ -238,7 +238,7 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
 		t.Fatal(err)
 	}
-	if live.Note != "Untitled session" || live.Status != "active" || live.Tags == nil {
+	if live.Note != "Untitled session" || live.Status != "active" {
 		t.Fatalf("session: %+v", live)
 	}
 

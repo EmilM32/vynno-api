@@ -19,7 +19,6 @@ If this file and the live API disagree, treat the documented rules here plus [ap
 | **Session / time entry** | A timed interval. While `active` or `paused` it is the *live session*; when `stopped` it is a historical log entry. |
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
-| **Tag** | Secondary string labels on a session. Distinct from project color. |
 | **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier. |
 | **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active` or `paused`. |
@@ -58,7 +57,6 @@ User* (many personal accounts; isolated; no teams)
       ├── note
       ├── ticketId?
       ├── activityTypeId?
-      ├── tags[]
       ├── status: active | paused | stopped
       ├── startedAt
       ├── endedAt?
@@ -98,7 +96,7 @@ User* (many personal accounts; isolated; no teams)
 | **Stop** | From `active` or `paused`. If paused, apply the same pause-accounting as resume first. Sets `status=stopped`, `endedAt=now`. |
 | **Invalid transition** | Any other verb (pause while paused, resume while active, stop while stopped, …) is `409 invalid_transition`. |
 | **Restart** | Client sends a new `POST /sessions` with the same `projectId` / `note` / optionals. Never mutate a stopped row to make it live again. |
-| **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `tags`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`. Not writable: `status`, `pausedAt`. Archived projects are allowed. |
+| **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`. Not writable: `status`, `pausedAt`. Archived projects are allowed. |
 | **Delete** | Any session, including live. Hard-delete. Idle after deleting live. |
 | **Manual entry** | `POST /sessions/manual` inserts `stopped` with `startedAt`/`endedAt`. Allowed while a live session exists. Archived projects are allowed. |
 | **Empty note** | Trim; if empty, store `"Untitled session"`. |
@@ -156,7 +154,6 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 | `note` | string | Task description; default `"Untitled session"` |
 | `ticketId` | string? | e.g. `DEV-842` |
 | `activityTypeId` | string? | Optional FK to an activity type this user owns |
-| `tags` | string[] | Empty array on the wire when none |
 | `status` | `active` \| `paused` \| `stopped` | |
 | `startedAt` | ISO-8601 | UTC |
 | `endedAt` | ISO-8601? | Set on stop |

@@ -14,7 +14,6 @@ type StartSessionInput struct {
 	Note             string
 	TicketID         *string
 	ActivityTypeID   *string
-	Tags             []string
 	TargetDurationMs *int64
 }
 
@@ -23,7 +22,6 @@ type CreateManualSessionInput struct {
 	Note             string
 	TicketID         *string
 	ActivityTypeID   *string
-	Tags             []string
 	TargetDurationMs *int64
 	StartedAt        time.Time
 	EndedAt          time.Time
@@ -85,7 +83,6 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 		in.Note,
 		in.TicketID,
 		activityID,
-		in.Tags,
 		target,
 		s.Now(),
 	)
@@ -160,7 +157,6 @@ func (s *Service) CreateManualSession(ctx context.Context, in CreateManualSessio
 		in.Note,
 		in.TicketID,
 		activityID,
-		in.Tags,
 		target,
 		in.StartedAt,
 		in.EndedAt,

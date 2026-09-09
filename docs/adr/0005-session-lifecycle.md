@@ -20,9 +20,9 @@ If the server auto-stops, allows two live sessions, or stores pause time differe
 5. **Pause** only from `active` → set `pausedAt=now`. **Resume** only from `paused` → add `max(0, now - pausedAt)` to `pausedMs`, clear `pausedAt`. **Stop** from `active` or `paused`; if paused, apply resume accounting first; set `endedAt=now`.
 6. Any other transition is `409 invalid_transition`. Unknown id is `404 not_found`.
 7. **Empty / whitespace `note`** is stored as `"Untitled session"`.
-8. **Sessions are mutable.** `PATCH /sessions/:id` updates writable fields (`note`, `projectId`, `activityTypeId`, `ticketId`, `tags`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`). Omit = unchanged; JSON `null` clears nullable fields. **Do not accept `status` or `pausedAt`** — those stay verbs. `DELETE /sessions/:id` hard-deletes any session, including the live one (`204`; idle after deleting live). `POST /sessions/manual` creates a `stopped` row with required `startedAt` and `endedAt`; allowed while a live session exists; archived projects are allowed; does not auto-stop the timer.
+8. **Sessions are mutable.** `PATCH /sessions/:id` updates writable fields (`note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`). Omit = unchanged; JSON `null` clears nullable fields. **Do not accept `status` or `pausedAt`** — those stay verbs. `DELETE /sessions/:id` hard-deletes any session, including the live one (`204`; idle after deleting live). `POST /sessions/manual` creates a `stopped` row with required `startedAt` and `endedAt`; allowed while a live session exists; archived projects are allowed; does not auto-stop the timer.
 9. **Elapsed inequalities** after any write: `endedAt > startedAt` when set; `pausedMs >= 0` and `pausedMs` does not exceed the interval; live `endedAt` stays null; stopped `endedAt` stays set; paused `pausedAt >= startedAt`. PATCH cannot reopen a stopped row.
-10. **No Task entity.** `note`, optional `ticketId`, `activityTypeId`, and `tags` live on the session. Activity types are a user-owned dictionary ([0012-activity-types.md](./0012-activity-types.md)).
+10. **No Task entity.** `note`, optional `ticketId`, and `activityTypeId` live on the session. Activity types are a user-owned dictionary ([0012-activity-types.md](./0012-activity-types.md)).
 
 ## Amendment (2026-08-21)
 

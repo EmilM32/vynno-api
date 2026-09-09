@@ -771,9 +771,5 @@ func cloneSession(s domain.Session) domain.Session {
 		v := *s.TargetDurationMs
 		out.TargetDurationMs = &v
 	}
-	out.Tags = append([]string{}, s.Tags...)
-	if out.Tags == nil {
-		out.Tags = []string{}
-	}
 	return out
 }

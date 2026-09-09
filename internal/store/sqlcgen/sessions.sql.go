@@ -8,7 +8,6 @@ package sqlcgen
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,7 +28,7 @@ func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) er
 }
 
 const getLiveSession = `-- name: GetLiveSession :one
-SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1 AND status IN ('active', 'paused')
@@ -41,7 +40,6 @@ type GetLiveSessionRow struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -59,7 +57,6 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 		&i.Note,
 		&i.TicketID,
 		&i.ActivityTypeID,
-		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
@@ -71,7 +68,7 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 }
 
 const getSession = `-- name: GetSession :one
-SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1 AND id = $2
@@ -88,7 +85,6 @@ type GetSessionRow struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -106,7 +102,6 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 		&i.Note,
 		&i.TicketID,
 		&i.ActivityTypeID,
-		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
@@ -119,13 +114,13 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 
 const insertSession = `-- name: InsertSession :one
 INSERT INTO sessions (
-    id, user_id, project_id, note, ticket_id, activity_type_id, tags, status,
+    id, user_id, project_id, note, ticket_id, activity_type_id, status,
     started_at, ended_at, paused_ms, paused_at, target_duration_ms
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8,
-    $9, $10, $11, $12, $13
+    $1, $2, $3, $4, $5, $6, $7,
+    $8, $9, $10, $11, $12
 )
-RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
+RETURNING id, project_id, note, ticket_id, activity_type_id, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms
 `
 
@@ -136,7 +131,6 @@ type InsertSessionParams struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -151,7 +145,6 @@ type InsertSessionRow struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -168,7 +161,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		arg.Note,
 		arg.TicketID,
 		arg.ActivityTypeID,
-		arg.Tags,
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
@@ -183,7 +175,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		&i.Note,
 		&i.TicketID,
 		&i.ActivityTypeID,
-		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
@@ -195,7 +186,7 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 }
 
 const listSessions = `-- name: ListSessions :many
-SELECT id, project_id, note, ticket_id, activity_type_id, tags, status,
+SELECT id, project_id, note, ticket_id, activity_type_id, status,
        started_at, ended_at, paused_ms, paused_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1
@@ -235,7 +226,6 @@ type ListSessionsRow struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -269,7 +259,6 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 			&i.Note,
 			&i.TicketID,
 			&i.ActivityTypeID,
-			&i.Tags,
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
@@ -296,15 +285,14 @@ SET project_id = $3,
     note = $4,
     ticket_id = $5,
     activity_type_id = $6,
-    tags = $7,
-    status = $8,
-    started_at = $9,
-    ended_at = $10,
-    paused_ms = $11,
-    paused_at = $12,
-    target_duration_ms = $13
+    status = $7,
+    started_at = $8,
+    ended_at = $9,
+    paused_ms = $10,
+    paused_at = $11,
+    target_duration_ms = $12
 WHERE user_id = $1 AND id = $2
-RETURNING id, project_id, note, ticket_id, activity_type_id, tags, status,
+RETURNING id, project_id, note, ticket_id, activity_type_id, status,
           started_at, ended_at, paused_ms, paused_at, target_duration_ms
 `
 
@@ -315,7 +303,6 @@ type UpdateSessionParams struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -330,7 +317,6 @@ type UpdateSessionRow struct {
 	Note             string
 	TicketID         sql.NullString
 	ActivityTypeID   *uuid.UUID
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
@@ -347,7 +333,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		arg.Note,
 		arg.TicketID,
 		arg.ActivityTypeID,
-		arg.Tags,
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
@@ -362,7 +347,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		&i.Note,
 		&i.TicketID,
 		&i.ActivityTypeID,
-		&i.Tags,
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,

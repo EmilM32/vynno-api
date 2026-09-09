@@ -229,8 +229,8 @@ func pickDuration(rng *rand.Rand) time.Duration {
 }
 
 func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, pauseLen time.Duration, activityIDs map[string]string) (domain.Session, error) {
-	note, ticket, activity, tags, target := sessionFields(rng, spec, activityIDs)
-	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, tags, target, start)
+	note, ticket, activity, target := sessionFields(rng, spec, activityIDs)
+	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
 	if pauseLen > 0 {
 		pauseAt := start.Add((end.Sub(start) - pauseLen) / 3)
 		if !pauseAt.After(start) {
@@ -276,8 +276,8 @@ func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []do
 	idx := active[rng.IntN(len(active))]
 	spec := specs[idx]
 	proj := projects[idx]
-	note, ticket, activity, tags, target := sessionFields(rng, spec, activityIDs)
-	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, tags, target, start)
+	note, ticket, activity, target := sessionFields(rng, spec, activityIDs)
+	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
 	return s, true
 }
 
@@ -295,7 +295,7 @@ func latestEnd(sessions []domain.Session) *time.Time {
 	return latest
 }
 
-func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]string) (note string, ticket, activity *string, tags []string, target *int64) {
+func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]string) (note string, ticket, activity *string, target *int64) {
 	if len(spec.notes) > 0 && rng.Float64() >= 0.04 {
 		note = spec.notes[rng.IntN(len(spec.notes))]
 	}
@@ -309,21 +309,6 @@ func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]stri
 			activity = &id
 		}
 	}
-	if rng.Float64() < 0.32 {
-		n := 1
-		if rng.Float64() < 0.25 {
-			n = 2
-		}
-		seen := map[string]bool{}
-		for len(tags) < n {
-			t := tagBank[rng.IntN(len(tagBank))]
-			if seen[t] {
-				continue
-			}
-			seen[t] = true
-			tags = append(tags, t)
-		}
-	}
 	switch {
 	case rng.Float64() < 0.10:
 		v := int64(25 * 60 * 1000)
@@ -332,5 +317,5 @@ func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]stri
 		v := int64(90 * 60 * 1000)
 		target = &v
 	}
-	return note, ticket, activity, tags, target
+	return note, ticket, activity, target
 }

@@ -79,7 +79,6 @@ func (s *Server) startSession(c *gin.Context) {
 		Note:             body.Note,
 		TicketID:         body.TicketID,
 		ActivityTypeID:   body.ActivityTypeID,
-		Tags:             body.Tags,
 		TargetDurationMs: body.TargetDurationMs,
 	})
 	if err != nil {
@@ -126,7 +125,6 @@ func (s *Server) createManualSession(c *gin.Context) {
 		Note:             body.Note,
 		TicketID:         body.TicketID,
 		ActivityTypeID:   body.ActivityTypeID,
-		Tags:             body.Tags,
 		TargetDurationMs: body.TargetDurationMs,
 		StartedAt:        startedAt,
 		EndedAt:          endedAt,
@@ -184,7 +182,6 @@ func (b updateSessionBody) toPatch() (domain.SessionPatch, error) {
 		TicketSet:        b.TicketSet,
 		ActivityTypeID:   b.ActivityTypeID,
 		ActivityTypeSet:  b.ActivityTypeSet,
-		Tags:             b.Tags,
 		PausedMs:         b.PausedMs,
 		TargetDurationMs: b.TargetDurationMs,
 		TargetSet:        b.TargetSet,

@@ -6,7 +6,6 @@ package sqlcgen
 
 import (
 	"database/sql"
-	"encoding/json"
 	"time"
 
 	"github.com/google/uuid"
@@ -72,7 +71,6 @@ type Session struct {
 	ProjectID        uuid.UUID
 	Note             string
 	TicketID         sql.NullString
-	Tags             json.RawMessage
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime

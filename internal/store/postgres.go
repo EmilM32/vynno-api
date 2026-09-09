@@ -537,10 +537,6 @@ func insertSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.InsertSess
 	if err != nil {
 		return sqlcgen.InsertSessionParams{}, domain.ErrInvalidBody("invalid projectId")
 	}
-	tags, err := encodeTags(s.Tags)
-	if err != nil {
-		return sqlcgen.InsertSessionParams{}, err
-	}
 	return sqlcgen.InsertSessionParams{
 		ID:               id,
 		UserID:           userID,
@@ -548,7 +544,6 @@ func insertSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.InsertSess
 		Note:             s.Note,
 		TicketID:         ptrNullString(s.TicketID),
 		ActivityTypeID:   uuidPtrFromString(s.ActivityTypeID),
-		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
 		EndedAt:          ptrNullTime(s.EndedAt),
@@ -567,10 +562,6 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 	if err != nil {
 		return sqlcgen.UpdateSessionParams{}, domain.ErrInvalidBody("invalid projectId")
 	}
-	tags, err := encodeTags(s.Tags)
-	if err != nil {
-		return sqlcgen.UpdateSessionParams{}, err
-	}
 	return sqlcgen.UpdateSessionParams{
 		UserID:           userID,
 		ID:               id,
@@ -578,7 +569,6 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 		Note:             s.Note,
 		TicketID:         ptrNullString(s.TicketID),
 		ActivityTypeID:   uuidPtrFromString(s.ActivityTypeID),
-		Tags:             tags,
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
 		EndedAt:          ptrNullTime(s.EndedAt),
@@ -701,14 +691,13 @@ func projectFromUpdate(r sqlcgen.UpdateProjectRow) domain.Project {
 	}
 }
 
-func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString, activityID *uuid.UUID, tags []byte, status string, started time.Time, ended, pausedAt sql.NullTime, pausedMs int64, target sql.NullInt64) domain.Session {
+func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString, activityID *uuid.UUID, status string, started time.Time, ended, pausedAt sql.NullTime, pausedMs int64, target sql.NullInt64) domain.Session {
 	return domain.Session{
 		ID:               id.String(),
 		ProjectID:        projectID.String(),
 		Note:             note,
 		TicketID:         nullStringPtr(ticket),
 		ActivityTypeID:   uuidPtrString(activityID),
-		Tags:             decodeTags(tags),
 		Status:           status,
 		StartedAt:        started,
 		EndedAt:          nullTimePtr(ended),
@@ -719,23 +708,23 @@ func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString,
 }
 
 func sessionFromGet(r sqlcgen.GetSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromList(r sqlcgen.ListSessionsRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromLive(r sqlcgen.GetLiveSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromInsert(r sqlcgen.InsertSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func sessionFromUpdate(r sqlcgen.UpdateSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Tags, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
 }
 
 func uuidPtrFromString(s *string) *uuid.UUID {

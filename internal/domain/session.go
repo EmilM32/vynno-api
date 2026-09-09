@@ -28,7 +28,6 @@ type Session struct {
 	Note             string
 	TicketID         *string
 	ActivityTypeID   *string
-	Tags             []string
 	Status           string
 	StartedAt        time.Time
 	EndedAt          *time.Time
@@ -56,20 +55,6 @@ func NormalizeOptionalString(s *string) *string {
 	return &t
 }
 
-func NormalizeTags(tags []string) []string {
-	if tags == nil {
-		return []string{}
-	}
-	out := make([]string, 0, len(tags))
-	for _, t := range tags {
-		t = strings.TrimSpace(t)
-		if t != "" {
-			out = append(out, t)
-		}
-	}
-	return out
-}
-
 func NormalizeTargetDurationMs(v *int64) (*int64, error) {
 	if v == nil {
 		return nil, nil
@@ -89,14 +74,13 @@ func ValidStatusFilter(s string) bool {
 }
 
 // StartSession builds a new active session at now.
-func StartSession(id, projectID, note string, ticketID, activityTypeID *string, tags []string, target *int64, now time.Time) Session {
+func StartSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, now time.Time) Session {
 	return Session{
 		ID:               id,
 		ProjectID:        projectID,
 		Note:             NormalizeNote(note),
 		TicketID:         NormalizeOptionalString(ticketID),
 		ActivityTypeID:   activityTypeID,
-		Tags:             NormalizeTags(tags),
 		Status:           StatusActive,
 		StartedAt:        now.UTC(),
 		EndedAt:          nil,
@@ -161,7 +145,6 @@ type SessionPatch struct {
 	TicketSet        bool
 	ActivityTypeID   *string
 	ActivityTypeSet  bool
-	Tags             *[]string
 	StartedAt        *time.Time
 	EndedAt          *time.Time
 	EndedSet         bool
@@ -178,7 +161,7 @@ func ParseISOTime(s string) (time.Time, error) {
 	return t.UTC(), nil
 }
 
-func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, tags []string, target *int64, startedAt, endedAt time.Time, pausedMs int64) (Session, error) {
+func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt time.Time, pausedMs int64) (Session, error) {
 	end := endedAt.UTC()
 	s := Session{
 		ID:               id,
@@ -186,7 +169,6 @@ func ManualSession(id, projectID, note string, ticketID, activityTypeID *string,
 		Note:             NormalizeNote(note),
 		TicketID:         NormalizeOptionalString(ticketID),
 		ActivityTypeID:   activityTypeID,
-		Tags:             NormalizeTags(tags),
 		Status:           StatusStopped,
 		StartedAt:        startedAt.UTC(),
 		EndedAt:          &end,
@@ -216,9 +198,6 @@ func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error
 	}
 	if p.ActivityTypeSet {
 		s.ActivityTypeID = NormalizeOptionalString(p.ActivityTypeID)
-	}
-	if p.Tags != nil {
-		s.Tags = NormalizeTags(*p.Tags)
 	}
 	if p.StartedAt != nil {
 		s.StartedAt = p.StartedAt.UTC()
