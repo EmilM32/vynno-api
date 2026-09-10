@@ -51,6 +51,22 @@ Clause 8 originally said stopped sessions were immutable (LOG-6 / LOG-7 backlog)
 | Store pause segments as a table from day one | Fine internally; the wire still exposes `pausedMs` + `pausedAt` only. |
 | Separate Task table | Not needed for v1; recent tasks are derived from sessions. |
 
+## Amendment (2026-09-10)
+
+Pause is removed. A session is a continuous interval `[startedAt, endedAt]`. A break is **stop, then start a new session**.
+
+Clauses 1–5, 8–9 above described `active | paused | stopped` and `pausedMs` / `pausedAt`. They are replaced by:
+
+1. **At most one live session** (`status=active`) per user. A second `POST /sessions` is `409 session_already_active`. **Do not auto-stop.**
+2. **Idle** means no active session. `GET /sessions/active` returns that row, or `404 session_not_active`.
+3. **Start** creates a **new** row: `status=active`, `startedAt=now` (UTC ISO). Restart-from-recent is this, not a resume of a stopped log.
+4. **Verbs only:** `POST /sessions/:id/stop`. No `PATCH` of `status`. `/pause` and `/resume` do not exist.
+5. **Stop** only from `active`; set `endedAt=now`. Any other transition is `409 invalid_transition`.
+8. **Sessions are mutable.** `PATCH /sessions/:id` updates writable fields (`note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `targetDurationMs`). Omit = unchanged; JSON `null` clears nullable fields. **Do not accept `status`.** `pausedMs` / `pausedAt` are not fields. `DELETE /sessions/:id` hard-deletes any session, including the live one (`204`; idle after deleting live). `POST /sessions/manual` creates a `stopped` row with required `startedAt` and `endedAt`; allowed while a live session exists; archived projects are allowed; does not auto-stop the timer.
+9. **Elapsed inequalities** after any write: `endedAt > startedAt` when set; live `endedAt` stays null; stopped `endedAt` stays set. PATCH cannot reopen a stopped row. Duration is `endedAt - startedAt` (or `now - startedAt` while active).
+
+Migration `00010_drop_session_pause` stops any `paused` row at `paused_at`, drops `paused_ms` / `paused_at`, drops leftover `session_pauses` if present, and tightens the status CHECK and unique live index.
+
 ## Related
 
 - [../domain-model.md](../domain-model.md)

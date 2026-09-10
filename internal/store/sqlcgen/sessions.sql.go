@@ -29,9 +29,9 @@ func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) er
 
 const getLiveSession = `-- name: GetLiveSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, paused_ms, paused_at, target_duration_ms
+       started_at, ended_at, target_duration_ms
 FROM sessions
-WHERE user_id = $1 AND status IN ('active', 'paused')
+WHERE user_id = $1 AND status = 'active'
 `
 
 type GetLiveSessionRow struct {
@@ -43,8 +43,6 @@ type GetLiveSessionRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -60,8 +58,6 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.PausedMs,
-		&i.PausedAt,
 		&i.TargetDurationMs,
 	)
 	return i, err
@@ -69,7 +65,7 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 
 const getSession = `-- name: GetSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, paused_ms, paused_at, target_duration_ms
+       started_at, ended_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1 AND id = $2
 `
@@ -88,8 +84,6 @@ type GetSessionRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -105,8 +99,6 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.PausedMs,
-		&i.PausedAt,
 		&i.TargetDurationMs,
 	)
 	return i, err
@@ -115,13 +107,13 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 const insertSession = `-- name: InsertSession :one
 INSERT INTO sessions (
     id, user_id, project_id, note, ticket_id, activity_type_id, status,
-    started_at, ended_at, paused_ms, paused_at, target_duration_ms
+    started_at, ended_at, target_duration_ms
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10, $11, $12
+    $8, $9, $10
 )
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, paused_ms, paused_at, target_duration_ms
+          started_at, ended_at, target_duration_ms
 `
 
 type InsertSessionParams struct {
@@ -134,8 +126,6 @@ type InsertSessionParams struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -148,8 +138,6 @@ type InsertSessionRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -164,8 +152,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
-		arg.PausedMs,
-		arg.PausedAt,
 		arg.TargetDurationMs,
 	)
 	var i InsertSessionRow
@@ -178,8 +164,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.PausedMs,
-		&i.PausedAt,
 		&i.TargetDurationMs,
 	)
 	return i, err
@@ -187,32 +171,30 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 
 const listSessions = `-- name: ListSessions :many
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, paused_ms, paused_at, target_duration_ms
+       started_at, ended_at, target_duration_ms
 FROM sessions
 WHERE user_id = $1
   AND (
     $2::boolean = FALSE
     OR ($3::boolean AND status = 'active')
-    OR ($4::boolean AND status = 'paused')
-    OR ($5::boolean AND status = 'stopped')
+    OR ($4::boolean AND status = 'stopped')
   )
   AND (
-    $6::boolean = FALSE
-    OR started_at < $7::timestamptz
+    $5::boolean = FALSE
+    OR started_at < $6::timestamptz
     OR (
-      started_at = $7::timestamptz
-      AND id < $8::uuid
+      started_at = $6::timestamptz
+      AND id < $7::uuid
     )
   )
 ORDER BY started_at DESC, id DESC
-LIMIT $9::int
+LIMIT $8::int
 `
 
 type ListSessionsParams struct {
 	UserID         uuid.UUID
 	FilterStatuses bool
 	WantActive     bool
-	WantPaused     bool
 	WantStopped    bool
 	UseCursor      bool
 	CursorStarted  time.Time
@@ -229,8 +211,6 @@ type ListSessionsRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -239,7 +219,6 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 		arg.UserID,
 		arg.FilterStatuses,
 		arg.WantActive,
-		arg.WantPaused,
 		arg.WantStopped,
 		arg.UseCursor,
 		arg.CursorStarted,
@@ -262,8 +241,6 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
-			&i.PausedMs,
-			&i.PausedAt,
 			&i.TargetDurationMs,
 		); err != nil {
 			return nil, err
@@ -288,12 +265,10 @@ SET project_id = $3,
     status = $7,
     started_at = $8,
     ended_at = $9,
-    paused_ms = $10,
-    paused_at = $11,
-    target_duration_ms = $12
+    target_duration_ms = $10
 WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, paused_ms, paused_at, target_duration_ms
+          started_at, ended_at, target_duration_ms
 `
 
 type UpdateSessionParams struct {
@@ -306,8 +281,6 @@ type UpdateSessionParams struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -320,8 +293,6 @@ type UpdateSessionRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 }
 
@@ -336,8 +307,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
-		arg.PausedMs,
-		arg.PausedAt,
 		arg.TargetDurationMs,
 	)
 	var i UpdateSessionRow
@@ -350,8 +319,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.PausedMs,
-		&i.PausedAt,
 		&i.TargetDurationMs,
 	)
 	return i, err

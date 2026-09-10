@@ -34,8 +34,6 @@ type sessionDTO struct {
 	Status           string  `json:"status"`
 	StartedAt        string  `json:"startedAt"`
 	EndedAt          *string `json:"endedAt"`
-	PausedMs         int64   `json:"pausedMs"`
-	PausedAt         *string `json:"pausedAt"`
 	TargetDurationMs *int64  `json:"targetDurationMs"`
 }
 
@@ -126,7 +124,6 @@ type createManualSessionBody struct {
 	TargetDurationMs *int64  `json:"targetDurationMs"`
 	StartedAt        string  `json:"startedAt"`
 	EndedAt          string  `json:"endedAt"`
-	PausedMs         *int64  `json:"pausedMs"`
 }
 
 type updateSessionBody struct {
@@ -139,7 +136,6 @@ type updateSessionBody struct {
 	StartedAt        *string `json:"startedAt"`
 	EndedAt          *string `json:"endedAt"`
 	EndedSet         bool    `json:"-"`
-	PausedMs         *int64  `json:"pausedMs"`
 	TargetDurationMs *int64  `json:"targetDurationMs"`
 	TargetSet        bool    `json:"-"`
 }
@@ -150,10 +146,13 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 		return err
 	}
 	if _, ok := raw["status"]; ok {
-		return errWritable("status is not writable; use pause, resume, or stop.")
+		return errWritable("status is not writable; use stop.")
 	}
 	if _, ok := raw["pausedAt"]; ok {
-		return errWritable("pausedAt is not writable; use pause, resume, or stop.")
+		return errWritable("pausedAt is not writable.")
+	}
+	if _, ok := raw["pausedMs"]; ok {
+		return errWritable("pausedMs is not writable.")
 	}
 	if _, ok := raw["id"]; ok {
 		return errWritable("id is not writable.")
@@ -214,16 +213,6 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 			}
 			u.EndedAt = &s
 		}
-	}
-	if v, ok := raw["pausedMs"]; ok {
-		if string(v) == "null" {
-			return errWritable("pausedMs cannot be null.")
-		}
-		var n int64
-		if err := json.Unmarshal(v, &n); err != nil {
-			return err
-		}
-		u.PausedMs = &n
 	}
 	if v, ok := raw["targetDurationMs"]; ok {
 		u.TargetSet = true
@@ -317,8 +306,6 @@ func toSessionDTO(s domain.Session) sessionDTO {
 		Status:           s.Status,
 		StartedAt:        formatTime(s.StartedAt),
 		EndedAt:          formatTimePtr(s.EndedAt),
-		PausedMs:         s.PausedMs,
-		PausedAt:         formatTimePtr(s.PausedAt),
 		TargetDurationMs: s.TargetDurationMs,
 	}
 }

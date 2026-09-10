@@ -15,11 +15,10 @@ const (
 
 const (
 	StatusActive  = "active"
-	StatusPaused  = "paused"
 	StatusStopped = "stopped"
 )
 
-var SessionStatuses = []string{StatusActive, StatusPaused, StatusStopped}
+var SessionStatuses = []string{StatusActive, StatusStopped}
 
 // Session is the server-side time session (not the wire DTO).
 type Session struct {
@@ -31,8 +30,6 @@ type Session struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          *time.Time
-	PausedMs         int64
-	PausedAt         *time.Time
 	TargetDurationMs *int64
 }
 
@@ -66,7 +63,7 @@ func NormalizeTargetDurationMs(v *int64) (*int64, error) {
 }
 
 func IsLiveStatus(status string) bool {
-	return status == StatusActive || status == StatusPaused
+	return status == StatusActive
 }
 
 func ValidStatusFilter(s string) bool {
@@ -84,57 +81,18 @@ func StartSession(id, projectID, note string, ticketID, activityTypeID *string, 
 		Status:           StatusActive,
 		StartedAt:        now.UTC(),
 		EndedAt:          nil,
-		PausedMs:         0,
-		PausedAt:         nil,
 		TargetDurationMs: target,
 	}
 }
 
-func Pause(s Session, now time.Time) (Session, error) {
-	if s.Status != StatusActive {
-		return Session{}, ErrInvalidTransition()
-	}
-	t := now.UTC()
-	s.Status = StatusPaused
-	s.PausedAt = &t
-	return s, nil
-}
-
-func Resume(s Session, now time.Time) (Session, error) {
-	if s.Status != StatusPaused {
-		return Session{}, ErrInvalidTransition()
-	}
-	s.PausedMs = foldPause(s, now)
-	s.PausedAt = nil
-	s.Status = StatusActive
-	return s, nil
-}
-
 func Stop(s Session, now time.Time) (Session, error) {
-	switch s.Status {
-	case StatusPaused:
-		s.PausedMs = foldPause(s, now)
-		s.PausedAt = nil
-	case StatusActive:
-		// keep pausedMs
-	default:
+	if s.Status != StatusActive {
 		return Session{}, ErrInvalidTransition()
 	}
 	t := now.UTC()
 	s.Status = StatusStopped
 	s.EndedAt = &t
 	return s, nil
-}
-
-func foldPause(s Session, now time.Time) int64 {
-	if s.PausedAt == nil {
-		return s.PausedMs
-	}
-	delta := now.UTC().Sub(s.PausedAt.UTC()).Milliseconds()
-	if delta < 0 {
-		delta = 0
-	}
-	return s.PausedMs + delta
 }
 
 // SessionPatch is a partial update. Unset pointer / Set=false means leave unchanged.
@@ -148,7 +106,6 @@ type SessionPatch struct {
 	StartedAt        *time.Time
 	EndedAt          *time.Time
 	EndedSet         bool
-	PausedMs         *int64
 	TargetDurationMs *int64
 	TargetSet        bool
 }
@@ -161,7 +118,7 @@ func ParseISOTime(s string) (time.Time, error) {
 	return t.UTC(), nil
 }
 
-func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt time.Time, pausedMs int64) (Session, error) {
+func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt time.Time) (Session, error) {
 	end := endedAt.UTC()
 	s := Session{
 		ID:               id,
@@ -172,17 +129,15 @@ func ManualSession(id, projectID, note string, ticketID, activityTypeID *string,
 		Status:           StatusStopped,
 		StartedAt:        startedAt.UTC(),
 		EndedAt:          &end,
-		PausedMs:         pausedMs,
-		PausedAt:         nil,
 		TargetDurationMs: target,
 	}
-	if err := validateSessionTimes(s, end); err != nil {
+	if err := validateSessionTimes(s); err != nil {
 		return Session{}, err
 	}
 	return s, nil
 }
 
-func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error) {
+func ApplySessionPatch(s Session, p SessionPatch) (Session, error) {
 	if p.ProjectID != nil {
 		id := strings.TrimSpace(*p.ProjectID)
 		if id == "" {
@@ -210,9 +165,6 @@ func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error
 			s.EndedAt = &t
 		}
 	}
-	if p.PausedMs != nil {
-		s.PausedMs = *p.PausedMs
-	}
 	if p.TargetSet {
 		target, err := NormalizeTargetDurationMs(p.TargetDurationMs)
 		if err != nil {
@@ -220,16 +172,13 @@ func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error
 		}
 		s.TargetDurationMs = target
 	}
-	if err := validateSessionTimes(s, now); err != nil {
+	if err := validateSessionTimes(s); err != nil {
 		return Session{}, err
 	}
 	return s, nil
 }
 
-func validateSessionTimes(s Session, now time.Time) error {
-	if s.PausedMs < 0 {
-		return ErrInvalidBody("pausedMs must be >= 0 and must not exceed the interval.")
-	}
+func validateSessionTimes(s Session) error {
 	started := s.StartedAt.UTC()
 	switch s.Status {
 	case StatusStopped:
@@ -240,33 +189,9 @@ func validateSessionTimes(s Session, now time.Time) error {
 		if !ended.After(started) {
 			return ErrInvalidBody("endedAt must be after startedAt.")
 		}
-		if s.PausedMs > ended.Sub(started).Milliseconds() {
-			return ErrInvalidBody("pausedMs must be >= 0 and must not exceed the interval.")
-		}
 	case StatusActive:
 		if s.EndedAt != nil {
 			return ErrInvalidBody("endedAt is only set on stopped sessions; use POST .../stop.")
-		}
-		dur := now.UTC().Sub(started).Milliseconds()
-		if dur < 0 {
-			dur = 0
-		}
-		if s.PausedMs > dur {
-			return ErrInvalidBody("pausedMs must be >= 0 and must not exceed the interval.")
-		}
-	case StatusPaused:
-		if s.EndedAt != nil {
-			return ErrInvalidBody("endedAt is only set on stopped sessions; use POST .../stop.")
-		}
-		if s.PausedAt == nil {
-			return ErrInvalidBody("pausedAt is required while paused.")
-		}
-		pausedAt := s.PausedAt.UTC()
-		if pausedAt.Before(started) {
-			return ErrInvalidBody("startedAt must be at or before pausedAt.")
-		}
-		if s.PausedMs > pausedAt.Sub(started).Milliseconds() {
-			return ErrInvalidBody("pausedMs must be >= 0 and must not exceed the interval.")
 		}
 	default:
 		return ErrInvalidBody("unknown session status.")

@@ -138,16 +138,10 @@ func generateSessions(rng *rand.Rand, now time.Time, p persona, projects []domai
 			dur := pickDuration(rng)
 			start := cursor
 			end := start.Add(dur)
-			paused := rng.Float64() < 0.16
-			var pauseLen time.Duration
-			if paused {
-				pauseLen = time.Duration(5+rng.IntN(16)) * time.Minute
-				end = end.Add(pauseLen)
-			}
 			if !end.Before(cutoff) && !end.Equal(cutoff) {
 				break
 			}
-			sess, err := buildStopped(rng, spec, proj, start, end, pauseLen, activityIDs)
+			sess, err := buildStopped(rng, spec, proj, start, end, activityIDs)
 			if err != nil {
 				break
 			}
@@ -228,31 +222,9 @@ func pickDuration(rng *rand.Rand) time.Duration {
 	}
 }
 
-func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, pauseLen time.Duration, activityIDs map[string]string) (domain.Session, error) {
+func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, activityIDs map[string]string) (domain.Session, error) {
 	note, ticket, activity, target := sessionFields(rng, spec, activityIDs)
 	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
-	if pauseLen > 0 {
-		pauseAt := start.Add((end.Sub(start) - pauseLen) / 3)
-		if !pauseAt.After(start) {
-			pauseAt = start.Add(time.Minute)
-		}
-		resumeAt := pauseAt.Add(pauseLen)
-		if !resumeAt.Before(end) {
-			resumeAt = end.Add(-time.Minute)
-			if !resumeAt.After(pauseAt) {
-				return domain.Stop(s, end)
-			}
-		}
-		var err error
-		s, err = domain.Pause(s, pauseAt)
-		if err != nil {
-			return domain.Session{}, err
-		}
-		s, err = domain.Resume(s, resumeAt)
-		if err != nil {
-			return domain.Session{}, err
-		}
-	}
 	return domain.Stop(s, end)
 }
 

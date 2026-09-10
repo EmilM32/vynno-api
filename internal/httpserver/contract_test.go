@@ -247,17 +247,6 @@ func TestMeAndProjectsAndSessions(t *testing.T) {
 	}, auth)
 	assertCode(t, w, http.StatusConflict, "session_already_active")
 
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil, auth)
-	if w.Code != http.StatusOK {
-		t.Fatalf("pause = %d %s", w.Code, w.Body.String())
-	}
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/pause", nil, auth)
-	assertCode(t, w, http.StatusConflict, "invalid_transition")
-
-	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/resume", nil, auth)
-	if w.Code != http.StatusOK {
-		t.Fatalf("resume = %d %s", w.Code, w.Body.String())
-	}
 	w = doJSON(t, r, http.MethodPost, "/v1/sessions/"+live.ID+"/stop", nil, auth)
 	if w.Code != http.StatusOK {
 		t.Fatalf("stop = %d %s", w.Code, w.Body.String())
@@ -473,7 +462,7 @@ func TestSessionEditDeleteManual(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &log); err != nil {
 		t.Fatal(err)
 	}
-	if log.Status != "stopped" || log.EndedAt == nil || log.PausedAt != nil {
+	if log.Status != "stopped" || log.EndedAt == nil {
 		t.Fatalf("manual: %+v", log)
 	}
 
@@ -499,7 +488,7 @@ func TestSessionEditDeleteManual(t *testing.T) {
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 
 	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+log.ID, map[string]any{
-		"pausedMs": int64(9 * 60 * 60 * 1000),
+		"pausedMs": int64(0),
 	}, auth)
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 

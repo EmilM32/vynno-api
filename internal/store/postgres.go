@@ -410,7 +410,6 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 		UserID:         userID,
 		FilterStatuses: len(statuses) > 0,
 		WantActive:     want[domain.StatusActive],
-		WantPaused:     want[domain.StatusPaused],
 		WantStopped:    want[domain.StatusStopped],
 		UseCursor:      useCursor,
 		CursorStarted:  cursorStarted,
@@ -547,8 +546,6 @@ func insertSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.InsertSess
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
 		EndedAt:          ptrNullTime(s.EndedAt),
-		PausedMs:         s.PausedMs,
-		PausedAt:         ptrNullTime(s.PausedAt),
 		TargetDurationMs: ptrNullInt64(s.TargetDurationMs),
 	}, nil
 }
@@ -572,8 +569,6 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 		Status:           s.Status,
 		StartedAt:        s.StartedAt,
 		EndedAt:          ptrNullTime(s.EndedAt),
-		PausedMs:         s.PausedMs,
-		PausedAt:         ptrNullTime(s.PausedAt),
 		TargetDurationMs: ptrNullInt64(s.TargetDurationMs),
 	}, nil
 }
@@ -691,7 +686,7 @@ func projectFromUpdate(r sqlcgen.UpdateProjectRow) domain.Project {
 	}
 }
 
-func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString, activityID *uuid.UUID, status string, started time.Time, ended, pausedAt sql.NullTime, pausedMs int64, target sql.NullInt64) domain.Session {
+func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString, activityID *uuid.UUID, status string, started time.Time, ended sql.NullTime, target sql.NullInt64) domain.Session {
 	return domain.Session{
 		ID:               id.String(),
 		ProjectID:        projectID.String(),
@@ -701,30 +696,28 @@ func sessionFromRow(id, projectID uuid.UUID, note string, ticket sql.NullString,
 		Status:           status,
 		StartedAt:        started,
 		EndedAt:          nullTimePtr(ended),
-		PausedMs:         pausedMs,
-		PausedAt:         nullTimePtr(pausedAt),
 		TargetDurationMs: nullInt64Ptr(target),
 	}
 }
 
 func sessionFromGet(r sqlcgen.GetSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs)
 }
 
 func sessionFromList(r sqlcgen.ListSessionsRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs)
 }
 
 func sessionFromLive(r sqlcgen.GetLiveSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs)
 }
 
 func sessionFromInsert(r sqlcgen.InsertSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs)
 }
 
 func sessionFromUpdate(r sqlcgen.UpdateSessionRow) domain.Session {
-	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.PausedAt, r.PausedMs, r.TargetDurationMs)
+	return sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs)
 }
 
 func uuidPtrFromString(s *string) *uuid.UUID {

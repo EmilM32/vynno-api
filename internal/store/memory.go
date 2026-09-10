@@ -763,10 +763,6 @@ func cloneSession(s domain.Session) domain.Session {
 		v := *s.EndedAt
 		out.EndedAt = &v
 	}
-	if s.PausedAt != nil {
-		v := *s.PausedAt
-		out.PausedAt = &v
-	}
 	if s.TargetDurationMs != nil {
 		v := *s.TargetDurationMs
 		out.TargetDurationMs = &v

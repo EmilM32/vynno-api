@@ -15,7 +15,7 @@ The SPA loads and mutates data through `fetch` against a documented REST contrac
 2. **Prefix `/v1`.** Version in the path, not a custom header.
 3. **JSON, camelCase.** Lists are `{ "items": T[] }`. Absent optionals are JSON `null`, not omitted keys.
 4. **Error envelope** `{ "error": { "code", "message" } }` on every failure. `code` is from the documented set. `message` is for logs.
-5. **Verb routes** for session and project lifecycle (`/pause`, `/resume`, `/stop`, `/archive`, `/restore`). No generic `PATCH status`.
+5. **Verb routes** for session and project lifecycle (`/stop`, `/archive`, `/restore`). No generic `PATCH status`. Pause/resume verbs were removed (see [0005-session-lifecycle.md](./0005-session-lifecycle.md) amendment 2026-09-10).
 6. **DTO-first.** Persistence may use different column names; handlers map to the DTO. Do not leak SQL or framework types onto the wire.
 7. **No SvelteKit remote functions, tRPC, or similar** as the public surface. Those are not what the SPA calls.
 8. New resources or fields require a contract amendment **before** implementation.

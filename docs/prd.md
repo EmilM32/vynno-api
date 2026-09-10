@@ -41,7 +41,7 @@ Wire format: [api-contract.md](./api-contract.md). Server rules: [domain-model.m
 ## 4. Assumptions
 
 1. Product name is **Vynno** ([ADR-0007](./adr/0007-product-name.md)).
-2. Single concurrent live session (running or paused) per user.
+2. Single concurrent live session (`active`) per user. A break is stop, then start a new session.
 3. Single-user product for v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)).
 4. Activity types are a per-user dictionary ([ADR-0012](./adr/0012-activity-types.md)). Empty on register.
 5. Insights, prefs, theme, and locale stay on the client until the contract says otherwise.

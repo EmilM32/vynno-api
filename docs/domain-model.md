@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Accepted  
-**Last updated:** 2026-08-27
+**Last updated:** 2026-09-10
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -16,12 +16,12 @@ If this file and the live API disagree, treat the documented rules here plus [ap
 | Term | Meaning |
 | --- | --- |
 | **Project** | Named container for work. Has a color used in lists and charts. |
-| **Session / time entry** | A timed interval. While `active` or `paused` it is the *live session*; when `stopped` it is a historical log entry. |
+| **Session / time entry** | A continuous timed interval. While `active` it is the *live session*; when `stopped` it is a historical log entry. |
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
 | **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier. |
 | **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
-| **Live session** | The at-most-one session whose status is `active` or `paused`. |
+| **Live session** | The at-most-one session whose status is `active`. |
 
 v1 does **not** have a Task table. “Recent tasks” on the client are reconstructed from recent sessions.
 
@@ -57,11 +57,9 @@ User* (many personal accounts; isolated; no teams)
       ├── note
       ├── ticketId?
       ├── activityTypeId?
-      ├── status: active | paused | stopped
+      ├── status: active | stopped
       ├── startedAt
       ├── endedAt?
-      ├── pausedMs
-      ├── pausedAt?
       └── targetDurationMs?
 ```
 
@@ -70,45 +68,32 @@ User* (many personal accounts; isolated; no teams)
 ## 3. Session lifecycle
 
 ```
-                    start
-     ┌──────────────────────────────────┐
-     │                                  ▼
-  [idle] ──start──► [active] ◄──resume── [paused]
-                       │                    ▲
-                       │ pause              │
-                       └────────────────────┘
-                       │
-                       │ stop
-                       ▼
-                   [stopped]
-                 (log entry)
+  [idle] ──start──► [active] ──stop──► [stopped]
+                                         (log entry)
 ```
 
 ### Rules
 
 | Rule | Description |
 | --- | --- |
-| **Single live session** | At most one session with status `active` or `paused`. A second start is `409 session_already_active`. **Do not auto-stop** the current one. |
+| **Single live session** | At most one session with status `active`. A second start is `409 session_already_active`. **Do not auto-stop** the current one. |
 | **Idle** | No live session. `GET /sessions/active` → `404 session_not_active`. |
-| **Start** | Creates a new row, `status=active`, `startedAt=now` (UTC ISO), `pausedMs=0`. Project must exist and must not be archived. |
-| **Pause** | Only from `active`. Sets `status=paused`, `pausedAt=now`. |
-| **Resume** | Only from `paused`. Adds `now - pausedAt` to `pausedMs` (if positive), clears `pausedAt`, sets `status=active`. |
-| **Stop** | From `active` or `paused`. If paused, apply the same pause-accounting as resume first. Sets `status=stopped`, `endedAt=now`. |
-| **Invalid transition** | Any other verb (pause while paused, resume while active, stop while stopped, …) is `409 invalid_transition`. |
-| **Restart** | Client sends a new `POST /sessions` with the same `projectId` / `note` / optionals. Never mutate a stopped row to make it live again. |
-| **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `pausedMs`, `targetDurationMs`. Not writable: `status`, `pausedAt`. Archived projects are allowed. |
+| **Start** | Creates a new row, `status=active`, `startedAt=now` (UTC ISO). Project must exist and must not be archived. |
+| **Stop** | Only from `active`. Sets `status=stopped`, `endedAt=now`. |
+| **Invalid transition** | Stop while stopped (or any other illegal verb) is `409 invalid_transition`. |
+| **Restart** | Client sends a new `POST /sessions` with the same `projectId` / `note` / optionals. Never mutate a stopped row to make it live again. A break is stop, then start. |
+| **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `targetDurationMs`. Not writable: `status`. Archived projects are allowed. |
 | **Delete** | Any session, including live. Hard-delete. Idle after deleting live. |
 | **Manual entry** | `POST /sessions/manual` inserts `stopped` with `startedAt`/`endedAt`. Allowed while a live session exists. Archived projects are allowed. |
 | **Empty note** | Trim; if empty, store `"Untitled session"`. |
-| **Time integrity** | Stopped: `endedAt > startedAt` and `0 <= pausedMs <= endedAt - startedAt`. Live: `endedAt` is null. Paused: `pausedAt >= startedAt`. `pausedMs` must fit the interval. |
+| **Time integrity** | Stopped: `endedAt > startedAt`. Live: `endedAt` is null. |
 
 ### Elapsed time (derived, do not store as source of truth)
 
-- `active`: `now - startedAt - pausedMs`
-- `paused`: same formula using the instant of the pause (`pausedAt` is not yet folded into `pausedMs`)
-- `stopped`: `endedAt - startedAt - pausedMs`
+- `active`: `now - startedAt`
+- `stopped`: `endedAt - startedAt`
 
-The client computes display labels. The server must keep `startedAt`, `endedAt`, `pausedMs`, and `pausedAt` consistent so those formulas work.
+The client computes display labels. The server must keep `startedAt` and `endedAt` consistent so those formulas work.
 
 ---
 
@@ -154,11 +139,9 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 | `note` | string | Task description; default `"Untitled session"` |
 | `ticketId` | string? | e.g. `DEV-842` |
 | `activityTypeId` | string? | Optional FK to an activity type this user owns |
-| `status` | `active` \| `paused` \| `stopped` | |
+| `status` | `active` \| `stopped` | |
 | `startedAt` | ISO-8601 | UTC |
 | `endedAt` | ISO-8601? | Set on stop |
-| `pausedMs` | number | Accumulated completed pause time; `>= 0` |
-| `pausedAt` | ISO-8601? | Set only while currently paused |
 | `targetDurationMs` | number? | Optional session goal; UI is P2 |
 
 ### 5.3 ActivityType
@@ -238,7 +221,7 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 ## 7. Consistency decisions
 
 1. **One live session** — enforced on the server, not only in the SPA store.
-2. **Sessions are mutable.** PATCH and DELETE apply to any row. Status still changes only via pause/resume/stop. Manual create is always `stopped`.
+2. **Sessions are mutable.** PATCH and DELETE apply to any row. Status still changes only via stop. Manual create is always `stopped`.
 3. **Duration precision** — milliseconds. Display formatting is the client.
 4. **`user_id` is internal** — not on the wire. Accounts are isolated; there are no team workspaces ([ADR-0006](./adr/0006-single-user-tenancy.md)).
 5. **UTC on the wire.** Day grouping and local clocks are the client.

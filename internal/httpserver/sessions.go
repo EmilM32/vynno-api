@@ -88,14 +88,6 @@ func (s *Server) startSession(c *gin.Context) {
 	c.JSON(http.StatusCreated, toSessionDTO(sess))
 }
 
-func (s *Server) pauseSession(c *gin.Context) {
-	s.sessionVerb(c, s.userSvc(c).PauseSession)
-}
-
-func (s *Server) resumeSession(c *gin.Context) {
-	s.sessionVerb(c, s.userSvc(c).ResumeSession)
-}
-
 func (s *Server) stopSession(c *gin.Context) {
 	s.sessionVerb(c, s.userSvc(c).StopSession)
 }
@@ -128,7 +120,6 @@ func (s *Server) createManualSession(c *gin.Context) {
 		TargetDurationMs: body.TargetDurationMs,
 		StartedAt:        startedAt,
 		EndedAt:          endedAt,
-		PausedMs:         body.PausedMs,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -182,7 +173,6 @@ func (b updateSessionBody) toPatch() (domain.SessionPatch, error) {
 		TicketSet:        b.TicketSet,
 		ActivityTypeID:   b.ActivityTypeID,
 		ActivityTypeSet:  b.ActivityTypeSet,
-		PausedMs:         b.PausedMs,
 		TargetDurationMs: b.TargetDurationMs,
 		TargetSet:        b.TargetSet,
 		EndedSet:         b.EndedSet,
@@ -230,7 +220,7 @@ func parseStatusQuery(raw string) ([]string, error) {
 			continue
 		}
 		if !domain.ValidStatusFilter(p) {
-			return nil, domain.ErrInvalidQuery("status must be a comma-separated list of active, paused, stopped.")
+			return nil, domain.ErrInvalidQuery("status must be a comma-separated list of active, stopped.")
 		}
 		out = append(out, p)
 	}

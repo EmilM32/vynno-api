@@ -2,7 +2,7 @@
 
 **Status:** Snapshot of the frontend-proposed contract — this API must implement it  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-08-26  
+**Last updated:** 2026-09-10  
 **Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
@@ -43,14 +43,14 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `invalid_response` | 502 | Client-only: body did not match the response schema | `error_invalid_response` |
 | `http_error` | 4xx/5xx | Client-only: non-OK without an envelope | fallback |
 | `session_not_active` | 404 | `GET /sessions/active` when idle | `error_not_found` |
-| `session_already_active` | 409 | `POST /sessions` while one is active/paused | `error_stop_before_start` |
+| `session_already_active` | 409 | `POST /sessions` while one is active | `error_stop_before_start` |
 | `project_archived` | 409 | Start against an archived project | `error_project_archived` |
 | `code_in_use` | 409 | Project `code` not unique | `error_code_in_use` |
 | `name_in_use` | 409 | Activity type `name` not unique for this user | `activity_types_name_in_use` |
 | `last_active_project` | 409 | Archive/delete of the last active project | `error_last_active_project` |
 | `project_has_sessions` | 409 | Hard-delete of a project that has logs | `projects_cannot_delete_has_sessions` |
 | `activity_type_has_sessions` | 409 | Hard-delete of an activity type that has sessions | `activity_types_cannot_delete_has_sessions` |
-| `invalid_transition` | 409 | Pause/resume/stop (or archive/restore) in a bad state | fallback |
+| `invalid_transition` | 409 | Stop (or archive/restore) in a bad state | fallback |
 | `unauthorized` | 401 | Missing, unknown, or expired session on a protected route | `error_unauthorized` |
 | `invalid_credentials` | 401 | Login email/password do not match | `error_invalid_credentials` |
 | `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
@@ -78,10 +78,10 @@ Example envelope:
 
 These are product rules the API must enforce. Details: [domain-model.md](./domain-model.md), [ADR-0004](./adr/0004-project-lifecycle.md), [ADR-0005](./adr/0005-session-lifecycle.md).
 
-1. **One live session.** At most one session with status `active` or `paused`. A second `POST /sessions` is `409 session_already_active`. The client requires an explicit stop — do not auto-stop.
-2. **Restart is a new session.** Restart-from-recent sends `POST /sessions` with the same `projectId` / `note` / optional fields. It is not a resume of a stopped log.
-3. **Session actions are verbs.** Use `/pause`, `/resume`, `/stop` — not a generic `PATCH status`. `PATCH /sessions/:id` updates fields; it must not send `status` or `pausedAt`.
-4. **Elapsed time.** `pausedMs` is accumulated pause duration. On resume/stop-from-paused, add `now - pausedAt` into `pausedMs` and clear `pausedAt`.
+1. **One live session.** At most one session with status `active`. A second `POST /sessions` is `409 session_already_active`. The client requires an explicit stop — do not auto-stop.
+2. **Restart is a new session.** Restart-from-recent sends `POST /sessions` with the same `projectId` / `note` / optional fields. It is not a resume of a stopped log. A break is stop, then start.
+3. **Session actions are verbs.** Use `/stop` — not a generic `PATCH status`. `PATCH /sessions/:id` updates fields; it must not send `status`.
+4. **Elapsed time.** Duration is `endedAt - startedAt` (or `now - startedAt` while active). Sessions are continuous intervals; there is no pause accounting.
 5. **Default `GET /projects` omits archived.** Pass `includeArchived=true` for management UI. Archived projects must still resolve via `GET /projects/:id` so logs keep a label.
 6. **Last active project.** Cannot archive or hard-delete the last non-archived project (`409 last_active_project`).
 7. **Hard delete** only when **zero** sessions reference the project. Otherwise `409 project_has_sessions` — archive instead.
@@ -279,15 +279,13 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 | Method | Path | Body | Success | Typical errors |
 | --- | --- | --- | --- | --- |
-| GET | `/sessions?status=active,paused&limit=n&cursor=…` | — | `{ items: SessionDto[], nextCursor: string \| null }` newest-first | `invalid_query` |
+| GET | `/sessions?status=active,stopped&limit=n&cursor=…` | — | `{ items: SessionDto[], nextCursor: string \| null }` newest-first | `invalid_query` |
 | GET | `/sessions/active` | — | `SessionDto` | `session_not_active` |
 | GET | `/sessions/:id` | — | `SessionDto` | `not_found` |
 | POST | `/sessions` | `StartSessionDto` | `SessionDto` `201` | `session_already_active`, `not_found`, `project_archived`, `invalid_body` |
 | POST | `/sessions/manual` | `CreateManualSessionDto` | `SessionDto` `201` | `not_found`, `invalid_body` |
 | PATCH | `/sessions/:id` | `UpdateSessionDto` | `SessionDto` | `not_found`, `invalid_body` |
 | DELETE | `/sessions/:id` | — | `204` | `not_found` |
-| POST | `/sessions/:id/pause` | — | `SessionDto` | `not_found`, `invalid_transition` |
-| POST | `/sessions/:id/resume` | — | `SessionDto` | `not_found`, `invalid_transition` |
 | POST | `/sessions/:id/stop` | — | `SessionDto` | `not_found`, `invalid_transition` |
 
 `SessionDto`:
@@ -302,8 +300,6 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 	"status": "stopped",
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z",
-	"pausedMs": 0,
-	"pausedAt": null,
 	"targetDurationMs": null
 }
 ```
@@ -321,9 +317,9 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 ```
 
 `activityTypeId`: UUID of an activity type this user owns, or JSON `null`. Unknown id is `404 not_found`.  
-`status`: `active` \| `paused` \| `stopped`
+`status`: `active` \| `stopped`
 
-`GET /sessions/active` returns the active **or paused** session. Idle → `404` `{ "error": { "code": "session_not_active", "message": "…" } }`.
+`GET /sessions/active` returns the active session. Idle → `404` `{ "error": { "code": "session_not_active", "message": "…" } }`.
 
 `status` query is a comma-separated list of those enum values. `limit` is a positive integer, default **20**, max **100**. `cursor` is an opaque string from the previous page’s `nextCursor`; omit it on the first page. Anything else is `400 invalid_query`.
 
@@ -338,7 +334,7 @@ Session list body:
 
 `nextCursor` is JSON `null` when this page is the last. Follow it as `cursor` to load the next page. Do not parse the cursor. Other lists stay `{ "items": T[] }`.
 
-`UpdateSessionDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`. Do not send `status`, `pausedAt`, or `id` (`invalid_body`).
+`UpdateSessionDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`. Do not send `status` or `id` (`invalid_body`).
 
 ```json
 {
@@ -348,7 +344,6 @@ Session list body:
 	"activityTypeId": null,
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z",
-	"pausedMs": 0,
 	"targetDurationMs": null
 }
 ```
@@ -357,9 +352,8 @@ Session list body:
 - `projectId`: must exist for this user. Archived is allowed.
 - `activityTypeId` / `ticketId` / `targetDurationMs`: `null` clears.
 - `endedAt`: required to stay set on stopped sessions; must stay `null` on live (use `/stop`).
-- `pausedMs`: `>= 0` and must not exceed the interval (`endedAt - startedAt` when stopped; `pausedAt - startedAt` when paused; `now - startedAt` when active).
 
-`CreateManualSessionDto` — always inserts `status=stopped`, `pausedAt=null`. Allowed while a live session exists. Archived projects are allowed.
+`CreateManualSessionDto` — always inserts `status=stopped`. Allowed while a live session exists. Archived projects are allowed.
 
 ```json
 {
@@ -369,12 +363,11 @@ Session list body:
 	"activityTypeId": null,
 	"targetDurationMs": null,
 	"startedAt": "2026-03-11T08:00:00.000Z",
-	"endedAt": "2026-03-11T10:15:00.000Z",
-	"pausedMs": 0
+	"endedAt": "2026-03-11T10:15:00.000Z"
 }
 ```
 
-`projectId`, `startedAt`, and `endedAt` are required. `pausedMs` optional, default `0`. Same note / activity / target rules as start. `endedAt` must be after `startedAt`; `pausedMs` must fit the interval.
+`projectId`, `startedAt`, and `endedAt` are required. Same note / activity / target rules as start. `endedAt` must be after `startedAt`.
 
 ---
 

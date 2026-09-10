@@ -74,8 +74,6 @@ type Session struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	PausedMs         int64
-	PausedAt         sql.NullTime
 	TargetDurationMs sql.NullInt64
 	ActivityTypeID   *uuid.UUID
 }

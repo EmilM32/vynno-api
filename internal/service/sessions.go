@@ -25,7 +25,6 @@ type CreateManualSessionInput struct {
 	TargetDurationMs *int64
 	StartedAt        time.Time
 	EndedAt          time.Time
-	PausedMs         *int64
 }
 
 func (s *Service) ListSessions(ctx context.Context, statuses []string, limit int, cursor string) (store.SessionPage, error) {
@@ -89,14 +88,6 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 	return s.Store.CreateSession(ctx, s.User, sess)
 }
 
-func (s *Service) PauseSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {
-	return s.applyTransition(ctx, id, domain.Pause)
-}
-
-func (s *Service) ResumeSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {
-	return s.applyTransition(ctx, id, domain.Resume)
-}
-
 func (s *Service) StopSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {
 	return s.applyTransition(ctx, id, domain.Stop)
 }
@@ -120,7 +111,7 @@ func (s *Service) UpdateSession(ctx context.Context, id uuid.UUID, patch domain.
 		}
 		patch.ActivityTypeID = activityID
 	}
-	next, err := domain.ApplySessionPatch(sess, patch, s.Now())
+	next, err := domain.ApplySessionPatch(sess, patch)
 	if err != nil {
 		return domain.Session{}, err
 	}
@@ -147,10 +138,6 @@ func (s *Service) CreateManualSession(ctx context.Context, in CreateManualSessio
 	if err != nil {
 		return domain.Session{}, err
 	}
-	paused := int64(0)
-	if in.PausedMs != nil {
-		paused = *in.PausedMs
-	}
 	sess, err := domain.ManualSession(
 		s.NewID().String(),
 		projectID,
@@ -160,7 +147,6 @@ func (s *Service) CreateManualSession(ctx context.Context, in CreateManualSessio
 		target,
 		in.StartedAt,
 		in.EndedAt,
-		paused,
 	)
 	if err != nil {
 		return domain.Session{}, err

@@ -275,11 +275,11 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 
 	s.route(authed, http.MethodGet, "/sessions", s.listSessions, op{
 		Summary:     "List sessions",
-		Description: "Newest first. status is a comma-separated list of active, paused, stopped. limit defaults to 20, max 100. cursor is an opaque nextCursor from the previous page.",
+		Description: "Newest first. status is a comma-separated list of active, stopped. limit defaults to 20, max 100. cursor is an opaque nextCursor from the previous page.",
 		Tags:        []string{"Sessions"},
 		Success:     sessionListDTO{},
 		Query: []queryParam{
-			{Name: "status", Type: "string", Description: "Comma-separated: active, paused, stopped."},
+			{Name: "status", Type: "string", Description: "Comma-separated: active, stopped."},
 			{Name: "limit", Type: "integer", Description: "Positive integer, default 20, max 100."},
 			{Name: "cursor", Type: "string", Description: "Opaque cursor from nextCursor. Omit on the first page."},
 		},
@@ -287,7 +287,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPost, "/sessions", s.startSession, op{
 		Summary:     "Start session",
-		Description: "409 session_already_active if one is already active or paused. Restart is a new POST, not a resume.",
+		Description: "409 session_already_active if one is already active. Restart is a new POST, not a resume of a stopped log.",
 		Tags:        []string{"Sessions"},
 		Body:        startSessionBody{},
 		Success:     sessionDTO{},
@@ -295,7 +295,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Errors:      []string{domain.CodeSessionAlreadyActive, domain.CodeNotFound, domain.CodeProjectArchived},
 	})
 	s.route(authed, http.MethodGet, "/sessions/active", s.getActiveSession, op{
-		Summary:     "Active or paused session",
+		Summary:     "Active session",
 		Description: "Idle → 404 session_not_active.",
 		Tags:        []string{"Sessions"},
 		Success:     sessionDTO{},
@@ -318,7 +318,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPatch, "/sessions/:id", s.updateSession, op{
 		Summary:     "Update session",
-		Description: "All fields optional. Omit = leave unchanged. Do not send status, pausedAt, or id. Live endedAt must stay null; stopped endedAt must stay set.",
+		Description: "All fields optional. Omit = leave unchanged. Do not send status or id. Live endedAt must stay null; stopped endedAt must stay set.",
 		Tags:        []string{"Sessions"},
 		Body:        updateSessionBody{},
 		Success:     sessionDTO{},
@@ -330,18 +330,6 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Tags:        []string{"Sessions"},
 		Empty:       true,
 		Errors:      []string{domain.CodeNotFound},
-	})
-	s.route(authed, http.MethodPost, "/sessions/:id/pause", s.pauseSession, op{
-		Summary: "Pause session",
-		Tags:    []string{"Sessions"},
-		Success: sessionDTO{},
-		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
-	})
-	s.route(authed, http.MethodPost, "/sessions/:id/resume", s.resumeSession, op{
-		Summary: "Resume session",
-		Tags:    []string{"Sessions"},
-		Success: sessionDTO{},
-		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
 	})
 	s.route(authed, http.MethodPost, "/sessions/:id/stop", s.stopSession, op{
 		Summary: "Stop session",

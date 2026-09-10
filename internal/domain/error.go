@@ -65,7 +65,7 @@ func ErrInvalidJSON() *Error {
 }
 
 func ErrSessionNotActive() *Error {
-	return NewError(CodeSessionNotActive, "No active or paused session.")
+	return NewError(CodeSessionNotActive, "No active session.")
 }
 
 func ErrSessionAlreadyActive() *Error {

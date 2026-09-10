@@ -138,22 +138,12 @@ func assertAccount(t *testing.T, a Account, projects, sessMin, sessMax int, live
 			if s.EndedAt != nil {
 				t.Fatalf("%s live session has endedAt", a.Email)
 			}
-			if s.PausedAt != nil {
-				t.Fatalf("%s live session has pausedAt", a.Email)
-			}
 		} else {
 			if s.Status != domain.StatusStopped {
 				t.Fatalf("%s status = %s", a.Email, s.Status)
 			}
 			if s.EndedAt == nil || !s.EndedAt.After(s.StartedAt) {
 				t.Fatalf("%s stopped times %s → %v", a.Email, s.StartedAt, s.EndedAt)
-			}
-			if s.PausedAt != nil {
-				t.Fatalf("%s stopped session still paused", a.Email)
-			}
-			wall := s.EndedAt.Sub(s.StartedAt).Milliseconds()
-			if s.PausedMs < 0 || s.PausedMs >= wall {
-				t.Fatalf("%s pausedMs=%d wall=%d", a.Email, s.PausedMs, wall)
 			}
 		}
 		if s.ActivityTypeID != nil {

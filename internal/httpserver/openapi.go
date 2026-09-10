@@ -557,7 +557,7 @@ func applyFieldHints(parent reflect.Type, jsonName string, s *oaSchema) {
 	switch prettySchemaName(parent) {
 	case "Session":
 		if jsonName == "status" {
-			s.Enum = []string{"active", "paused", "stopped"}
+			s.Enum = []string{"active", "stopped"}
 		}
 	case "ActivityType", "CreateActivityTypeRequest", "UpdateActivityTypeRequest":
 		if jsonName == "color" {

@@ -52,7 +52,7 @@ internal/config/     # env loading, no secrets in git
 ### Negative / tradeoffs
 
 - `gin.Context` is farther from `net/http` than chi. Handlers stay thin so domain tests do not need Gin.
-- Gin struct-tag binding is easy to overuse. Contract codes (`invalid_body`, `last_active_project`, pause accounting) stay in domain code.
+- Gin struct-tag binding is easy to overuse. Contract codes (`invalid_body`, `last_active_project`, session transitions) stay in domain code.
 - CORS / CSRF / JWT come from `gin-contrib` and third-party packages, assembled in Phase 3–4 — not in Phase 1.
 
 ## Amendment (2026-08-18)
