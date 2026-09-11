@@ -191,6 +191,28 @@ func TestBuildSeedDeterministicShape(t *testing.T) {
 	}
 }
 
+func TestBuildSeedRepeatsTicketsInADay(t *testing.T) {
+	alex := BuildSeed(testOpts()).Accounts[0]
+	type key struct{ day, ticket string }
+	counts := map[key]int{}
+	for _, s := range alex.Sessions {
+		if s.TicketID == nil || *s.TicketID == "" {
+			continue
+		}
+		day := s.StartedAt.UTC().Format("2006-01-02")
+		counts[key{day, *s.TicketID}]++
+	}
+	repeats := 0
+	for _, n := range counts {
+		if n >= 2 {
+			repeats++
+		}
+	}
+	if repeats < 3 {
+		t.Fatalf("same-ticket day groups = %d, want at least 3", repeats)
+	}
+}
+
 func TestBuildSeedHasTodayAndThisWeek(t *testing.T) {
 	now := testNow()
 	ds := BuildSeed(testOpts())

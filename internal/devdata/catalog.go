@@ -114,7 +114,7 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		{
 			name: "Identity", code: "AUTH", color: "#3b82f6", progress: &p68,
 			ticketPrefix: "AUTH", fixedID: store.DefaultProject().ID,
-			activities: []string{"coding", "debugging", "research", "docs"},
+			activities: []string{"Coding", "Debugging", "Research", "Docs"},
 			notes: []string{
 				"OIDC callback on Safari",
 				"Refresh token rotation",
@@ -129,11 +129,11 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		{
 			name: "API Core", code: "API", color: "#8b5cf6", progress: &p42,
 			ticketPrefix: "API",
-			activities:   []string{"coding", "debugging", "docs", "deep_work"},
+			activities:   []string{"Coding", "Debugging", "Docs", "Deep work"},
 			notes: []string{
 				"List sessions newest-first",
 				"Project code uniqueness",
-				"Pause accounting on stop",
+				"Stop is the only live verb",
 				"sqlc ListProjects includeArchived",
 				"Goose migration for avatars",
 				"Readyz Postgres ping",
@@ -144,7 +144,7 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		{
 			name: "Marketing Site", code: "WEB", color: "#10b981",
 			ticketPrefix: "WEB",
-			activities:   []string{"coding", "docs", "meeting", "other"},
+			activities:   []string{"Coding", "Docs", "Meeting", "Other"},
 			notes: []string{
 				"Hero copy for waitlist",
 				"Pricing table layout",
@@ -157,19 +157,19 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		{
 			name: "Mobile", code: "IOS", color: "#f59e0b",
 			ticketPrefix: "IOS",
-			activities:   []string{"deep_work", "coding", "research", "debugging"},
+			activities:   []string{"Deep work", "Coding", "Research", "Debugging"},
 			notes: []string{
 				"Timer background task",
 				"Keychain session restore",
 				"Haptics on stop",
 				"Dynamic island live activity",
-				"Offline queue for pause",
+				"Background timer handoff",
 			},
 		},
 		{
 			name: "Support", code: "SUP", color: "#ef4444",
 			ticketPrefix: "SUP",
-			activities:   []string{"meeting", "maintenance", "other", "debugging"},
+			activities:   []string{"Meeting", "Maintenance", "Other", "Debugging"},
 			notes: []string{
 				"Reproduce cookie loss on Firefox",
 				"Reply to timezone DST report",
@@ -180,7 +180,7 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		},
 		{
 			name: "Research", color: "#06b6d4",
-			activities: []string{"research", "docs", "deep_work"},
+			activities: []string{"Research", "Docs", "Deep work"},
 			notes: []string{
 				"Cursor pagination sketches",
 				"Insights aggregate options",
@@ -192,7 +192,7 @@ func alexProjects(p42, p68, p15 int) []projectSpec {
 		{
 			name: "Old Billing", code: "BILL", color: "#64748b", archived: true,
 			ticketPrefix: "BILL", onlyBeforeDays: 45,
-			activities: []string{"maintenance", "coding", "meeting"},
+			activities: []string{"Maintenance", "Coding", "Meeting"},
 			notes: []string{
 				"Invoice PDF layout",
 				"Stripe webhook retries",
@@ -208,7 +208,7 @@ func mayaProjects(p80 int) []projectSpec {
 		{
 			name: "Northwind", code: "NWND", color: "#ec4899", progress: &p80,
 			ticketPrefix: "NW",
-			activities:   []string{"coding", "meeting", "docs"},
+			activities:   []string{"Coding", "Meeting", "Docs"},
 			notes: []string{
 				"Catalog filter by region",
 				"Weekly status with buyer",
@@ -219,7 +219,7 @@ func mayaProjects(p80 int) []projectSpec {
 		{
 			name: "Helios", code: "HEL", color: "#14b8a6",
 			ticketPrefix: "HEL",
-			activities:   []string{"deep_work", "coding", "debugging"},
+			activities:   []string{"Deep work", "Coding", "Debugging"},
 			notes: []string{
 				"Ingest lag after deploy",
 				"Shard key review",
@@ -229,7 +229,7 @@ func mayaProjects(p80 int) []projectSpec {
 		},
 		{
 			name: "Internal", code: "INT", color: "#a855f7",
-			activities: []string{"docs", "meeting", "other"},
+			activities: []string{"Docs", "Meeting", "Other"},
 			notes: []string{
 				"Contractor timesheet",
 				"Access request for staging",
@@ -239,7 +239,7 @@ func mayaProjects(p80 int) []projectSpec {
 		{
 			name: "Legacy Shop", code: "SHOP", color: "#64748b", archived: true,
 			ticketPrefix: "SHOP", onlyBeforeDays: 21,
-			activities: []string{"maintenance", "debugging"},
+			activities: []string{"Maintenance", "Debugging"},
 			notes: []string{
 				"Patch jQuery checkout",
 				"Disable unused promo codes",
@@ -253,7 +253,7 @@ func rioProjects(p35 int) []projectSpec {
 		{
 			name: "Portfolio", code: "PORT", color: "#3b82f6", progress: &p35,
 			ticketPrefix: "PORT",
-			activities:   []string{"coding", "docs", "other"},
+			activities:   []string{"Coding", "Docs", "Other"},
 			notes: []string{
 				"Case study layout",
 				"Compress hero video",
@@ -263,7 +263,7 @@ func rioProjects(p35 int) []projectSpec {
 		},
 		{
 			name: "Learning", code: "LEARN", color: "#8b5cf6",
-			activities: []string{"research", "coding", "docs"},
+			activities: []string{"Research", "Coding", "Docs"},
 			notes: []string{
 				"Go generics workbook",
 				"Read the postgres MVCC post",
