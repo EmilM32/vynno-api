@@ -30,6 +30,6 @@ Brand: say **VIN-oh**. Public name is Vynno ([ADR-0007](./adr/0007-product-name.
 | Host | Owner’s machine; binary + Compose Postgres | [ADR-0011](./adr/0011-local-production-host.md) |
 | Operator docs | OpenAPI from Gin routes; Swagger UI at `/swagger/` | [ADR-0013](./adr/0013-openapi-swagger.md) |
 
-Also decided: separate repo ([ADR-0002](./adr/0002-separate-repository.md)), HTTP JSON `/v1` ([ADR-0003](./adr/0003-http-json-contract.md)), project and session rules ([ADR-0004](./adr/0004-project-lifecycle.md), [ADR-0005](./adr/0005-session-lifecycle.md)), single-user v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)), activity types ([ADR-0012](./adr/0012-activity-types.md)), session list cursor ([ADR-0014](./adr/0014-session-list-pagination.md)).
+Also decided: separate repo ([ADR-0002](./adr/0002-separate-repository.md)), HTTP JSON `/v1` ([ADR-0003](./adr/0003-http-json-contract.md)), project and session rules ([ADR-0004](./adr/0004-project-lifecycle.md), [ADR-0005](./adr/0005-session-lifecycle.md)), single-user v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)), activity types ([ADR-0012](./adr/0012-activity-types.md)), session list cursor ([ADR-0014](./adr/0014-session-list-pagination.md)), read-only MCP for one account ([ADR-0016](./adr/0016-readonly-mcp.md)).
 
 Later work: [backlog.md](./backlog.md) / [roadmap.md](./roadmap.md).

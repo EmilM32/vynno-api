@@ -21,6 +21,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0013](./0013-openapi-swagger.md) | OpenAPI spec generated from Gin routes | Accepted |
 | [0014](./0014-session-list-pagination.md) | Session list cursor pagination | Accepted |
 | [0015](./0015-outbound-email.md) | Outbound email (SMTP + Mailer port) | Accepted |
+| [0016](./0016-readonly-mcp.md) | Read-only MCP for one account | Accepted |
 
 ## Format
 

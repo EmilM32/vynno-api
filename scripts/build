@@ -5,4 +5,6 @@ set -euo pipefail
 
 mkdir -p "$ROOT/bin"
 (cd "$ROOT" && go build -o bin/vynno-api ./cmd/api)
+(cd "$ROOT" && go build -o bin/vynno-mcp ./cmd/mcp)
 echo "$ROOT/bin/vynno-api"
+echo "$ROOT/bin/vynno-mcp"
