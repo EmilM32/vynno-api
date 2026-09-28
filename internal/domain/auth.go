@@ -62,46 +62,6 @@ func containsCategory(s string, cat *unicode.RangeTable) bool {
 	return false
 }
 
-// RecheckEmails normalizes stored addresses. When two distinct originals
-// normalize to one value, the pair is reported and neither is rewritten.
-// A changed value with no collision is returned as old → new. Nothing is merged.
-func RecheckEmails(existing []string) (updates map[string]string, collisions [][2]string) {
-	updates = map[string]string{}
-	grouped := map[string][]string{}
-	seen := map[string]map[string]struct{}{}
-	var order []string
-	for _, raw := range existing {
-		normed, err := NormalizeEmail(raw)
-		if err != nil {
-			continue
-		}
-		if _, ok := grouped[normed]; !ok {
-			order = append(order, normed)
-			seen[normed] = map[string]struct{}{}
-		}
-		if _, dup := seen[normed][raw]; dup {
-			continue
-		}
-		seen[normed][raw] = struct{}{}
-		grouped[normed] = append(grouped[normed], raw)
-	}
-	for _, normed := range order {
-		raws := grouped[normed]
-		if len(raws) > 1 {
-			for i := 0; i < len(raws); i++ {
-				for j := i + 1; j < len(raws); j++ {
-					collisions = append(collisions, [2]string{raws[i], raws[j]})
-				}
-			}
-			continue
-		}
-		if raws[0] != normed {
-			updates[raws[0]] = normed
-		}
-	}
-	return updates, collisions
-}
-
 // NormalizePassword checks length only. The caller hashes the result.
 func NormalizePassword(raw string) (string, error) {
 	n := utf8.RuneCountInString(raw)

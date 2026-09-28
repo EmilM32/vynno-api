@@ -101,35 +101,6 @@ func TestNormalizeDisplayNamePipeline(t *testing.T) {
 	}
 }
 
-func TestRecheckEmails(t *testing.T) {
-	t.Parallel()
-	updates, collisions := RecheckEmails([]string{
-		"User@exämple.pl",
-		"user@xn--exmple-cua.pl",
-	})
-	if len(updates) != 0 {
-		t.Fatalf("picked a winner: %#v", updates)
-	}
-	if len(collisions) != 1 || collisions[0] != [2]string{"User@exämple.pl", "user@xn--exmple-cua.pl"} {
-		t.Fatalf("collisions = %#v", collisions)
-	}
-
-	updates, collisions = RecheckEmails([]string{"User@Example.COM"})
-	if len(collisions) != 0 {
-		t.Fatalf("collisions = %#v", collisions)
-	}
-	if updates["User@Example.COM"] != "user@example.com" {
-		t.Fatalf("updates = %#v", updates)
-	}
-
-	nfc := "żółć@example.com"
-	nfd := norm.NFD.String(nfc)
-	updates, collisions = RecheckEmails([]string{nfc, nfd})
-	if len(updates) != 0 || len(collisions) != 1 {
-		t.Fatalf("updates %#v collisions %#v", updates, collisions)
-	}
-}
-
 func TestNormalizePassword(t *testing.T) {
 	t.Parallel()
 	if _, err := NormalizePassword("short"); err == nil {
