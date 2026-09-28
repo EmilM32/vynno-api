@@ -166,7 +166,7 @@ Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012
 | Field | Type | Notes |
 | --- | --- | --- |
 | `displayName` | string | Trimmed, at most 80. May be empty. Writable via `PATCH /me`. |
-| `email` | string | Login identifier. Unique, lowercase. Not writable after register. |
+| `email` | string | Login identifier. Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. Existing rows are rechecked; collisions are reported, not auto-merged. Not writable after register. |
 | `avatarUrl` | string? | JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. |
 
 Each account has its own profile. A fresh production database has no users; the first account is `POST /auth/register`. `scripts/reset` / `scripts/seed` are operator-only against `vynno_dev`.
@@ -177,7 +177,7 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 | --- | --- |
 | **Register** | Two steps. `POST /auth/register/code` sends a 6-digit code when the email is free. `POST /auth/register` with that code creates the profile (`avatarUrl` null). Omitted / empty `displayName` is stored `""`. No photo on register. No user row exists until the code is accepted. |
 | **Display name** | Same text pipeline as names, 0–80 code points. `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
-| **Email** | Trim, lowercase, 3–254, a single address whose domain contains a `.`. Unique. Not accepted on `PATCH /me`. |
+| **Email** | Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. Existing rows are rechecked; collisions are reported, not auto-merged. Still one address whose domain contains a `.`, 3–254 characters. Not accepted on `PATCH /me`. |
 | **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset`). Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. Never on the wire except in the mail body. |
 | **Password reset** | `POST /auth/password/forgot` always succeeds for a well-formed email; mail only if the account exists. `POST /auth/password/reset` sets a new hash and deletes every session token for that user. No cookie. Login afterwards. |
 | **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
