@@ -1,6 +1,9 @@
 package domain
 
-import "fmt"
+import (
+	"fmt"
+	"time"
+)
 
 const (
 	CodeNotFound                = "not_found"
@@ -25,9 +28,11 @@ const (
 )
 
 // Error is a contract error code plus a log/DevTools message.
+// RetryAfter is set for rate_limited responses that should advertise a wait.
 type Error struct {
-	Code    string
-	Message string
+	Code       string
+	Message    string
+	RetryAfter time.Duration
 }
 
 func (e *Error) Error() string {
@@ -119,4 +124,11 @@ func ErrInvalidCode() *Error {
 
 func ErrRateLimited() *Error {
 	return NewError(CodeRateLimited, "Too many attempts. Try again later.")
+}
+
+// ErrRateLimitedAfter is ErrRateLimited with a Retry-After delay.
+func ErrRateLimitedAfter(d time.Duration) *Error {
+	e := ErrRateLimited()
+	e.RetryAfter = d
+	return e
 }

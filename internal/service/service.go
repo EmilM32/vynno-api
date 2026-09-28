@@ -4,16 +4,18 @@ import (
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/mail"
+	"github.com/EmilM32/vynno-api/internal/ratelimit"
 	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/google/uuid"
 )
 
 type Service struct {
-	Store  store.Store
-	Mailer mail.Mailer
-	User   uuid.UUID
-	Now    func() time.Time
-	NewID  func() uuid.UUID
+	Store   store.Store
+	Mailer  mail.Mailer
+	User    uuid.UUID
+	Now     func() time.Time
+	NewID   func() uuid.UUID
+	Limiter *ratelimit.Limiter
 }
 
 func New(st store.Store, m mail.Mailer) *Service {
@@ -21,10 +23,11 @@ func New(st store.Store, m mail.Mailer) *Service {
 		m = mail.Discard()
 	}
 	return &Service{
-		Store:  st,
-		Mailer: m,
-		Now:    func() time.Time { return time.Now().UTC() },
-		NewID:  uuid.New,
+		Store:   st,
+		Mailer:  m,
+		Now:     func() time.Time { return time.Now().UTC() },
+		NewID:   uuid.New,
+		Limiter: ratelimit.New(),
 	}
 }
 

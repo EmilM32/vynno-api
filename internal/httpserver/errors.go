@@ -6,7 +6,9 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/gin-gonic/gin"
@@ -24,6 +26,9 @@ type errorBody struct {
 func writeError(c *gin.Context, err error) {
 	var de *domain.Error
 	if errors.As(err, &de) {
+		if de.Code == domain.CodeRateLimited {
+			c.Header("Retry-After", strconv.Itoa(retryAfterSeconds(de.RetryAfter)))
+		}
 		c.JSON(statusFor(de.Code), errorEnvelope{Error: errorBody{Code: de.Code, Message: de.Message}})
 		return
 	}
@@ -37,6 +42,20 @@ func writeError(c *gin.Context, err error) {
 		Code:    domain.CodeInternalError,
 		Message: "Internal server error.",
 	}})
+}
+
+func retryAfterSeconds(d time.Duration) int {
+	if d <= 0 {
+		return 1
+	}
+	secs := int(d / time.Second)
+	if d%time.Second != 0 {
+		secs++
+	}
+	if secs < 1 {
+		return 1
+	}
+	return secs
 }
 
 func statusFor(code string) int {

@@ -212,8 +212,10 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `invalid_credentials` | Login email/password do not match |
 | `email_in_use` | Register with a taken email |
 | `invalid_code` | Wrong, expired, or already used one-time code |
-| `rate_limited` | Send cooldown, send cap, or too many code guesses |
+| `rate_limited` | Login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client |
 | `internal_error` | 500 for unhandled faults (not `invalid_body`) |
+
+`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. 5 `register/code` or `password/forgot` sends / 10 min per client IP; the 6th is 429 and sends no mail. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
 
 `internal_error` is 500 for unhandled faults (not `invalid_body`).
 

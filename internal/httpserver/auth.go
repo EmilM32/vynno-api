@@ -48,7 +48,7 @@ func (s *Server) requestRegisterCode(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	if err := s.svc.RequestRegisterCode(c.Request.Context(), body.Email); err != nil {
+	if err := s.svc.RequestRegisterCode(c.Request.Context(), body.Email, c.ClientIP()); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -82,7 +82,7 @@ func (s *Server) requestPasswordReset(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
-	if err := s.svc.RequestPasswordReset(c.Request.Context(), body.Email); err != nil {
+	if err := s.svc.RequestPasswordReset(c.Request.Context(), body.Email, c.ClientIP()); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -116,7 +116,7 @@ func (s *Server) login(c *gin.Context) {
 		Email:      body.Email,
 		Password:   body.Password,
 		RememberMe: body.RememberMe,
-	})
+	}, c.ClientIP())
 	if err != nil {
 		writeError(c, err)
 		return

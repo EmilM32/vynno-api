@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
@@ -17,6 +18,33 @@ import (
 )
 
 const TokenTTL = 30 * 24 * time.Hour
+
+const (
+	loginFailWindow = 15 * time.Minute
+	loginEmailFails = 10
+	loginIPFails    = 30
+	sendWindow      = 10 * time.Minute
+	sendIPLimit     = 5
+)
+
+// comparePassword is bcrypt.CompareHashAndPassword so tests can count calls.
+var comparePassword = bcrypt.CompareHashAndPassword
+
+var (
+	dummyHashOnce sync.Once
+	dummyHash     []byte
+)
+
+func dummyPasswordHash() []byte {
+	dummyHashOnce.Do(func() {
+		h, err := bcrypt.GenerateFromPassword([]byte("vynno-dummy-password"), bcrypt.DefaultCost)
+		if err != nil {
+			panic("dummy bcrypt: " + err.Error())
+		}
+		dummyHash = h
+	})
+	return dummyHash
+}
 
 type RegisterInput struct {
 	Email       string
@@ -38,7 +66,7 @@ type AuthResult struct {
 	Profile    domain.Profile
 }
 
-func (s *Service) RequestRegisterCode(ctx context.Context, email string) error {
+func (s *Service) RequestRegisterCode(ctx context.Context, email, clientIP string) error {
 	normalized, err := domain.NormalizeEmail(email)
 	if err != nil {
 		return err
@@ -50,10 +78,18 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email string) error {
 	if taken {
 		return domain.ErrEmailInUse()
 	}
+	now := s.Now()
+	if err := s.emailChallengeSendable(ctx, normalized, domain.PurposeRegister, now); err != nil {
+		return err
+	}
+	if err := s.allowSend(clientIP, now); err != nil {
+		return err
+	}
 	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposeRegister)
 	if err != nil {
 		return err
 	}
+	s.Limiter.Hit(sendIPKey(clientIP), now, sendWindow)
 	return s.Mailer.Send(ctx, mail.Message{
 		To:      normalized,
 		Subject: "Your Vynno confirmation code",
@@ -64,22 +100,34 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email string) error {
 	})
 }
 
-func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+func (s *Service) RequestPasswordReset(ctx context.Context, email, clientIP string) error {
 	normalized, err := domain.NormalizeEmail(email)
 	if err != nil {
+		return err
+	}
+	_, err = s.Store.GetAccountByEmail(ctx, normalized)
+	if err != nil {
+		var de *domain.Error
+		if !errors.As(err, &de) || de.Code != domain.CodeNotFound {
+			return err
+		}
+		// Unknown addresses do not send mail and do not consume the client-IP cap.
+		// The per-email challenge is still issued so cooldown matches a real account.
+		_, err = s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset)
+		return err
+	}
+	now := s.Now()
+	if err := s.emailChallengeSendable(ctx, normalized, domain.PurposePasswordReset, now); err != nil {
+		return err
+	}
+	if err := s.allowSend(clientIP, now); err != nil {
 		return err
 	}
 	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset)
 	if err != nil {
 		return err
 	}
-	if _, err := s.Store.GetAccountByEmail(ctx, normalized); err != nil {
-		var de *domain.Error
-		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
-			return nil
-		}
-		return err
-	}
+	s.Limiter.Hit(sendIPKey(clientIP), now, sendWindow)
 	return s.Mailer.Send(ctx, mail.Message{
 		To:      normalized,
 		Subject: "Your Vynno password reset code",
@@ -88,6 +136,52 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email string) error 
 			code,
 		),
 	})
+}
+
+func (s *Service) emailChallengeSendable(ctx context.Context, email, purpose string, now time.Time) error {
+	ch, err := s.Store.GetEmailChallenge(ctx, email, purpose)
+	if err != nil {
+		var de *domain.Error
+		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
+			return nil
+		}
+		return err
+	}
+	if domain.OTPSendCooldownActive(ch.SentAt, now) {
+		return domain.ErrRateLimited()
+	}
+	_, sendCount := domain.AdvanceSendWindow(ch.SendWindowStart, ch.SendCount, now)
+	if domain.OTPSendLimited(sendCount) {
+		return domain.ErrRateLimited()
+	}
+	return nil
+}
+
+func (s *Service) allowSend(clientIP string, now time.Time) error {
+	ok, retry := s.Limiter.Allow(sendIPKey(clientIP), now, sendIPLimit, sendWindow)
+	if !ok {
+		return domain.ErrRateLimitedAfter(retry)
+	}
+	return nil
+}
+
+func loginEmailKey(email string) string { return "login-email:" + email }
+func loginIPKey(ip string) string       { return "login-ip:" + ip }
+func sendIPKey(ip string) string        { return "send-ip:" + ip }
+
+func (s *Service) loginLimited(email, clientIP string, now time.Time) (time.Duration, bool) {
+	if ok, retry := s.Limiter.Allow(loginEmailKey(email), now, loginEmailFails, loginFailWindow); !ok {
+		return retry, true
+	}
+	if ok, retry := s.Limiter.Allow(loginIPKey(clientIP), now, loginIPFails, loginFailWindow); !ok {
+		return retry, true
+	}
+	return 0, false
+}
+
+func (s *Service) recordLoginFailure(email, clientIP string, now time.Time) {
+	s.Limiter.Hit(loginEmailKey(email), now, loginFailWindow)
+	s.Limiter.Hit(loginIPKey(clientIP), now, loginFailWindow)
 }
 
 func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string) (string, error) {
@@ -256,24 +350,39 @@ func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, cod
 	return s.Store.DeleteEmailChallenge(ctx, email, purpose)
 }
 
-func (s *Service) Login(ctx context.Context, in LoginInput) (AuthResult, error) {
+func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (AuthResult, error) {
 	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
+	now := s.Now()
+	if retry, limited := s.loginLimited(email, clientIP, now); limited {
+		return AuthResult{}, domain.ErrRateLimitedAfter(retry)
+	}
 	if _, err := domain.NormalizePassword(in.Password); err != nil {
+		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	acc, err := s.Store.GetAccountByEmail(ctx, email)
 	if err != nil {
+		var de *domain.Error
+		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
+			_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
+			s.recordLoginFailure(email, clientIP, now)
+			return AuthResult{}, domain.ErrInvalidCredentials()
+		}
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	if acc.PasswordHash == "" {
+		_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
+		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
-	if err := bcrypt.CompareHashAndPassword([]byte(acc.PasswordHash), []byte(in.Password)); err != nil {
+	if err := comparePassword([]byte(acc.PasswordHash), []byte(in.Password)); err != nil {
+		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
+	s.Limiter.Reset(loginEmailKey(email))
 	return s.issueToken(ctx, acc.ID, domain.RememberMe(in.RememberMe))
 }
 

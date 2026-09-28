@@ -118,7 +118,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Public:      true,
 		Body:        loginBody{},
 		Success:     authResponse{},
-		Errors:      []string{domain.CodeInvalidCredentials},
+		Errors:      []string{domain.CodeInvalidCredentials, domain.CodeRateLimited},
 		SetCookie:   true,
 	})
 	s.route(v1, http.MethodPost, "/auth/password/forgot", s.requestPasswordReset, op{

@@ -55,10 +55,12 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `invalid_credentials` | 401 | Login email/password do not match | `error_invalid_credentials` |
 | `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
 | `invalid_code` | 401 | Wrong, expired, or already used one-time code | `error_invalid_code` |
-| `rate_limited` | 429 | Register/reset send cooldown, send cap, or too many code guesses | `error_rate_limited` |
+| `rate_limited` | 429 | Login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client | `error_rate_limited` |
 | `internal_error` | 500 | Unhandled faults (not `invalid_body`) | fallback |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
+
+`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. 5 `register/code` or `password/forgot` sends / 10 min per client IP; the 6th is 429 and sends no mail. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
 
 `internal_error` is 500 for unhandled faults (not `invalid_body`).
 
@@ -118,7 +120,7 @@ Anything else on a protected route is `401 unauthorized`. A project or session i
 | --- | --- | --- | --- | --- | --- |
 | POST | `/auth/register/code` | no | `{ "email" }` | `204` empty | `invalid_body`, `email_in_use`, `rate_limited` |
 | POST | `/auth/register` | no | `RegisterDto` | `{ profile }` `201` + `Set-Cookie` | `invalid_body`, `email_in_use`, `invalid_code`, `rate_limited` |
-| POST | `/auth/login` | no | `LoginDto` | `{ profile }` `200` + `Set-Cookie` | `invalid_body`, `invalid_credentials` |
+| POST | `/auth/login` | no | `LoginDto` | `{ profile }` `200` + `Set-Cookie` | `invalid_body`, `invalid_credentials`, `rate_limited` |
 | POST | `/auth/logout` | yes | — | `204` + clear cookie | `unauthorized` |
 | POST | `/auth/password/forgot` | no | `{ "email" }` | `204` empty | `invalid_body`, `rate_limited` |
 | POST | `/auth/password/reset` | no | `ResetPasswordDto` | `204` empty | `invalid_body`, `invalid_code`, `rate_limited` |

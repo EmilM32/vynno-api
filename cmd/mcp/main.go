@@ -96,7 +96,7 @@ func runToken() int {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	res, err := svc.Login(ctx, service.LoginInput{Email: email, Password: password})
+	res, err := svc.Login(ctx, service.LoginInput{Email: email, Password: password}, "127.0.0.1")
 	if err != nil {
 		if de, ok := domain.AsError(err); ok && de.Code == domain.CodeInvalidCredentials {
 			fmt.Fprintln(os.Stderr, "invalid email or password")
