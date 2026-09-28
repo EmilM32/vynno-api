@@ -56,5 +56,19 @@ WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
           started_at, ended_at, target_duration_ms;
 
+-- name: TransitionSession :one
+UPDATE sessions
+SET project_id = $3,
+    note = $4,
+    ticket_id = $5,
+    activity_type_id = $6,
+    status = $7,
+    started_at = $8,
+    ended_at = $9,
+    target_duration_ms = $10
+WHERE user_id = $1 AND id = $2 AND status = $11
+RETURNING id, project_id, note, ticket_id, activity_type_id, status,
+          started_at, ended_at, target_duration_ms;
+
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE user_id = $1 AND id = $2;

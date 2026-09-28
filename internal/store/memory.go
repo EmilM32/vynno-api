@@ -673,6 +673,28 @@ func (m *Memory) UpdateSession(_ context.Context, userID uuid.UUID, s domain.Ses
 	return cloneSession(s), nil
 }
 
+func (m *Memory) TransitionSession(_ context.Context, userID uuid.UUID, s domain.Session, fromStatus string) (domain.Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Session{}, domain.ErrNotFound()
+	}
+	id, err := uuid.Parse(s.ID)
+	if err != nil {
+		return domain.Session{}, domain.ErrNotFound()
+	}
+	cur, ok := a.sessions[id]
+	if !ok {
+		return domain.Session{}, domain.ErrNotFound()
+	}
+	if cur.Status != fromStatus {
+		return domain.Session{}, domain.ErrInvalidTransition()
+	}
+	a.sessions[id] = cloneSession(s)
+	return cloneSession(s), nil
+}
+
 func (m *Memory) DeleteSession(_ context.Context, userID, id uuid.UUID) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()

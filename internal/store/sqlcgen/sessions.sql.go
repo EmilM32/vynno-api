@@ -256,6 +256,76 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 	return items, nil
 }
 
+const transitionSession = `-- name: TransitionSession :one
+UPDATE sessions
+SET project_id = $3,
+    note = $4,
+    ticket_id = $5,
+    activity_type_id = $6,
+    status = $7,
+    started_at = $8,
+    ended_at = $9,
+    target_duration_ms = $10
+WHERE user_id = $1 AND id = $2 AND status = $11
+RETURNING id, project_id, note, ticket_id, activity_type_id, status,
+          started_at, ended_at, target_duration_ms
+`
+
+type TransitionSessionParams struct {
+	UserID           uuid.UUID
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	Note             string
+	TicketID         sql.NullString
+	ActivityTypeID   *uuid.UUID
+	Status           string
+	StartedAt        time.Time
+	EndedAt          sql.NullTime
+	TargetDurationMs sql.NullInt64
+	Status_2         string
+}
+
+type TransitionSessionRow struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	Note             string
+	TicketID         sql.NullString
+	ActivityTypeID   *uuid.UUID
+	Status           string
+	StartedAt        time.Time
+	EndedAt          sql.NullTime
+	TargetDurationMs sql.NullInt64
+}
+
+func (q *Queries) TransitionSession(ctx context.Context, arg TransitionSessionParams) (TransitionSessionRow, error) {
+	row := q.db.QueryRowContext(ctx, transitionSession,
+		arg.UserID,
+		arg.ID,
+		arg.ProjectID,
+		arg.Note,
+		arg.TicketID,
+		arg.ActivityTypeID,
+		arg.Status,
+		arg.StartedAt,
+		arg.EndedAt,
+		arg.TargetDurationMs,
+		arg.Status_2,
+	)
+	var i TransitionSessionRow
+	err := row.Scan(
+		&i.ID,
+		&i.ProjectID,
+		&i.Note,
+		&i.TicketID,
+		&i.ActivityTypeID,
+		&i.Status,
+		&i.StartedAt,
+		&i.EndedAt,
+		&i.TargetDurationMs,
+	)
+	return i, err
+}
+
 const updateSession = `-- name: UpdateSession :one
 UPDATE sessions
 SET project_id = $3,

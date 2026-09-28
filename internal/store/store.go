@@ -82,6 +82,9 @@ type Store interface {
 	GetLiveSession(ctx context.Context, userID uuid.UUID) (domain.Session, bool, error)
 	CreateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
 	UpdateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
+	// TransitionSession writes s only while the stored status is still fromStatus.
+	// A lost race is invalid_transition; a missing row is not_found.
+	TransitionSession(ctx context.Context, userID uuid.UUID, s domain.Session, fromStatus string) (domain.Session, error)
 	DeleteSession(ctx context.Context, userID, id uuid.UUID) error
 
 	FirstUserID(ctx context.Context) (uuid.UUID, bool, error)

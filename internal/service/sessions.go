@@ -167,7 +167,8 @@ func (s *Service) applyTransition(ctx context.Context, id uuid.UUID, fn func(dom
 	if err != nil {
 		return domain.Session{}, err
 	}
-	return s.Store.UpdateSession(ctx, s.User, next)
+	// Conditional on the status we read, so two concurrent stops cannot both win.
+	return s.Store.TransitionSession(ctx, s.User, next, sess.Status)
 }
 
 func (s *Service) resolveProjectID(ctx context.Context, raw string) (string, error) {

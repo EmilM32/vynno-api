@@ -469,6 +469,36 @@ func (p *Postgres) UpdateSession(ctx context.Context, userID uuid.UUID, s domain
 	return sessionFromUpdate(row), nil
 }
 
+func (p *Postgres) TransitionSession(ctx context.Context, userID uuid.UUID, s domain.Session, fromStatus string) (domain.Session, error) {
+	params, err := updateSessionParams(userID, s)
+	if err != nil {
+		return domain.Session{}, err
+	}
+	row, err := p.q.TransitionSession(ctx, sqlcgen.TransitionSessionParams{
+		UserID:           params.UserID,
+		ID:               params.ID,
+		ProjectID:        params.ProjectID,
+		Note:             params.Note,
+		TicketID:         params.TicketID,
+		ActivityTypeID:   params.ActivityTypeID,
+		Status:           params.Status,
+		StartedAt:        params.StartedAt,
+		EndedAt:          params.EndedAt,
+		TargetDurationMs: params.TargetDurationMs,
+		Status_2:         fromStatus,
+	})
+	if errors.Is(err, sql.ErrNoRows) {
+		if _, getErr := p.GetSession(ctx, userID, params.ID); getErr != nil {
+			return domain.Session{}, getErr
+		}
+		return domain.Session{}, domain.ErrInvalidTransition()
+	}
+	if err != nil {
+		return domain.Session{}, err
+	}
+	return sessionFromRow(row.ID, row.ProjectID, row.Note, row.TicketID, row.ActivityTypeID, row.Status, row.StartedAt, row.EndedAt, row.TargetDurationMs), nil
+}
+
 func (p *Postgres) DeleteSession(ctx context.Context, userID, id uuid.UUID) error {
 	return p.q.DeleteSession(ctx, sqlcgen.DeleteSessionParams{UserID: userID, ID: id})
 }
