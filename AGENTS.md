@@ -42,7 +42,7 @@ cp .env.example .env          # static; scripts/start vs scripts/dev select the 
 ./scripts/status              # /healthz + /readyz
 ./scripts/stop                # production API only
 ./scripts/stop --postgres     # production API + Compose stop (keeps the volume)
-./scripts/dev                 # go run on :8081 → vynno_dev; MAIL_MODE=smtp (Mailpit); does not touch .env
+./scripts/dev                 # go run on :8081 → vynno_dev; MAIL_MODE=smtp (Mailpit); RATE_LIMIT_MODE=relaxed; does not touch .env
 ./scripts/stop --dev          # playground API only (leftover :8081 bind)
 # Goose is per-database at process start: start migrates vynno, dev migrates vynno_dev.
 # Mailpit UI http://127.0.0.1:8025 (Compose). First daily register needs SMTP.

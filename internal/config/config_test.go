@@ -21,6 +21,7 @@ func requiredEnv(t *testing.T) {
 	t.Setenv("MAIL_FROM", "")
 	t.Setenv("MAIL_FROM_NAME", "")
 	t.Setenv("TRUSTED_PROXIES", "")
+	t.Setenv("RATE_LIMIT_MODE", "")
 }
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
@@ -285,5 +286,35 @@ func TestLoadUsesAddr(t *testing.T) {
 	}
 	if cfg.Addr != ":9090" {
 		t.Fatalf("Addr = %q, want :9090", cfg.Addr)
+	}
+}
+
+func TestLoadRateLimitMode(t *testing.T) {
+	requiredEnv(t)
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RateLimitMode != "strict" {
+		t.Fatalf("default = %q", cfg.RateLimitMode)
+	}
+
+	t.Setenv("RATE_LIMIT_MODE", "relaxed")
+	if _, err := Load(); err == nil {
+		t.Fatal("relaxed against database vynno should fail")
+	}
+
+	t.Setenv("DATABASE_URL", "postgres://vynno:vynno@localhost:5433/vynno_dev?sslmode=disable")
+	cfg, err = Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.RateLimitMode != "relaxed" {
+		t.Fatalf("relaxed = %q", cfg.RateLimitMode)
+	}
+
+	t.Setenv("RATE_LIMIT_MODE", "off")
+	if _, err := Load(); err == nil {
+		t.Fatal("unknown mode should fail")
 	}
 }

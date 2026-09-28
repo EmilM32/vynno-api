@@ -57,7 +57,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	r := httpserver.NewRouter(service.New(store.NewPostgres(db), mailer), httpserver.Options{
+	svc := service.New(store.NewPostgres(db), mailer)
+	if cfg.RateLimitMode == "relaxed" {
+		svc.Limits = service.RelaxedAuthLimits()
+		slog.Warn("auth rate limits relaxed", "database", "vynno_dev")
+	}
+
+	r := httpserver.NewRouter(svc, httpserver.Options{
 		SPAOrigins:      cfg.SPAOrigins,
 		CookieSecure:    cfg.CookieSecure,
 		PublicAPIOrigin: cfg.PublicAPIOrigin,

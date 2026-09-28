@@ -7,6 +7,8 @@ import (
 	"os"
 	"strconv"
 	"strings"
+
+	"github.com/EmilM32/vynno-api/internal/devdata"
 )
 
 const (
@@ -25,6 +27,7 @@ type Config struct {
 	PublicAPIOrigin   string
 	TrustedProxies    []string
 	LogFormat         string
+	RateLimitMode     string
 	Mail              Mail
 }
 
@@ -45,7 +48,8 @@ type Mail struct {
 // PUBLIC_API_ORIGIN are required. BOOTSTRAP_PASSWORD is optional here (playground
 // seed/reset require it in cmd/devdata). LOG_FORMAT is "text" or "json" (default text).
 // MAIL_MODE is smtp, log, or discard (empty is discard). smtp requires SMTP_HOST
-// and MAIL_FROM.
+// and MAIL_FROM. RATE_LIMIT_MODE is strict (default) or relaxed; relaxed is
+// refused unless DATABASE_URL targets the playground database.
 func Load() (Config, error) {
 	if err := loadDotEnv(".env"); err != nil {
 		return Config{}, err
@@ -83,6 +87,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	rateLimitMode, err := parseRateLimitMode(os.Getenv("RATE_LIMIT_MODE"), databaseURL)
+	if err != nil {
+		return Config{}, err
+	}
 
 	return Config{
 		Addr:              addr,
@@ -94,6 +102,7 @@ func Load() (Config, error) {
 		PublicAPIOrigin:   publicOrigin,
 		TrustedProxies:    proxies,
 		LogFormat:         parseLogFormat(os.Getenv("LOG_FORMAT")),
+		RateLimitMode:     rateLimitMode,
 		Mail:              mail,
 	}, nil
 }
@@ -123,6 +132,22 @@ func parseTrustedProxies(raw string) ([]string, error) {
 		return []string{"127.0.0.1", "::1"}, nil
 	}
 	return out, nil
+}
+
+// parseRateLimitMode keeps production on strict auth caps. relaxed lifts the
+// per-IP caps for playground e2e runs and only starts against vynno_dev.
+func parseRateLimitMode(raw, databaseURL string) (string, error) {
+	switch strings.ToLower(strings.TrimSpace(raw)) {
+	case "", "strict":
+		return "strict", nil
+	case "relaxed":
+		if err := devdata.RequireDevDatabase(databaseURL); err != nil {
+			return "", fmt.Errorf("RATE_LIMIT_MODE=relaxed requires database %s", devdata.DevDatabase)
+		}
+		return "relaxed", nil
+	default:
+		return "", fmt.Errorf("RATE_LIMIT_MODE must be strict or relaxed")
+	}
 }
 
 func parseMail() (Mail, error) {

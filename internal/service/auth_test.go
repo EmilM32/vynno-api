@@ -149,6 +149,44 @@ func TestLoginIPCapIsNotResetBySuccess(t *testing.T) {
 	}
 }
 
+func TestRegisterCodeSendIPCapHonorsLimits(t *testing.T) {
+	ctx := context.Background()
+	const ip = "203.0.113.60"
+	send := func(svc *Service, n int) error {
+		var err error
+		for i := 0; i < n; i++ {
+			err = svc.RequestRegisterCode(ctx, fmt.Sprintf("new%02d@example.com", i), ip)
+			if err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	strict := serviceWithClock(t, store.NewEmptyMemory())
+	if err := send(strict, 5); err != nil {
+		t.Fatalf("default first 5: %v", err)
+	}
+	if err := strict.RequestRegisterCode(ctx, "sixth@example.com", ip); codeOf(err) != domain.CodeRateLimited {
+		t.Fatalf("default 6th = %v", err)
+	}
+
+	custom := serviceWithClock(t, store.NewEmptyMemory())
+	custom.Limits.SendIPLimit = 7
+	if err := send(custom, 7); err != nil {
+		t.Fatalf("custom first 7: %v", err)
+	}
+	if err := custom.RequestRegisterCode(ctx, "eighth@example.com", ip); codeOf(err) != domain.CodeRateLimited {
+		t.Fatalf("custom 8th = %v", err)
+	}
+
+	relaxed := serviceWithClock(t, store.NewEmptyMemory())
+	relaxed.Limits = RelaxedAuthLimits()
+	if err := send(relaxed, 50); err != nil {
+		t.Fatalf("relaxed 50: %v", err)
+	}
+}
+
 func serviceWithClock(t *testing.T, mem *store.Memory) *Service {
 	t.Helper()
 	svc := New(mem, mail.Discard())

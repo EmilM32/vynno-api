@@ -16,6 +16,7 @@ type Service struct {
 	Now     func() time.Time
 	NewID   func() uuid.UUID
 	Limiter *ratelimit.Limiter
+	Limits  AuthLimits
 }
 
 func New(st store.Store, m mail.Mailer) *Service {
@@ -28,6 +29,7 @@ func New(st store.Store, m mail.Mailer) *Service {
 		Now:     func() time.Time { return time.Now().UTC() },
 		NewID:   uuid.New,
 		Limiter: ratelimit.New(),
+		Limits:  DefaultAuthLimits(),
 	}
 }
 

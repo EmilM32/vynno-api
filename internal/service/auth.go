@@ -19,13 +19,34 @@ import (
 
 const TokenTTL = 30 * 24 * time.Hour
 
-const (
-	loginFailWindow = 15 * time.Minute
-	loginEmailFails = 10
-	loginIPFails    = 30
-	sendWindow      = 10 * time.Minute
-	sendIPLimit     = 5
-)
+// AuthLimits are the in-memory login and one-time-code send caps.
+type AuthLimits struct {
+	LoginWindow     time.Duration
+	LoginEmailFails int
+	LoginIPFails    int
+	SendWindow      time.Duration
+	SendIPLimit     int
+}
+
+// DefaultAuthLimits are the production caps.
+func DefaultAuthLimits() AuthLimits {
+	return AuthLimits{
+		LoginWindow:     15 * time.Minute,
+		LoginEmailFails: 10,
+		LoginIPFails:    30,
+		SendWindow:      10 * time.Minute,
+		SendIPLimit:     5,
+	}
+}
+
+// RelaxedAuthLimits lift the per-IP caps so a playground e2e run can register an
+// account per test from one address. Per-email caps and the OTP cooldown stay.
+func RelaxedAuthLimits() AuthLimits {
+	l := DefaultAuthLimits()
+	l.LoginIPFails = 10000
+	l.SendIPLimit = 10000
+	return l
+}
 
 // comparePassword is bcrypt.CompareHashAndPassword so tests can count calls.
 var comparePassword = bcrypt.CompareHashAndPassword
@@ -89,7 +110,7 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email, clientIP strin
 	if err != nil {
 		return err
 	}
-	s.Limiter.Hit(sendIPKey(clientIP), now, sendWindow)
+	s.Limiter.Hit(sendIPKey(clientIP), now, s.Limits.SendWindow)
 	return s.Mailer.Send(ctx, mail.Message{
 		To:      normalized,
 		Subject: "Your Vynno confirmation code",
@@ -127,7 +148,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, clientIP stri
 	if err != nil {
 		return err
 	}
-	s.Limiter.Hit(sendIPKey(clientIP), now, sendWindow)
+	s.Limiter.Hit(sendIPKey(clientIP), now, s.Limits.SendWindow)
 	return s.Mailer.Send(ctx, mail.Message{
 		To:      normalized,
 		Subject: "Your Vynno password reset code",
@@ -158,7 +179,7 @@ func (s *Service) emailChallengeSendable(ctx context.Context, email, purpose str
 }
 
 func (s *Service) allowSend(clientIP string, now time.Time) error {
-	ok, retry := s.Limiter.Allow(sendIPKey(clientIP), now, sendIPLimit, sendWindow)
+	ok, retry := s.Limiter.Allow(sendIPKey(clientIP), now, s.Limits.SendIPLimit, s.Limits.SendWindow)
 	if !ok {
 		return domain.ErrRateLimitedAfter(retry)
 	}
@@ -170,18 +191,18 @@ func loginIPKey(ip string) string       { return "login-ip:" + ip }
 func sendIPKey(ip string) string        { return "send-ip:" + ip }
 
 func (s *Service) loginLimited(email, clientIP string, now time.Time) (time.Duration, bool) {
-	if ok, retry := s.Limiter.Allow(loginEmailKey(email), now, loginEmailFails, loginFailWindow); !ok {
+	if ok, retry := s.Limiter.Allow(loginEmailKey(email), now, s.Limits.LoginEmailFails, s.Limits.LoginWindow); !ok {
 		return retry, true
 	}
-	if ok, retry := s.Limiter.Allow(loginIPKey(clientIP), now, loginIPFails, loginFailWindow); !ok {
+	if ok, retry := s.Limiter.Allow(loginIPKey(clientIP), now, s.Limits.LoginIPFails, s.Limits.LoginWindow); !ok {
 		return retry, true
 	}
 	return 0, false
 }
 
 func (s *Service) recordLoginFailure(email, clientIP string, now time.Time) {
-	s.Limiter.Hit(loginEmailKey(email), now, loginFailWindow)
-	s.Limiter.Hit(loginIPKey(clientIP), now, loginFailWindow)
+	s.Limiter.Hit(loginEmailKey(email), now, s.Limits.LoginWindow)
+	s.Limiter.Hit(loginIPKey(clientIP), now, s.Limits.LoginWindow)
 }
 
 func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string) (string, error) {

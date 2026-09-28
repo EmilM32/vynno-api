@@ -21,6 +21,7 @@ Playground (`scripts/dev`, seed, reset) uses database `vynno_dev` on `127.0.0.1:
 | Bind | `127.0.0.1:27182` | `127.0.0.1:8081` |
 | Database | `vynno` | `vynno_dev` |
 | Mail | `MAIL_MODE` from `.env` (`smtp`) | `MAIL_MODE=smtp` (Mailpit; `DEV_MAIL_MODE=log` for process OTPs) |
+| Auth rate limits | `strict` | `RATE_LIMIT_MODE=relaxed` (`DEV_RATE_LIMIT_MODE=strict` to test 429s) |
 
 Use **`https://vynno.localhost`** in the browser and in `SPA_ORIGIN`. That origin, `http://vynno.localhost`, `http://vynno.localhost:27180`, `localhost`, and `127.0.0.1` do not share the session cookie. Do not bookmark `:27180`. Production `COOKIE_SECURE=true`; `scripts/dev` forces `false`. `*.localhost` is RFC 6761 loopback — do not use `.local` (Bonjour/mDNS).
 
@@ -94,6 +95,10 @@ Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation
 | `unset` / `discard` | Tests; an old `.env` | Accepts the message and sends nothing. Register/reset appear to work until you look for mail. |
 
 `scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=smtp` (unless `DEV_MAIL_MODE` is set) so playground OTP codes reach Mailpit without changing `.env`. Frontend e2e scrapes that inbox.
+
+## Auth rate limits
+
+`RATE_LIMIT_MODE` is `strict` (default) or `relaxed`. `strict` is the contract caps: 5 register/forgot sends and 30 login failures per client IP, 10 login failures per email. `relaxed` lifts only the per-IP caps so frontend e2e can register one account per test from one address; per-email caps and the OTP cooldown stay. The process refuses to start with `relaxed` unless `DATABASE_URL` targets `vynno_dev`. `scripts/dev` sets `relaxed` unless `DEV_RATE_LIMIT_MODE` is set. Counters are in memory; a restart clears them.
 
 **First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
 
