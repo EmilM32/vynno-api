@@ -133,7 +133,7 @@ Register is two steps. `POST /auth/register/code` emails a 6-digit code (15 minu
 { "email": "alex@example.com", "password": "a-long-enough-secret", "code": "123456", "displayName": "Alex Dev", "rememberMe": true }
 ```
 
-`code` is required: exactly six digits, matching the unused register challenge for that email. `displayName` and `rememberMe` may be omitted. Omitted or empty `displayName` is stored as `""` (the SPA shows the email). Omitted `rememberMe` is `true`. Do not send `username`. Do not return `code` in any JSON body.
+`code` is required: exactly six digits, matching the unused register challenge for that email. `displayName` and `rememberMe` may be omitted. Omitted `displayName`, or one that is empty after the text pipeline (see [Profile](#profile)), is stored as `""` (the SPA shows the email). Omitted `rememberMe` is `true`. Do not send `username`. Do not return `code` in any JSON body.
 
 `LoginDto`:
 
@@ -189,7 +189,7 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 { "displayName": "Alex Dev" }
 ```
 
-- `displayName`: trim; at most 80 characters. Omit = leave unchanged. `""` (after trim) clears the name so the UI falls back to email. `null` → `invalid_body`.
+- `displayName`: the text pipeline above, at most 80 code points. Omit = leave unchanged. Input that is empty after the pipeline clears the name so the UI falls back to email: `""`, and also whitespace-only (including NBSP) or zero-width/FEFF-only input. That is `200` with `displayName: ""`, not `400` (shared text vectors, kind `displayName`). Bidi or Cc controls → `invalid_body`. `null` → `invalid_body`.
 - Do not send `email` or `avatarUrl` on this body. Email is not user-editable. Avatar is only `PUT` / `DELETE /me/avatar`.
 
 `PUT /me/avatar`:
