@@ -40,7 +40,7 @@ cp .env.example .env   # if you do not already have one — static; do not edit 
 # COOKIE_SECURE=true (scripts/dev forces false)
 # PUBLIC_API_ORIGIN=http://vynno.localhost:27182
 # MAIL_MODE=smtp + SMTP_* pointing at Mailpit (existing .env: copy that block)
-# scripts/dev remaps ADDR / DATABASE_URL / PUBLIC_API_ORIGIN / MAIL_MODE (log) / COOKIE_SECURE
+# scripts/dev remaps ADDR / DATABASE_URL / PUBLIC_API_ORIGIN / MAIL_MODE (smtp; DEV_MAIL_MODE=log) / COOKIE_SECURE / RATE_LIMIT_MODE (relaxed)
 ./scripts/build
 ```
 

@@ -1,11 +1,11 @@
 # Product Requirements Document — Vynno API
 
 **Status:** Accepted  
-**Last updated:** 2026-08-27  
+**Last updated:** 2026-09-28  
 **Product name:** Vynno (formerly DevTime)  
 **Repository scope:** Backend only (HTTP API, persistence, auth)
 
-The frontend PRD remains the product-facing document for screens and UX. This PRD covers what the **API repository** must do so the product works with real data.
+Screens and UX live in the frontend repository ([screens-and-flows.md](https://github.com/EmilM32/vynno/blob/main/docs/screens-and-flows.md)). This PRD covers what the **API repository** must do so the product works with real data.
 
 ---
 
@@ -31,7 +31,7 @@ Wire format: [api-contract.md](./api-contract.md). Server rules: [domain-model.m
 | Any UI | Frontend repository |
 | Team / multi-user workspaces | Single-user product first ([ADR-0006](./adr/0006-single-user-tenancy.md)) |
 | Invoicing, payroll, client portals | Out of product scope for v1 |
-| Calendar / IDE / Git integrations | Not in the frontend mockups |
+| Calendar / IDE / Git integrations | No screen or flow calls for them |
 | Insights / dashboard aggregation endpoints | Client computes these from the session list |
 | Theme, locale, command palette | Device-local on the client |
 | Inventing resources not in the contract | Amend the contract first |
