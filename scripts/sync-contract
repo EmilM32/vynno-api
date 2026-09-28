@@ -1,0 +1,77 @@
+#!/usr/bin/env bash
+set -euo pipefail
+# shellcheck source=lib.sh
+. "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
+
+usage() {
+	cat <<'EOF'
+Write the frontend copies of the shared contract files from this repo:
+
+  docs/api-contract.md                        → docs/api-contract.md
+  internal/domain/testdata/text_vectors.json  → src/lib/text/text_vectors.json
+
+  scripts/sync-contract           write both into $VYNNO_FE_DIR
+  scripts/sync-contract --check   exit 1 if either frontend copy differs
+
+VYNNO_FE_DIR defaults to ../vynno next to this repo. When that directory is
+missing, --check prints a notice and exits 0 (CI without the frontend checkout).
+Relative links (./adr/…, ./domain-model.md) become vynno-api GitHub URLs.
+EOF
+}
+
+CHECK=0
+for arg in "$@"; do
+	case "$arg" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	--check)
+		CHECK=1
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+FE_DIR="${VYNNO_FE_DIR:-$ROOT/../vynno}"
+SRC="$ROOT/docs/api-contract.md"
+DEST="$FE_DIR/docs/api-contract.md"
+VECTORS_SRC="$ROOT/internal/domain/testdata/text_vectors.json"
+VECTORS_DEST="$FE_DIR/src/lib/text/text_vectors.json"
+DOCS_URL="https://github.com/EmilM32/vynno-api/blob/main/docs"
+
+if [[ ! -d "$FE_DIR/docs" ]]; then
+	if [[ "$CHECK" -eq 1 ]]; then
+		echo "sync-contract: $FE_DIR/docs not found; skipping check"
+		exit 0
+	fi
+	die "sync-contract: $FE_DIR/docs not found (set VYNNO_FE_DIR)"
+fi
+
+render() {
+	printf '<!-- Generated from vynno-api docs/api-contract.md by vynno-api scripts/sync-contract. Do not edit here. -->\n\n'
+	sed -E "s#\]\(\./#](${DOCS_URL}/#g" "$SRC"
+}
+
+if [[ "$CHECK" -eq 1 ]]; then
+	STALE=0
+	if ! diff -q "$DEST" <(render) >/dev/null 2>&1; then
+		echo "sync-contract: $DEST differs from docs/api-contract.md" >&2
+		STALE=1
+	fi
+	if ! cmp -s "$VECTORS_SRC" "$VECTORS_DEST"; then
+		echo "sync-contract: $VECTORS_DEST differs from internal/domain/testdata/text_vectors.json" >&2
+		STALE=1
+	fi
+	if [[ "$STALE" -eq 1 ]]; then
+		die "sync-contract: run scripts/sync-contract"
+	fi
+	echo "sync-contract: frontend copies are in sync"
+	exit 0
+fi
+
+render >"$DEST"
+cp "$VECTORS_SRC" "$VECTORS_DEST"
+echo "sync-contract: wrote $DEST and $VECTORS_DEST"

@@ -13,7 +13,7 @@ The SvelteKit frontend is a **separate repository** ([`vynno`](https://github.co
 
 ### Working rules
 
-- Wire change → [docs/api-contract.md](./docs/api-contract.md) first, plus the frontend schemas. Do **not** add endpoints, fields, query params, or error codes that are not in the contract.
+- Wire change → [docs/api-contract.md](./docs/api-contract.md) first (canonical; `scripts/sync-contract` writes the frontend copy and text vectors), plus the frontend schemas. Do **not** add endpoints, fields, query params, or error codes that are not in the contract.
 - Lifecycle / invariant change → [docs/domain-model.md](./docs/domain-model.md), then the matching ADR if it is a decision with alternatives.
 - New expensive choice (stack, host, auth mechanism) → new or amended ADR under `docs/adr/`. New multi-day feature → a plan under `docs/plans/` while the work is in flight; delete the plan once its facts are in the contract, domain, ADR, or runbook.
 - Auth follows [ADR-0008](./docs/adr/0008-authentication.md): HttpOnly cookie `vynno_session`, remember-me, optional Bearer for curl/tests. Do not return the token in JSON.
@@ -49,7 +49,8 @@ cp .env.example .env          # static; scripts/start vs scripts/dev select the 
 ./scripts/backup              # pg_dump vynno into backups/
 ./scripts/reset               # wipe vynno_dev → alexdev@vynno.local + Identity
 ./scripts/seed                # wipe vynno_dev → 3 demo users
-./scripts/setup               # git config core.hooksPath .githooks (pre-push runs go test ./...)
+./scripts/setup               # git config core.hooksPath .githooks (pre-push: go test ./..., sync-contract --check)
+./scripts/sync-contract       # write ../vynno docs/api-contract.md + text vectors from this repo (--check for drift)
 go test ./...
 gofmt -w .
 golangci-lint run ./...

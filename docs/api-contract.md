@@ -1,13 +1,13 @@
 # Vynno API contract
 
-**Status:** Snapshot of the frontend-proposed contract — this API must implement it  
+**Status:** Living — canonical copy. The frontend `docs/api-contract.md` is generated from this file by `scripts/sync-contract`.  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-09-10  
+**Last updated:** 2026-09-28  
 **Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
-**Provenance.** Copied from the frontend repo ([`vynno`](https://github.com/EmilM32/vynno)) `docs/api-contract.md` as of the snapshot date. The **client executable source of truth** remains that repo’s `src/lib/api/schemas/` until this backend publishes its own schemas (or OpenAPI) and both sides agree.
+**Provenance.** First copied from the frontend repo ([`vynno`](https://github.com/EmilM32/vynno)) as of the snapshot date. This file in `vynno-api` is now the one to edit; `scripts/sync-contract` writes the frontend copy and `scripts/sync-contract --check` fails on drift. The **client executable source of truth** is the frontend’s `src/lib/api/schemas/`.
 
 If this doc and the frontend schemas drift, stop and reconcile — do not “fix” only one side.
 
@@ -272,7 +272,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 `name` is a display label (the text pipeline above, 1–80 code points, stored as typed), unique per user case-insensitively. `"D\u200bUP"` normalizes to `"DUP"`, so the existing index returns `409 name_in_use`. The SPA shows this string; chips render it uppercase.
 
-`color` is one of: `primary`, `secondary`, `tertiary`, `error`, `on-surface-variant`, `outline`, `primary-container`, `secondary-container`.
+`color` is one of: `primary`, `secondary`, `tertiary`, `error`, `on-surface-variant`, `outline`, `primary-container`, `secondary-container`. The last two are stored ids; the SPA paints them as indigo and coral activity accents, not Material container fills.
 
 `CreateActivityTypeDto`:
 
@@ -388,7 +388,7 @@ Session list body:
 
 ## Domain vs DTO
 
-The SPA’s UI types use `isArchived` and omit absent optionals. DTOs use `archived` and JSON `null`. Implement the DTO column.
+The SPA’s UI types (`$lib/types/domain`) use `isArchived` and omit absent optionals. DTOs use `archived` and JSON `null`. Implement the DTO column. The SPA converts in `src/lib/api/mappers/`.
 
 ---
 
@@ -398,7 +398,7 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 | Area | Client today |
 | --- | --- |
-| Prefs (daily target, default project) | In-memory `prefsStore` |
+| Prefs (daily target, default project) | Device cookie `vynno_prefs` (not an API resource) |
 | Theme / locale | Device-local |
 | Insights / dashboard totals | Computed on the client from loaded sessions |
 | Session target duration UI | Field exists on `StartSessionDto`; UI is P2 |
@@ -409,4 +409,10 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 The SPA (`vynno`) calls this contract with `PUBLIC_API_BASE=/v1` and `credentials: 'include'`. It does not send `Authorization`. CORS must list the SPA origin in `SPA_ORIGIN`; cookies will not be stored if CORS is `*`. Cookie flags: [ADR-0008](./adr/0008-authentication.md).
 
-A contract change is a paired change: this file + frontend `docs/api-contract.md` + `src/lib/api/schemas`.
+Every read and write in the SPA goes through `HttpTimeTrackingRepository`. `PUBLIC_API_BASE` is `/v1` (same-origin BFF). Schema and mapper changes absorb wire-format drift; views and the session store are not rewritten for it.
+
+Client IP through the BFF: the SvelteKit server deletes any inbound `X-Forwarded-For` and `X-Real-IP` and writes `getClientAddress()` to `X-Forwarded-For`. The production Node process sets `ADDRESS_HEADER=X-Forwarded-For` and `XFF_DEPTH=1`, so that address is the one Caddy appended. A browser-supplied `X-Forwarded-For` is never the rate-limit bucket key.
+
+Client-only session behavior (the API does not enforce it): stopping a session younger than 1 second deletes it with `DELETE /sessions/:id` instead of keeping a 0s row. Logs show `<1s` for older sub-second rows.
+
+A contract change is a paired change: this file (then `scripts/sync-contract`) + frontend `src/lib/api/schemas`.

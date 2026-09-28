@@ -1,157 +1,364 @@
 [
   {
-    "input": "  Identity  ",
+    "name": "name   Identity  ",
     "kind": "name",
+    "input": "  Identity  ",
     "normalized": "Identity"
   },
   {
-    "input": "D​UP",
+    "name": "name D\\u200bUP",
     "kind": "name",
+    "input": "D​UP",
     "normalized": "DUP"
   },
   {
-    "input": "é",
+    "name": "name e\\u0301",
     "kind": "name",
+    "input": "é",
     "normalized": "é"
   },
   {
-    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "name": "name \\ud83d\\ude00…(80 cp)",
     "kind": "name",
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
     "normalized": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
   },
   {
+    "name": "name \\ud83d\\ude00…(81 cp) → too_long",
+    "kind": "name",
     "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "too_long"
   },
   {
+    "name": "name \\u200b\\u200c…(5 cp) → empty",
+    "kind": "name",
     "input": "​‌‍⁠﻿",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "empty"
   },
   {
+    "name": "name a\\u202eb → invalid",
+    "kind": "name",
     "input": "a‮b",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "name a\\u2066b → invalid",
+    "kind": "name",
     "input": "a⁦b",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "name a\\u0000b → invalid",
+    "kind": "name",
     "input": "a\u0000b",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "name a\\tb → invalid",
+    "kind": "name",
     "input": "a\tb",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "name \\ufffd → invalid",
+    "kind": "name",
     "input": "�",
-    "kind": "name",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
-    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "name aaaaaaaaaaaa…(80 cp)",
     "kind": "name",
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
   },
   {
-    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "name aaaaaaaaaaaa…(81 cp) → too_long",
     "kind": "name",
-    "error": "invalid_body"
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "error": "invalid_body",
+    "reason": "too_long"
   },
   {
+    "name": "note    ",
+    "kind": "note",
     "input": "   ",
-    "kind": "note",
-    "normalized": "Untitled session"
+    "normalized": ""
   },
   {
-    "input": "  Refactor  ",
+    "name": "note   Refactor  ",
     "kind": "note",
+    "input": "  Refactor  ",
     "normalized": "Refactor"
   },
   {
-    "input": "a\tb",
+    "name": "note a\\tb",
     "kind": "note",
+    "input": "a\tb",
     "normalized": "a\tb"
   },
   {
-    "input": "a\nb",
+    "name": "note a\\nb",
     "kind": "note",
+    "input": "a\nb",
     "normalized": "a\nb"
   },
   {
-    "input": "a\rb",
+    "name": "note a\\rb",
     "kind": "note",
+    "input": "a\rb",
     "normalized": "a\rb"
   },
   {
+    "name": "note \\t\\n\\r",
+    "kind": "note",
     "input": "\t\n\r",
-    "kind": "note",
-    "normalized": "Untitled session"
+    "normalized": ""
   },
   {
+    "name": "note a\\u0000b → invalid",
+    "kind": "note",
     "input": "a\u0000b",
-    "kind": "note",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "note a\\u007fb → invalid",
+    "kind": "note",
     "input": "ab",
-    "kind": "note",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
+    "name": "note a\\u202eb → invalid",
+    "kind": "note",
     "input": "a‮b",
-    "kind": "note",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
-    "input": "é",
+    "name": "note e\\u0301",
     "kind": "note",
+    "input": "é",
     "normalized": "é"
   },
   {
-    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
+    "name": "note aaaaaaaaaaaa…(500 cp)",
     "kind": "note",
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
     "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀"
   },
   {
-    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "name": "note aaaaaaaaaaaa…(501 cp) → too_long",
     "kind": "note",
-    "error": "invalid_body"
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "error": "invalid_body",
+    "reason": "too_long"
   },
   {
+    "name": "ticket    ",
+    "kind": "ticket",
     "input": "   ",
-    "kind": "ticket",
-    "normalized": null
+    "normalized": ""
   },
   {
-    "input": "D​UP",
+    "name": "ticket D\\u200bUP",
     "kind": "ticket",
+    "input": "D​UP",
     "normalized": "DUP"
   },
   {
-    "input": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+    "name": "ticket tttttttttttt…(64 cp)",
     "kind": "ticket",
+    "input": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
     "normalized": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
   },
   {
+    "name": "ticket tttttttttttt…(65 cp) → too_long",
+    "kind": "ticket",
     "input": "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
-    "kind": "ticket",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "too_long"
   },
   {
+    "name": "ticket a\\u202et → invalid",
+    "kind": "ticket",
     "input": "a‮t",
-    "kind": "ticket",
-    "error": "invalid_body"
+    "error": "invalid_body",
+    "reason": "invalid"
   },
   {
-    "input": "\u0000",
+    "name": "ticket \\u0000 → invalid",
     "kind": "ticket",
-    "error": "invalid_body"
+    "input": "\u0000",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "zero-width only name is empty",
+    "kind": "name",
+    "input": "​‌‍⁠",
+    "error": "invalid_body",
+    "reason": "empty"
+  },
+  {
+    "name": "FEFF only name is empty",
+    "kind": "name",
+    "input": "﻿",
+    "error": "invalid_body",
+    "reason": "empty"
+  },
+  {
+    "name": "bidi RLO is invalid",
+    "kind": "name",
+    "input": "A‮B",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "NUL is invalid",
+    "kind": "name",
+    "input": "A\u0000B",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "whitespace only name is empty",
+    "kind": "name",
+    "input": "  　 ",
+    "error": "invalid_body",
+    "reason": "empty"
+  },
+  {
+    "name": "500 emoji note is ok",
+    "kind": "note",
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "normalized": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+  },
+  {
+    "name": "501 emoji note is too long",
+    "kind": "note",
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "error": "invalid_body",
+    "reason": "too_long"
+  },
+  {
+    "name": "empty ticket stays empty",
+    "kind": "ticket",
+    "input": "  ",
+    "normalized": ""
+  },
+  {
+    "name": "64 emoji ticket is ok",
+    "kind": "ticket",
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "normalized": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+  },
+  {
+    "name": "65 emoji ticket is too long",
+    "kind": "ticket",
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "error": "invalid_body",
+    "reason": "too_long"
+  },
+  {
+    "name": "name rejects C1 U+0080",
+    "kind": "name",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "name rejects C1 U+0085",
+    "kind": "name",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "name rejects C1 U+009F",
+    "kind": "name",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "note rejects C1 U+0080",
+    "kind": "note",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "note rejects C1 U+0085",
+    "kind": "note",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "note rejects C1 U+009F",
+    "kind": "note",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "ticket rejects C1 U+0080",
+    "kind": "ticket",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "ticket rejects C1 U+0085",
+    "kind": "ticket",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "ticket rejects C1 U+009F",
+    "kind": "ticket",
+    "input": "AB",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "name rejects a trailing NEL (Cc), not trims it",
+    "kind": "name",
+    "input": "  Hello",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "note keeps FEFF (no zero-width strip or FEFF trim in notes)",
+    "kind": "note",
+    "input": "﻿hi",
+    "normalized": "﻿hi"
+  },
+  {
+    "name": "note keeps a ZWJ emoji sequence",
+    "kind": "note",
+    "input": "👨‍👩‍👧",
+    "normalized": "👨‍👩‍👧"
+  },
+  {
+    "name": "note allows U+FFFD",
+    "kind": "note",
+    "input": "a�b",
+    "normalized": "a�b"
+  },
+  {
+    "name": "name trims NBSP and ideographic space",
+    "kind": "name",
+    "input": "   Hello  　",
+    "normalized": "Hello"
   }
 ]
