@@ -84,6 +84,18 @@ Operator correlation: accept `X-Request-ID` (generate if missing) and add `reque
 
 Daily SPA origin is **`https://vynno.localhost`**. Operator API origin is **`http://vynno.localhost:27182`**. `.local` is Bonjour/mDNS and dual-stack Chromium lookups stall 5–10 s; `*.localhost` is RFC 6761 loopback (no `/etc/hosts`). Decision clause 5 updated in place.
 
+## Amendment (2026-09-28): X-Forwarded-For from loopback
+
+`TRUSTED_PROXIES` defaults to loopback (`127.0.0.1`, `::1`) because the SvelteKit BFF reaches this API over loopback and writes the real client address to `X-Forwarded-For`. The API cannot tell the BFF from any other local process by source address, so a process on this host that connects to `127.0.0.1:27182` directly can choose its own per-IP rate-limit bucket. **Accepted risk:** such a process already has local access to the API port, the database, and `.env`; the per-IP caps defend against remote clients, which always arrive through Caddy → BFF, where a browser-supplied `X-Forwarded-For` is discarded. Per-email login caps still apply to every caller.
+
+| Option | Why not |
+| --- | --- |
+| Shared secret header BFF → API | Another secret in both repos to protect the per-IP limiter from processes that can read that secret from disk. |
+| Unix socket between BFF and API | Changes the bind and both start scripts for the same local-only gain. |
+| Trust no proxy | Every browser request would share the BFF’s loopback bucket; one client could lock out all logins. |
+
+Revisit with clause 9 before any internet-facing or multi-user host.
+
 ## Related
 
 - [0001-backend-stack.md](./0001-backend-stack.md)

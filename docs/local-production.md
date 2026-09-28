@@ -98,6 +98,8 @@ Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation
 
 ## Auth rate limits
 
+Client IP for the per-IP caps is `X-Forwarded-For` only when the TCP peer is in `TRUSTED_PROXIES` (default loopback, where the BFF connects from). Keep the API bound to loopback and set `TRUSTED_PROXIES` explicitly. A local process that calls `127.0.0.1:27182` directly can pick its own per-IP bucket; that is an accepted risk ([ADR-0011](./adr/0011-local-production-host.md), 2026-09-28 amendment).
+
 `RATE_LIMIT_MODE` is `strict` (default) or `relaxed`. `strict` is the contract caps: 5 register/forgot sends and 30 login failures per client IP, 10 login failures per email. `relaxed` lifts only the per-IP caps so frontend e2e can register one account per test from one address; per-email caps and the OTP cooldown stay. The process refuses to start with `relaxed` unless `DATABASE_URL` targets `vynno_dev`. `scripts/dev` sets `relaxed` unless `DEV_RATE_LIMIT_MODE` is set. Counters are in memory; a restart clears them.
 
 **First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
