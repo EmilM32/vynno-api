@@ -213,6 +213,15 @@ These are the codes handlers must emit. HTTP mapping: [api-contract.md](./api-co
 | `email_in_use` | Register with a taken email |
 | `invalid_code` | Wrong, expired, or already used one-time code |
 | `rate_limited` | Send cooldown, send cap, or too many code guesses |
+| `internal_error` | 500 for unhandled faults (not `invalid_body`) |
+
+`internal_error` is 500 for unhandled faults (not `invalid_body`).
+
+Unknown route and wrong method: JSON `404` `not_found`.
+
+Body over the BFF 2 MB limit: `413` with envelope code `invalid_body` and message `Request body is too large.` (the BFF emits this).
+
+Wrong JSON type → `400 invalid_body`. Malformed JSON and trailing data → `400 invalid_json`. Unknown fields are rejected on POST and PATCH (`400 invalid_body`). Empty `status` query means no filter.
 
 `invalid_json`, `invalid_response`, and `http_error` are transport/client codes. The server still returns the envelope for malformed JSON (`invalid_json` / `invalid_body` as appropriate).
 

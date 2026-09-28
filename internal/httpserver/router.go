@@ -67,6 +67,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		MaxAge:           12 * time.Hour,
 	}))
 	_ = r.SetTrustedProxies(nil)
+	r.HandleMethodNotAllowed = true
 
 	s.route(r, http.MethodGet, "/healthz", handleHealth, op{
 		Summary: "Liveness",
@@ -339,6 +340,11 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 
 	s.mountDocs(r)
+	notFound := func(c *gin.Context) {
+		writeError(c, domain.ErrNotFound())
+	}
+	r.NoRoute(notFound)
+	r.NoMethod(notFound)
 	return r
 }
 

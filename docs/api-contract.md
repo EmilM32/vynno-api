@@ -56,8 +56,17 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
 | `invalid_code` | 401 | Wrong, expired, or already used one-time code | `error_invalid_code` |
 | `rate_limited` | 429 | Register/reset send cooldown, send cap, or too many code guesses | `error_rate_limited` |
+| `internal_error` | 500 | Unhandled faults (not `invalid_body`) | fallback |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
+
+`internal_error` is 500 for unhandled faults (not `invalid_body`).
+
+Unknown route and wrong method: JSON `404` `not_found`.
+
+Body over the BFF 2 MB limit: `413` with envelope code `invalid_body` and message `Request body is too large.` (the BFF emits this).
+
+Wrong JSON type → `400 invalid_body`. Malformed JSON and trailing data → `400 invalid_json`. Unknown fields are rejected on POST and PATCH (`400 invalid_body`). Empty `status` query means no filter.
 
 Example envelope:
 

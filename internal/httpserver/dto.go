@@ -71,6 +71,13 @@ func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
+	for k := range raw {
+		switch k {
+		case "name", "color", "code", "progressPercent":
+		default:
+			return domain.ErrInvalidBody("Unknown field.")
+		}
+	}
 	if v, ok := raw["name"]; ok {
 		var s string
 		if err := json.Unmarshal(v, &s); err != nil {
@@ -145,17 +152,20 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	if _, ok := raw["status"]; ok {
-		return errWritable("status is not writable; use stop.")
-	}
-	if _, ok := raw["pausedAt"]; ok {
-		return errWritable("pausedAt is not writable.")
-	}
-	if _, ok := raw["pausedMs"]; ok {
-		return errWritable("pausedMs is not writable.")
-	}
-	if _, ok := raw["id"]; ok {
-		return errWritable("id is not writable.")
+	for k := range raw {
+		switch k {
+		case "projectId", "note", "ticketId", "activityTypeId", "startedAt", "endedAt", "targetDurationMs":
+		case "status":
+			return errWritable("status is not writable; use stop.")
+		case "pausedAt":
+			return errWritable("pausedAt is not writable.")
+		case "pausedMs":
+			return errWritable("pausedMs is not writable.")
+		case "id":
+			return errWritable("id is not writable.")
+		default:
+			return domain.ErrInvalidBody("Unknown field.")
+		}
 	}
 	if v, ok := raw["projectId"]; ok {
 		if string(v) == "null" {
@@ -251,6 +261,13 @@ func (u *updateActivityTypeBody) UnmarshalJSON(b []byte) error {
 	var raw map[string]json.RawMessage
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
+	}
+	for k := range raw {
+		switch k {
+		case "name", "color":
+		default:
+			return domain.ErrInvalidBody("Unknown field.")
+		}
 	}
 	if v, ok := raw["name"]; ok {
 		var s string

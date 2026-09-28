@@ -7,6 +7,7 @@ const (
 	CodeInvalidBody             = "invalid_body"
 	CodeInvalidQuery            = "invalid_query"
 	CodeInvalidJSON             = "invalid_json"
+	CodeInternalError           = "internal_error"
 	CodeSessionNotActive        = "session_not_active"
 	CodeSessionAlreadyActive    = "session_already_active"
 	CodeProjectArchived         = "project_archived"

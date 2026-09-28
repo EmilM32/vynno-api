@@ -3,7 +3,6 @@ package httpserver
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 
@@ -24,19 +23,23 @@ func (u *updateProfileBody) UnmarshalJSON(b []byte) error {
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return err
 	}
-	if _, ok := raw["handle"]; ok {
-		return fmt.Errorf("handle cannot be updated")
-	}
-	if _, ok := raw["email"]; ok {
-		return fmt.Errorf("email cannot be updated")
-	}
-	if _, ok := raw["avatarUrl"]; ok {
-		return fmt.Errorf("use PUT /me/avatar to set a photo")
+	for k := range raw {
+		switch k {
+		case "displayName":
+		case "handle":
+			return domain.ErrInvalidBody("handle cannot be updated")
+		case "email":
+			return domain.ErrInvalidBody("email cannot be updated")
+		case "avatarUrl":
+			return domain.ErrInvalidBody("use PUT /me/avatar to set a photo")
+		default:
+			return domain.ErrInvalidBody("Unknown field.")
+		}
 	}
 	if v, ok := raw["displayName"]; ok {
 		u.DisplayNameSet = true
 		if string(v) == "null" {
-			return fmt.Errorf("display name is required")
+			return domain.ErrInvalidBody("display name is required")
 		}
 		var s string
 		if err := json.Unmarshal(v, &s); err != nil {

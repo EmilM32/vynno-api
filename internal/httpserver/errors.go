@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"strings"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/gin-gonic/gin"
@@ -33,7 +34,7 @@ func writeError(c *gin.Context, err error) {
 		"request_id", requestIDFrom(c),
 	)
 	c.JSON(http.StatusInternalServerError, errorEnvelope{Error: errorBody{
-		Code:    domain.CodeInvalidBody,
+		Code:    domain.CodeInternalError,
 		Message: "Internal server error.",
 	}})
 }
@@ -52,6 +53,8 @@ func statusFor(code string) int {
 		return http.StatusUnauthorized
 	case domain.CodeRateLimited:
 		return http.StatusTooManyRequests
+	case domain.CodeInternalError:
+		return http.StatusInternalServerError
 	default:
 		return http.StatusInternalServerError
 	}
@@ -59,8 +62,9 @@ func statusFor(code string) int {
 
 func decodeJSON(c *gin.Context, dest any) error {
 	dec := json.NewDecoder(c.Request.Body)
+	dec.DisallowUnknownFields()
 	if err := dec.Decode(dest); err != nil {
-		if errors.Is(err, io.EOF) {
+		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			return domain.ErrInvalidJSON()
 		}
 		var de *domain.Error
@@ -68,11 +72,27 @@ func decodeJSON(c *gin.Context, dest any) error {
 			return de
 		}
 		var syn *json.SyntaxError
-		var typ *json.UnmarshalTypeError
-		if errors.As(err, &syn) || errors.As(err, &typ) {
+		if errors.As(err, &syn) {
 			return domain.ErrInvalidJSON()
 		}
+		var typ *json.UnmarshalTypeError
+		if errors.As(err, &typ) {
+			field := typ.Field
+			if i := strings.LastIndex(field, "."); i >= 0 {
+				field = field[i+1:]
+			}
+			if field == "" {
+				field = "value"
+			}
+			return domain.ErrInvalidBody(field + " has the wrong type.")
+		}
+		if strings.Contains(err.Error(), "unknown field") {
+			return domain.ErrInvalidBody("Unknown field.")
+		}
 		return domain.ErrInvalidBody(err.Error())
+	}
+	if dec.More() {
+		return domain.ErrInvalidJSON()
 	}
 	return nil
 }
