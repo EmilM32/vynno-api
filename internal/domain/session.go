@@ -96,7 +96,12 @@ func Stop(s Session, now time.Time) (Session, error) {
 	if s.Status != StatusActive {
 		return Session{}, ErrInvalidTransition()
 	}
+	// A timer left running past the limit is stopped at startedAt+7d so no stored
+	// session is longer than MaxSessionDuration.
 	t := truncateInstant(now)
+	if limit := truncateInstant(s.StartedAt).Add(MaxSessionDuration); t.After(limit) {
+		t = limit
+	}
 	s.Status = StatusStopped
 	s.EndedAt = &t
 	return s, nil
@@ -253,14 +258,17 @@ func validateSessionBounds(s Session, now time.Time) error {
 	if started.After(latest) {
 		return ErrInvalidBody("startedAt is too far in the future.")
 	}
+	// A live session is measured against now, so its start cannot be moved back
+	// further than a stop would accept.
+	ended := now
 	if s.EndedAt != nil {
-		ended := truncateInstant(*s.EndedAt)
+		ended = truncateInstant(*s.EndedAt)
 		if ended.After(latest) {
 			return ErrInvalidBody("endedAt is too far in the future.")
 		}
-		if ended.Sub(started) > MaxSessionDuration {
-			return ErrInvalidBody("Session duration must be at most 7 days.")
-		}
+	}
+	if ended.Sub(started) > MaxSessionDuration {
+		return ErrInvalidBody("Session duration must be at most 7 days.")
 	}
 	return nil
 }

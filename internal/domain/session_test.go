@@ -211,6 +211,70 @@ func TestLiveStartedAtSkew(t *testing.T) {
 	}
 }
 
+func TestLiveStartedAtMaxAge(t *testing.T) {
+	t.Parallel()
+	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	s, err := StartSession("s1", "p1", "Work", nil, nil, nil, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct {
+		name  string
+		start time.Time
+		ok    bool
+	}{
+		{"now-6d", now.Add(-6 * 24 * time.Hour), true},
+		{"now-7d", now.Add(-MaxSessionDuration), true},
+		{"now-7d-1us", now.Add(-MaxSessionDuration - time.Microsecond), false},
+		{"now-8d", now.Add(-8 * 24 * time.Hour), false},
+		{"2000-01-01", MinSessionTime, false},
+	} {
+		start := tc.start
+		_, err := ApplySessionPatch(s, SessionPatch{StartedAt: &start}, now)
+		if tc.ok && err != nil {
+			t.Fatalf("%s: %v", tc.name, err)
+		}
+		if !tc.ok && err == nil {
+			t.Fatalf("%s: expected rejected", tc.name)
+		}
+	}
+}
+
+func TestStopClampsToMaxDuration(t *testing.T) {
+	t.Parallel()
+	start := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)
+	s, err := StartSession("s1", "p1", "Work", nil, nil, nil, start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	stopped, err := Stop(s, start.Add(8*24*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := start.Add(MaxSessionDuration); !stopped.EndedAt.Equal(want) {
+		t.Fatalf("endedAt = %s, want %s", stopped.EndedAt, want)
+	}
+
+	legacy := s
+	legacy.StartedAt = MinSessionTime
+	stopped, err = Stop(legacy, start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := MinSessionTime.Add(MaxSessionDuration); !stopped.EndedAt.Equal(want) {
+		t.Fatalf("legacy endedAt = %s, want %s", stopped.EndedAt, want)
+	}
+
+	inside := start.Add(MaxSessionDuration - time.Second)
+	stopped, err = Stop(s, inside)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !stopped.EndedAt.Equal(inside) {
+		t.Fatalf("endedAt = %s, want %s", stopped.EndedAt, inside)
+	}
+}
+
 func TestNoteOnlyLegacyPatchSkipsBounds(t *testing.T) {
 	t.Parallel()
 	now := time.Date(2026, 6, 1, 12, 0, 0, 0, time.UTC)

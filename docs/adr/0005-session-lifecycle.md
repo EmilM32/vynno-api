@@ -67,6 +67,15 @@ Clauses 1–5, 8–9 above described `active | paused | stopped` and `pausedMs` 
 
 Migration `00010_drop_session_pause` stops any `paused` row at `paused_at`, drops `paused_ms` / `paused_at`, drops leftover `session_pauses` if present, and tightens the status CHECK and unique live index.
 
+## Amendment (2026-09-28): 7-day cap on live sessions
+
+Stored sessions are at most 7 days long. Clause 5 changes: **Stop** sets `endedAt = min(now, startedAt + 7 days)`. A live `startedAt` older than 7 days is `400 invalid_body` on PATCH, the same rule as a stopped row. Stop is a conditional write on `status=active`, so concurrent stops have one winner and the rest are `409 invalid_transition`.
+
+| Option | Why not |
+| --- | --- |
+| Reject Stop after 7 days | A forgotten timer could not be stopped without first editing it; the client would need a new error flow. |
+| Allow any length on Stop | Breaks the 7-day bound that manual and PATCH writes already enforce; one row can skew every insight total. |
+
 ## Related
 
 - [../domain-model.md](../domain-model.md)

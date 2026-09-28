@@ -334,7 +334,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 `status` query is a comma-separated list of those enum values. Empty `status` query means no filter. `limit` is a positive integer, default **20**, max **100**. `cursor` is an opaque string from the previous page’s `nextCursor`; omit it on the first page. Anything else is `400 invalid_query`.
 
-Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991.
+Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days; for a live session that is `now − startedAt`, so a live `startedAt` older than 7 days is `400 invalid_body`. Stopping a session that has run longer than 7 days stores `endedAt = startedAt + 7 days`. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991.
 
 Notes ≤ 500 code points after trim; ticketId ≤ 64; one emoji counts as 1. Tabs, LF, CR allowed in notes. Other Cc and bidi controls rejected. Existing oversized notes still load; a patch that omits `note` still succeeds.
 

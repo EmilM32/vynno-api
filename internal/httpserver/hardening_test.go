@@ -193,6 +193,29 @@ func TestManualSessionYear0001Rejected(t *testing.T) {
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 }
 
+func TestLiveStartedAtCannotMovePastMaxDuration(t *testing.T) {
+	r := testRouter(t)
+	auth := withCookie(loginCookie(t, r))
+	id := firstProjectID(t, r, auth)
+	w := doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{"projectId": id, "note": "live"}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("start = %d %s", w.Code, w.Body.String())
+	}
+	var live sessionDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &live); err != nil {
+		t.Fatal(err)
+	}
+	patch := func(startedAt string) *httptest.ResponseRecorder {
+		t.Helper()
+		return doJSON(t, r, http.MethodPatch, "/v1/sessions/"+live.ID, map[string]any{"startedAt": startedAt}, auth)
+	}
+	assertCode(t, patch("2000-01-01T00:00:00.000Z"), http.StatusBadRequest, "invalid_body")
+	assertCode(t, patch(time.Now().UTC().Add(-8*24*time.Hour).Format(time.RFC3339)), http.StatusBadRequest, "invalid_body")
+	if w := patch(time.Now().UTC().Add(-3 * time.Hour).Format(time.RFC3339)); w.Code != http.StatusOK {
+		t.Fatalf("now-3h = %d %s", w.Code, w.Body.String())
+	}
+}
+
 func TestNoteAndTicketLength(t *testing.T) {
 	r := testRouter(t)
 	auth := withCookie(loginCookie(t, r))

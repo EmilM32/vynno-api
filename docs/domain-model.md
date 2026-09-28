@@ -79,14 +79,14 @@ User* (many personal accounts; isolated; no teams)
 | **Single live session** | At most one session with status `active`. A second start is `409 session_already_active`. **Do not auto-stop** the current one. |
 | **Idle** | No live session. `GET /sessions/active` → `404 session_not_active`. |
 | **Start** | Creates a new row, `status=active`, `startedAt=now` (UTC ISO). Project must exist and must not be archived. |
-| **Stop** | Only from `active`. Sets `status=stopped`, `endedAt=now`. |
+| **Stop** | Only from `active`. Sets `status=stopped`, `endedAt=now`, or `startedAt + 7 days` if the session has run longer than that. Concurrent stops of one session: exactly one wins; the rest are `409 invalid_transition`. |
 | **Invalid transition** | Stop while stopped (or any other illegal verb) is `409 invalid_transition`. |
 | **Restart** | Client sends a new `POST /sessions` with the same `projectId` / `note` / optionals. Never mutate a stopped row to make it live again. A break is stop, then start. |
 | **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `targetDurationMs`. Not writable: `status`. Archived projects are allowed. |
 | **Delete** | Any session, including live. Hard-delete. Idle after deleting live. |
 | **Manual entry** | `POST /sessions/manual` inserts `stopped` with `startedAt`/`endedAt`. Allowed while a live session exists. Archived projects are allowed. |
 | **Empty note** | NFC and trim; if empty, store `"Untitled session"`. Notes ≤ 500 code points after trim; ticketId ≤ 64; one emoji counts as 1. Tabs, LF, CR allowed in notes. Other Cc and bidi controls rejected. Existing oversized notes still load; a patch that omits `note` still succeeds. |
-| **Time integrity** | Stopped: `endedAt > startedAt` at microsecond precision. Live: `endedAt` is null. Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991. |
+| **Time integrity** | Stopped: `endedAt > startedAt` at microsecond precision. Live: `endedAt` is null. Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days; a live session is measured to now, so its `startedAt` cannot be older than 7 days. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991. |
 
 ### Elapsed time (derived, do not store as source of truth)
 
