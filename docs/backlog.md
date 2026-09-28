@@ -3,7 +3,7 @@
 **Last updated:** 2026-09-28  
 **Context:** Work we are deliberately **not** doing now. Do not pull these in without a contract amendment and a roadmap change.
 
-Contract extensions follow frontend features ([open work](https://github.com/EmilM32/vynno/blob/main/docs/open.md)). They imply API work only when the SPA is ready to call new endpoints.
+Contract extensions are requested by frontend features ([open work](https://github.com/EmilM32/vynno/blob/main/docs/open.md)), but the amendment is made here in [api-contract.md](./api-contract.md) first and synced to the frontend. They imply API work only when the SPA is ready to call new endpoints.
 
 ---
 
