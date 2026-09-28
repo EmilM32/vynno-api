@@ -9,6 +9,7 @@ import (
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/mail"
+	"golang.org/x/text/unicode/norm"
 )
 
 func TestLoginInvalidCredentials(t *testing.T) {
@@ -174,6 +175,26 @@ func TestRegisterCodeTakenEmailDoesNotSend(t *testing.T) {
 	if len(rec.Messages) != 0 {
 		t.Fatalf("sent mail for taken email: %+v", rec.Messages)
 	}
+}
+
+func TestRegisterCodeNFDOfExistingIsInUse(t *testing.T) {
+	rec := &mail.Recorder{}
+	r := testRouterWithMailer(t, rec)
+	nfc := "qa_\u017c\u00f3\u0142\u0107@example.com"
+	if w := registerWithCode(t, r, rec, nfc, "right-password", nil); w.Code != http.StatusCreated {
+		t.Fatalf("register NFC = %d %s", w.Code, w.Body.String())
+	}
+	sent := len(rec.Messages)
+	nfd := norm.NFD.String(nfc)
+	if nfd == nfc {
+		t.Fatal("test input has no NFD form")
+	}
+	w := doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": nfd})
+	assertCode(t, w, http.StatusConflict, "email_in_use")
+	if len(rec.Messages) != sent {
+		t.Fatalf("sent mail for NFD of a taken email")
+	}
+	loginAs(t, r, nfd, "right-password")
 }
 
 func TestRegisterCodeCooldownAndSendCap(t *testing.T) {
