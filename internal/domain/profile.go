@@ -2,7 +2,6 @@ package domain
 
 import (
 	"bytes"
-	"unicode/utf8"
 )
 
 const (
@@ -31,21 +30,6 @@ type Avatar struct {
 // AvatarPath is the public path stored in profiles.avatar_url.
 func AvatarPath(id string) string {
 	return "/v1/avatars/" + id
-}
-
-// NormalizeRequiredDisplayName applies the shared text pipeline and requires 1–80 code points.
-func NormalizeRequiredDisplayName(raw string) (string, error) {
-	n, err := normalizeLabel(raw)
-	if err != nil {
-		return "", err
-	}
-	if n == "" {
-		return "", ErrInvalidBody("Display name is required.")
-	}
-	if utf8.RuneCountInString(n) > projectNameMax {
-		return "", ErrInvalidBody("Display name must be at most 80 characters.")
-	}
-	return n, nil
 }
 
 // DetectAvatarContentType sniffs magic bytes. Size must be 1..AvatarMaxBytes.

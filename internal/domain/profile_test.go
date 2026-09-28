@@ -2,26 +2,8 @@ package domain
 
 import (
 	"bytes"
-	"strings"
 	"testing"
 )
-
-func TestNormalizeRequiredDisplayName(t *testing.T) {
-	t.Parallel()
-	got, err := NormalizeRequiredDisplayName("  Alex  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != "Alex" {
-		t.Fatalf("got %q", got)
-	}
-	if _, err := NormalizeRequiredDisplayName("   "); err == nil {
-		t.Fatal("expected empty rejected")
-	}
-	if _, err := NormalizeRequiredDisplayName(strings.Repeat("a", 81)); err == nil {
-		t.Fatal("expected too long")
-	}
-}
 
 func TestDetectAvatarContentType(t *testing.T) {
 	t.Parallel()
