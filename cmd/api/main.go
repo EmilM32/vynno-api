@@ -61,6 +61,7 @@ func main() {
 		SPAOrigins:      cfg.SPAOrigins,
 		CookieSecure:    cfg.CookieSecure,
 		PublicAPIOrigin: cfg.PublicAPIOrigin,
+		TrustedProxies:  cfg.TrustedProxies,
 		Ready:           db.PingContext,
 	})
 

@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -22,6 +23,7 @@ type Config struct {
 	SPAOrigins        []string
 	CookieSecure      bool
 	PublicAPIOrigin   string
+	TrustedProxies    []string
 	LogFormat         string
 	Mail              Mail
 }
@@ -77,6 +79,10 @@ func Load() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	proxies, err := parseTrustedProxies(os.Getenv("TRUSTED_PROXIES"))
+	if err != nil {
+		return Config{}, err
+	}
 
 	return Config{
 		Addr:              addr,
@@ -86,9 +92,37 @@ func Load() (Config, error) {
 		SPAOrigins:        origins,
 		CookieSecure:      boolEnv("COOKIE_SECURE"),
 		PublicAPIOrigin:   publicOrigin,
+		TrustedProxies:    proxies,
 		LogFormat:         parseLogFormat(os.Getenv("LOG_FORMAT")),
 		Mail:              mail,
 	}, nil
+}
+
+func parseTrustedProxies(raw string) ([]string, error) {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return []string{"127.0.0.1", "::1"}, nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		p = strings.TrimSpace(p)
+		if p == "" {
+			continue
+		}
+		if strings.Contains(p, "/") {
+			if _, _, err := net.ParseCIDR(p); err != nil {
+				return nil, fmt.Errorf("TRUSTED_PROXIES: invalid proxy %q", p)
+			}
+		} else if net.ParseIP(p) == nil {
+			return nil, fmt.Errorf("TRUSTED_PROXIES: invalid proxy %q", p)
+		}
+		out = append(out, p)
+	}
+	if len(out) == 0 {
+		return []string{"127.0.0.1", "::1"}, nil
+	}
+	return out, nil
 }
 
 func parseMail() (Mail, error) {

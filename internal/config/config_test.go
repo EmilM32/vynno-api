@@ -20,6 +20,7 @@ func requiredEnv(t *testing.T) {
 	t.Setenv("SMTP_STARTTLS", "")
 	t.Setenv("MAIL_FROM", "")
 	t.Setenv("MAIL_FROM_NAME", "")
+	t.Setenv("TRUSTED_PROXIES", "")
 }
 
 func TestLoadRequiresDatabaseURL(t *testing.T) {
@@ -91,6 +92,25 @@ func TestLoadDefaultsAddr(t *testing.T) {
 	}
 	if cfg.Mail.Port != defaultSMTPPort {
 		t.Fatalf("Mail.Port = %d, want %d", cfg.Mail.Port, defaultSMTPPort)
+	}
+	if len(cfg.TrustedProxies) != 2 || cfg.TrustedProxies[0] != "127.0.0.1" || cfg.TrustedProxies[1] != "::1" {
+		t.Fatalf("TrustedProxies = %#v", cfg.TrustedProxies)
+	}
+}
+
+func TestLoadTrustedProxies(t *testing.T) {
+	requiredEnv(t)
+	t.Setenv("TRUSTED_PROXIES", "10.0.0.1, 10.0.0.0/8")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(cfg.TrustedProxies) != 2 || cfg.TrustedProxies[0] != "10.0.0.1" || cfg.TrustedProxies[1] != "10.0.0.0/8" {
+		t.Fatalf("TrustedProxies = %#v", cfg.TrustedProxies)
+	}
+	t.Setenv("TRUSTED_PROXIES", "not-an-ip")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected invalid TRUSTED_PROXIES")
 	}
 }
 

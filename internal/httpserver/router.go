@@ -22,6 +22,7 @@ type Options struct {
 	SPAOrigins      []string
 	CookieSecure    bool
 	PublicAPIOrigin string
+	TrustedProxies  []string
 	Ready           func(context.Context) error
 }
 
@@ -66,7 +67,13 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
-	_ = r.SetTrustedProxies(nil)
+	proxies := opts.TrustedProxies
+	if len(proxies) == 0 {
+		proxies = []string{"127.0.0.1", "::1"}
+	}
+	if err := r.SetTrustedProxies(proxies); err != nil {
+		panic("trusted proxies: " + err.Error())
+	}
 	r.HandleMethodNotAllowed = true
 
 	s.route(r, http.MethodGet, "/healthz", handleHealth, op{
