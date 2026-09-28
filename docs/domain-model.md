@@ -85,8 +85,8 @@ User* (many personal accounts; isolated; no teams)
 | **Patch** | Any session. Writable: `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`, `targetDurationMs`. Not writable: `status`. Archived projects are allowed. |
 | **Delete** | Any session, including live. Hard-delete. Idle after deleting live. |
 | **Manual entry** | `POST /sessions/manual` inserts `stopped` with `startedAt`/`endedAt`. Allowed while a live session exists. Archived projects are allowed. |
-| **Empty note** | Trim; if empty, store `"Untitled session"`. |
-| **Time integrity** | Stopped: `endedAt > startedAt`. Live: `endedAt` is null. |
+| **Empty note** | NFC and trim; if empty, store `"Untitled session"`. Notes ≤ 500 code points after trim; ticketId ≤ 64; one emoji counts as 1. Tabs, LF, CR allowed in notes. Other Cc and bidi controls rejected. Existing oversized notes still load; a patch that omits `note` still succeeds. |
+| **Time integrity** | Stopped: `endedAt > startedAt` at microsecond precision. Live: `endedAt` is null. Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991. |
 
 ### Elapsed time (derived, do not store as source of truth)
 

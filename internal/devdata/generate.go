@@ -247,7 +247,10 @@ func pickDuration(rng *rand.Rand) time.Duration {
 
 func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, activityIDs map[string]string, forcedTicket *string) (domain.Session, error) {
 	note, ticket, activity, target := sessionFields(rng, spec, activityIDs, forcedTicket)
-	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	if err != nil {
+		return domain.Session{}, err
+	}
 	return domain.Stop(s, end)
 }
 
@@ -278,7 +281,10 @@ func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []do
 	spec := specs[idx]
 	proj := projects[idx]
 	note, ticket, activity, target := sessionFields(rng, spec, activityIDs, nil)
-	s := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	if err != nil {
+		return domain.Session{}, false
+	}
 	return s, true
 }
 

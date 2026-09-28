@@ -34,6 +34,28 @@ func TestTextVectors(t *testing.T) {
 			case "name":
 				got, err := NormalizeName(v.Input)
 				assertText(t, v, got, err)
+			case "note":
+				got, err := NormalizeNote(v.Input)
+				assertText(t, v, got, err)
+			case "ticket":
+				in := v.Input
+				got, err := NormalizeTicketID(&in)
+				if v.Error != "" {
+					assertDomainCode(t, err, v.Error)
+					return
+				}
+				if err != nil {
+					t.Fatal(err)
+				}
+				if v.Normalized == nil {
+					if got != nil {
+						t.Fatalf("got %#v, want nil", got)
+					}
+					return
+				}
+				if got == nil || *got != *v.Normalized {
+					t.Fatalf("got %#v, want %q", got, *v.Normalized)
+				}
 			default:
 				t.Fatalf("unknown kind %q", v.Kind)
 			}

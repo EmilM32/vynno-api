@@ -76,7 +76,7 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 		return domain.Session{}, domain.ErrSessionAlreadyActive()
 	}
 
-	sess := domain.StartSession(
+	sess, err := domain.StartSession(
 		s.NewID().String(),
 		projectID.String(),
 		in.Note,
@@ -85,6 +85,9 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 		target,
 		s.Now(),
 	)
+	if err != nil {
+		return domain.Session{}, err
+	}
 	return s.Store.CreateSession(ctx, s.User, sess)
 }
 
@@ -111,7 +114,7 @@ func (s *Service) UpdateSession(ctx context.Context, id uuid.UUID, patch domain.
 		}
 		patch.ActivityTypeID = activityID
 	}
-	next, err := domain.ApplySessionPatch(sess, patch)
+	next, err := domain.ApplySessionPatch(sess, patch, s.Now())
 	if err != nil {
 		return domain.Session{}, err
 	}
@@ -147,6 +150,7 @@ func (s *Service) CreateManualSession(ctx context.Context, in CreateManualSessio
 		target,
 		in.StartedAt,
 		in.EndedAt,
+		s.Now(),
 	)
 	if err != nil {
 		return domain.Session{}, err

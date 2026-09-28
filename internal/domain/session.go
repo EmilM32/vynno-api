@@ -11,7 +11,14 @@ const UntitledNote = "Untitled session"
 const (
 	DefaultSessionListLimit = 20
 	MaxSessionListLimit     = 100
+	// MaxTargetDurationMs is 2^53−1, the largest integer JSON can round-trip.
+	MaxTargetDurationMs int64 = 9007199254740991
+	MaxFutureSkew             = 5 * time.Minute
+	MaxSessionDuration        = 7 * 24 * time.Hour
 )
+
+// MinSessionTime is the earliest accepted startedAt.
+var MinSessionTime = time.Date(2000, 1, 1, 0, 0, 0, 0, time.UTC)
 
 const (
 	StatusActive  = "active"
@@ -33,14 +40,6 @@ type Session struct {
 	TargetDurationMs *int64
 }
 
-func NormalizeNote(note string) string {
-	n := strings.TrimSpace(note)
-	if n == "" {
-		return UntitledNote
-	}
-	return n
-}
-
 func NormalizeOptionalString(s *string) *string {
 	if s == nil {
 		return nil
@@ -56,8 +55,8 @@ func NormalizeTargetDurationMs(v *int64) (*int64, error) {
 	if v == nil {
 		return nil, nil
 	}
-	if *v < 0 {
-		return nil, ErrInvalidBody("targetDurationMs must be >= 0.")
+	if *v < 0 || *v > MaxTargetDurationMs {
+		return nil, ErrInvalidBody("targetDurationMs must be an integer from 0 through 9007199254740991.")
 	}
 	return v, nil
 }
@@ -70,26 +69,34 @@ func ValidStatusFilter(s string) bool {
 	return slices.Contains(SessionStatuses, s)
 }
 
-// StartSession builds a new active session at now.
-func StartSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, now time.Time) Session {
+// StartSession builds a new active session at now, truncated to microseconds.
+func StartSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, now time.Time) (Session, error) {
+	n, err := NormalizeNote(note)
+	if err != nil {
+		return Session{}, err
+	}
+	ticket, err := NormalizeTicketID(ticketID)
+	if err != nil {
+		return Session{}, err
+	}
 	return Session{
 		ID:               id,
 		ProjectID:        projectID,
-		Note:             NormalizeNote(note),
-		TicketID:         NormalizeOptionalString(ticketID),
+		Note:             n,
+		TicketID:         ticket,
 		ActivityTypeID:   activityTypeID,
 		Status:           StatusActive,
-		StartedAt:        now.UTC(),
+		StartedAt:        truncateInstant(now),
 		EndedAt:          nil,
 		TargetDurationMs: target,
-	}
+	}, nil
 }
 
 func Stop(s Session, now time.Time) (Session, error) {
 	if s.Status != StatusActive {
 		return Session{}, ErrInvalidTransition()
 	}
-	t := now.UTC()
+	t := truncateInstant(now)
 	s.Status = StatusStopped
 	s.EndedAt = &t
 	return s, nil
@@ -115,29 +122,44 @@ func ParseISOTime(s string) (time.Time, error) {
 	if err != nil {
 		return time.Time{}, ErrInvalidBody("must be an ISO-8601 timestamp.")
 	}
-	return t.UTC(), nil
+	return truncateInstant(t), nil
 }
 
-func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt time.Time) (Session, error) {
-	end := endedAt.UTC()
+func truncateInstant(t time.Time) time.Time {
+	return t.UTC().Truncate(time.Microsecond)
+}
+
+func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt, now time.Time) (Session, error) {
+	n, err := NormalizeNote(note)
+	if err != nil {
+		return Session{}, err
+	}
+	ticket, err := NormalizeTicketID(ticketID)
+	if err != nil {
+		return Session{}, err
+	}
+	end := truncateInstant(endedAt)
 	s := Session{
 		ID:               id,
 		ProjectID:        projectID,
-		Note:             NormalizeNote(note),
-		TicketID:         NormalizeOptionalString(ticketID),
+		Note:             n,
+		TicketID:         ticket,
 		ActivityTypeID:   activityTypeID,
 		Status:           StatusStopped,
-		StartedAt:        startedAt.UTC(),
+		StartedAt:        truncateInstant(startedAt),
 		EndedAt:          &end,
 		TargetDurationMs: target,
 	}
 	if err := validateSessionTimes(s); err != nil {
 		return Session{}, err
 	}
+	if err := validateSessionBounds(s, now); err != nil {
+		return Session{}, err
+	}
 	return s, nil
 }
 
-func ApplySessionPatch(s Session, p SessionPatch) (Session, error) {
+func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error) {
 	if p.ProjectID != nil {
 		id := strings.TrimSpace(*p.ProjectID)
 		if id == "" {
@@ -146,22 +168,31 @@ func ApplySessionPatch(s Session, p SessionPatch) (Session, error) {
 		s.ProjectID = id
 	}
 	if p.Note != nil {
-		s.Note = NormalizeNote(*p.Note)
+		note, err := NormalizeNote(*p.Note)
+		if err != nil {
+			return Session{}, err
+		}
+		s.Note = note
 	}
 	if p.TicketSet {
-		s.TicketID = NormalizeOptionalString(p.TicketID)
+		ticket, err := NormalizeTicketID(p.TicketID)
+		if err != nil {
+			return Session{}, err
+		}
+		s.TicketID = ticket
 	}
 	if p.ActivityTypeSet {
 		s.ActivityTypeID = NormalizeOptionalString(p.ActivityTypeID)
 	}
+	timesSet := p.StartedAt != nil || p.EndedSet
 	if p.StartedAt != nil {
-		s.StartedAt = p.StartedAt.UTC()
+		s.StartedAt = truncateInstant(*p.StartedAt)
 	}
 	if p.EndedSet {
 		if p.EndedAt == nil {
 			s.EndedAt = nil
 		} else {
-			t := p.EndedAt.UTC()
+			t := truncateInstant(*p.EndedAt)
 			s.EndedAt = &t
 		}
 	}
@@ -172,20 +203,33 @@ func ApplySessionPatch(s Session, p SessionPatch) (Session, error) {
 		}
 		s.TargetDurationMs = target
 	}
+	// Omitting both instants does not re-check bounds. A grandfathered row
+	// (year 0001, or instants that already break the structural rule) can
+	// still change note and other non-time fields. When the stored instants
+	// already satisfy the structural rule, leaving them unchanged keeps it.
+	if timesSet {
+		if err := validateSessionTimes(s); err != nil {
+			return Session{}, err
+		}
+		if err := validateSessionBounds(s, now); err != nil {
+			return Session{}, err
+		}
+		return s, nil
+	}
 	if err := validateSessionTimes(s); err != nil {
-		return Session{}, err
+		return s, nil
 	}
 	return s, nil
 }
 
 func validateSessionTimes(s Session) error {
-	started := s.StartedAt.UTC()
+	started := truncateInstant(s.StartedAt)
 	switch s.Status {
 	case StatusStopped:
 		if s.EndedAt == nil {
 			return ErrInvalidBody("endedAt is required on a stopped session.")
 		}
-		ended := s.EndedAt.UTC()
+		ended := truncateInstant(*s.EndedAt)
 		if !ended.After(started) {
 			return ErrInvalidBody("endedAt must be after startedAt.")
 		}
@@ -195,6 +239,28 @@ func validateSessionTimes(s Session) error {
 		}
 	default:
 		return ErrInvalidBody("unknown session status.")
+	}
+	return nil
+}
+
+func validateSessionBounds(s Session, now time.Time) error {
+	now = truncateInstant(now)
+	started := truncateInstant(s.StartedAt)
+	if started.Before(MinSessionTime) {
+		return ErrInvalidBody("startedAt must be on or after 2000-01-01T00:00:00Z.")
+	}
+	latest := now.Add(MaxFutureSkew)
+	if started.After(latest) {
+		return ErrInvalidBody("startedAt is too far in the future.")
+	}
+	if s.EndedAt != nil {
+		ended := truncateInstant(*s.EndedAt)
+		if ended.After(latest) {
+			return ErrInvalidBody("endedAt is too far in the future.")
+		}
+		if ended.Sub(started) > MaxSessionDuration {
+			return ErrInvalidBody("Session duration must be at most 7 days.")
+		}
 	}
 	return nil
 }

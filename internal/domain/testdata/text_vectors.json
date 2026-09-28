@@ -63,5 +63,95 @@
     "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
     "kind": "name",
     "error": "invalid_body"
+  },
+  {
+    "input": "   ",
+    "kind": "note",
+    "normalized": "Untitled session"
+  },
+  {
+    "input": "  Refactor  ",
+    "kind": "note",
+    "normalized": "Refactor"
+  },
+  {
+    "input": "a\tb",
+    "kind": "note",
+    "normalized": "a\tb"
+  },
+  {
+    "input": "a\nb",
+    "kind": "note",
+    "normalized": "a\nb"
+  },
+  {
+    "input": "a\rb",
+    "kind": "note",
+    "normalized": "a\rb"
+  },
+  {
+    "input": "\t\n\r",
+    "kind": "note",
+    "normalized": "Untitled session"
+  },
+  {
+    "input": "a\u0000b",
+    "kind": "note",
+    "error": "invalid_body"
+  },
+  {
+    "input": "ab",
+    "kind": "note",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a‮b",
+    "kind": "note",
+    "error": "invalid_body"
+  },
+  {
+    "input": "é",
+    "kind": "note",
+    "normalized": "é"
+  },
+  {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀",
+    "kind": "note",
+    "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa😀"
+  },
+  {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "kind": "note",
+    "error": "invalid_body"
+  },
+  {
+    "input": "   ",
+    "kind": "ticket",
+    "normalized": null
+  },
+  {
+    "input": "D​UP",
+    "kind": "ticket",
+    "normalized": "DUP"
+  },
+  {
+    "input": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+    "kind": "ticket",
+    "normalized": "tttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt"
+  },
+  {
+    "input": "ttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttttt",
+    "kind": "ticket",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a‮t",
+    "kind": "ticket",
+    "error": "invalid_body"
+  },
+  {
+    "input": "\u0000",
+    "kind": "ticket",
+    "error": "invalid_body"
   }
 ]
