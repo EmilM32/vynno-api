@@ -360,5 +360,61 @@
     "kind": "name",
     "input": "   Hello  　",
     "normalized": "Hello"
+  },
+  {
+    "name": "displayName   Alex  ",
+    "kind": "displayName",
+    "input": "  Alex  ",
+    "normalized": "Alex"
+  },
+  {
+    "name": "displayName empty stays empty (clears the name)",
+    "kind": "displayName",
+    "input": "",
+    "normalized": ""
+  },
+  {
+    "name": "displayName \\u200b only clears the name",
+    "kind": "displayName",
+    "input": "​",
+    "normalized": ""
+  },
+  {
+    "name": "displayName \\ufeff only clears the name",
+    "kind": "displayName",
+    "input": "﻿",
+    "normalized": ""
+  },
+  {
+    "name": "displayName \\u00a0 only clears the name",
+    "kind": "displayName",
+    "input": " ",
+    "normalized": ""
+  },
+  {
+    "name": "displayName D\\u200bUP",
+    "kind": "displayName",
+    "input": "D​UP",
+    "normalized": "DUP"
+  },
+  {
+    "name": "displayName a\\u202eb → invalid",
+    "kind": "displayName",
+    "input": "a‮b",
+    "error": "invalid_body",
+    "reason": "invalid"
+  },
+  {
+    "name": "displayName aaaaaaaaaaaa…(80 cp)",
+    "kind": "displayName",
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "name": "displayName aaaaaaaaaaaa…(81 cp) → too_long",
+    "kind": "displayName",
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "error": "invalid_body",
+    "reason": "too_long"
   }
 ]

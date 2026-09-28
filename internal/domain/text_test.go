@@ -9,7 +9,8 @@ import (
 // textVector is one row of testdata/text_vectors.json. The file is canonical
 // here; scripts/sync-contract copies it to the frontend, whose normalize.test.ts
 // runs the same rows. normalized is the text pipeline result: an empty note is
-// "" (the API then stores UntitledNote) and an empty ticket is "" (nil here).
+// "" (the API then stores UntitledNote), an empty ticket is "" (nil here), and an
+// empty displayName is "" (clears the name; invisible-only input included).
 // reason is the frontend's reject reason; the API only reports error.
 type textVector struct {
 	Name       string `json:"name"`
@@ -53,6 +54,8 @@ func TestTextVectors(t *testing.T) {
 				if p != nil {
 					got = *p
 				}
+			case "displayName":
+				got, err = NormalizeDisplayName(v.Input)
 			default:
 				t.Fatalf("unknown kind %q", v.Kind)
 			}

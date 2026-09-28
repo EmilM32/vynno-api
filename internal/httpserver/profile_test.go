@@ -84,6 +84,35 @@ func TestPatchMeDisplayName(t *testing.T) {
 	assertCode(t, w, http.StatusBadRequest, "invalid_body")
 }
 
+// An invisible-only display name goes through the text pipeline to "" and clears the name,
+// the same as sending "" (EMI-88 N2-04). It is a documented reset, not a 400.
+func TestPatchMeInvisibleOnlyDisplayNameClears(t *testing.T) {
+	r := testRouter(t)
+	ck := loginCookie(t, r)
+	auth := withCookie(ck)
+
+	for _, raw := range []string{"\u200b", "\ufeff", "\u00a0", "\u200b\u200c\u200d\u2060\ufeff"} {
+		w := doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": "Alex"}, auth)
+		if w.Code != http.StatusOK {
+			t.Fatalf("PATCH /me Alex = %d %s", w.Code, w.Body.String())
+		}
+		w = doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": raw}, auth)
+		if w.Code != http.StatusOK {
+			t.Fatalf("PATCH /me %q = %d %s", raw, w.Code, w.Body.String())
+		}
+		var p profileDTO
+		if err := json.Unmarshal(w.Body.Bytes(), &p); err != nil {
+			t.Fatal(err)
+		}
+		if p.DisplayName != "" {
+			t.Fatalf("PATCH /me %q: displayName = %q, want cleared", raw, p.DisplayName)
+		}
+	}
+
+	w := doJSON(t, r, http.MethodPatch, "/v1/me", map[string]any{"displayName": "a\u202eb"}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+}
+
 func TestAvatarUploadReplaceDeleteAndPublicGet(t *testing.T) {
 	r := testRouter(t)
 	ck := loginCookie(t, r)
