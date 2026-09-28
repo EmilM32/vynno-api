@@ -52,6 +52,24 @@ func TestNormalizeCode(t *testing.T) {
 	if _, err := NormalizeCode(&bad); err == nil {
 		t.Fatal("expected invalid code")
 	}
+	dashes := "---"
+	if _, err := NormalizeCode(&dashes); err == nil {
+		t.Fatal("expected --- rejected")
+	}
+	dotless := "ı"
+	if _, err := NormalizeCode(&dotless); err == nil {
+		t.Fatal("expected ı rejected")
+	}
+	ok := "A-1"
+	got, err = NormalizeCode(&ok)
+	if err != nil || got == nil || *got != "A-1" {
+		t.Fatalf("A-1: %#v %v", got, err)
+	}
+	lower := "a-1"
+	got, err = NormalizeCode(&lower)
+	if err != nil || got == nil || *got != "A-1" {
+		t.Fatalf("a-1: %#v %v", got, err)
+	}
 }
 
 func TestNormalizeProgressPercent(t *testing.T) {

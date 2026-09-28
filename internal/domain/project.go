@@ -3,6 +3,7 @@ package domain
 import (
 	"regexp"
 	"strings"
+	"unicode"
 	"unicode/utf8"
 )
 
@@ -28,9 +29,12 @@ type Project struct {
 	Archived        bool
 }
 
-// NormalizeName trims and checks 1–80 characters.
+// NormalizeName applies the shared text pipeline and checks 1–80 code points.
 func NormalizeName(name string) (string, error) {
-	n := strings.TrimSpace(name)
+	n, err := normalizeLabel(name)
+	if err != nil {
+		return "", err
+	}
 	if utf8.RuneCountInString(n) < projectNameMin || utf8.RuneCountInString(n) > projectNameMax {
 		return "", ErrInvalidBody("Name must be 1–80 characters after trim.")
 	}
@@ -46,19 +50,34 @@ func NormalizeColor(color string) (string, error) {
 	return strings.ToLower(c), nil
 }
 
-// NormalizeCode trims, uppercases, and validates. Empty / whitespace means no code (nil).
+// NormalizeCode rejects non-ASCII, then trims, uppercases, and validates.
+// Empty / whitespace means no code (nil). At least one letter or digit is required.
 func NormalizeCode(code *string) (*string, error) {
 	if code == nil {
 		return nil, nil
+	}
+	for _, r := range *code {
+		if r > unicode.MaxASCII {
+			return nil, ErrInvalidBody("Code must match A–Z, 0–9, hyphen; 1–8 characters.")
+		}
 	}
 	c := strings.ToUpper(strings.TrimSpace(*code))
 	if c == "" {
 		return nil, nil
 	}
-	if !codePattern.MatchString(c) {
+	if !codePattern.MatchString(c) || !codeHasAlnum(c) {
 		return nil, ErrInvalidBody("Code must match A–Z, 0–9, hyphen; 1–8 characters.")
 	}
 	return &c, nil
+}
+
+func codeHasAlnum(s string) bool {
+	for _, r := range s {
+		if (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
+			return true
+		}
+	}
+	return false
 }
 
 // NormalizeProgressPercent accepts 0–100. Nil means unset.

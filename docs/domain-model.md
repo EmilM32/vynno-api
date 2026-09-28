@@ -108,8 +108,8 @@ Full decision: [ADR-0004](./adr/0004-project-lifecycle.md).
 | **Restore** | `archived=false` again. Restore on a non-archived project is `409 invalid_transition`. Archive on an already-archived project is the same. |
 | **Last active** | Cannot archive or hard-delete the last non-archived project (`409 last_active_project`). |
 | **Hard delete** | Permanent remove, only when **zero** sessions reference the project. Otherwise `409 project_has_sessions`. |
-| **Code** | Optional. When set: trim, uppercase, `^[A-Z0-9-]{1,8}$`, unique case-insensitively among all non-deleted projects. Empty / null means “no code”. |
-| **Name** | Required, trimmed, 1–80 characters. |
+| **Code** | Optional. Project code: ASCII only, `^[A-Z0-9-]{1,8}$` with at least one letter or digit. `---` and `ı` are 400. `A-1` is accepted. Empty / null means “no code”. Unique case-insensitively among all non-deleted projects. |
+| **Name** | Names: the text pipeline (reject U+FFFD, NFC, reject Cc and bidi controls, strip zero-width characters, trim), 1–80 code points. |
 | **Color** | `#rrggbb`. The SPA palette is a UI concern; the API accepts any valid hex unless [ADR-0004](./adr/0004-project-lifecycle.md) is amended. |
 | **progressPercent** | Optional 0–100. Writable on create/update. `null` means unset. Not derived from estimates. |
 
@@ -151,7 +151,7 @@ Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012
 | Field | Type | Notes |
 | --- | --- | --- |
 | `id` | string | Opaque, stable |
-| `name` | string | Display label. Trim, 1–80, stored as typed. Unique per user case-insensitively. The SPA shows this string; chips render it uppercase. |
+| `name` | string | Display label. Names: the text pipeline above, 1–80 code points, stored as typed. Unique per user case-insensitively. `"D\u200bUP"` normalizes to `"DUP"` (`409 name_in_use`). The SPA shows this string; chips render it uppercase. |
 | `color` | string | Theme token: `primary` \| `secondary` \| `tertiary` \| `error` \| `on-surface-variant` \| `outline` \| `primary-container` \| `secondary-container`. Chip CSS lives on the client. |
 
 | Rule | Description |
@@ -167,7 +167,7 @@ Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012
 | --- | --- | --- |
 | `displayName` | string | Trimmed, at most 80. May be empty. Writable via `PATCH /me`. |
 | `email` | string | Login identifier. Unique, lowercase. Not writable after register. |
-| `avatarUrl` | string? | JSON `null` when absent. Absolute public URL when set. |
+| `avatarUrl` | string? | JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. |
 
 Each account has its own profile. A fresh production database has no users; the first account is `POST /auth/register`. `scripts/reset` / `scripts/seed` are operator-only against `vynno_dev`.
 
@@ -176,7 +176,7 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 | Rule | Description |
 | --- | --- |
 | **Register** | Two steps. `POST /auth/register/code` sends a 6-digit code when the email is free. `POST /auth/register` with that code creates the profile (`avatarUrl` null). Omitted / empty `displayName` is stored `""`. No photo on register. No user row exists until the code is accepted. |
-| **Display name** | `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
+| **Display name** | Same text pipeline as names, 0–80 code points. `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
 | **Email** | Trim, lowercase, 3–254, a single address whose domain contains a `.`. Unique. Not accepted on `PATCH /me`. |
 | **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset`). Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. Never on the wire except in the mail body. |
 | **Password reset** | `POST /auth/password/forgot` always succeeds for a well-formed email; mail only if the account exists. `POST /auth/password/reset` sets a new hash and deletes every session token for that user. No cookie. Login afterwards. |

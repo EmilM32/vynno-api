@@ -43,11 +43,11 @@ func NormalizePassword(raw string) (string, error) {
 	return raw, nil
 }
 
-// NormalizeDisplayName trims a display name. Empty becomes "".
+// NormalizeDisplayName applies the shared text pipeline. Empty is allowed. Max 80 code points.
 func NormalizeDisplayName(raw string) (string, error) {
-	n := strings.TrimSpace(raw)
-	if n == "" {
-		return "", nil
+	n, err := normalizeLabel(raw)
+	if err != nil {
+		return "", err
 	}
 	if utf8.RuneCountInString(n) > projectNameMax {
 		return "", ErrInvalidBody("Display name must be at most 80 characters.")

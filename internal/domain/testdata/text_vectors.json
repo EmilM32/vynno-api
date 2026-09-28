@@ -1,0 +1,67 @@
+[
+  {
+    "input": "  Identity  ",
+    "kind": "name",
+    "normalized": "Identity"
+  },
+  {
+    "input": "D​UP",
+    "kind": "name",
+    "normalized": "DUP"
+  },
+  {
+    "input": "é",
+    "kind": "name",
+    "normalized": "é"
+  },
+  {
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "kind": "name",
+    "normalized": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀"
+  },
+  {
+    "input": "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "​‌‍⁠﻿",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a‮b",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a⁦b",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a\u0000b",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "a\tb",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "�",
+    "kind": "name",
+    "error": "invalid_body"
+  },
+  {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "kind": "name",
+    "normalized": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  },
+  {
+    "input": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "kind": "name",
+    "error": "invalid_body"
+  }
+]

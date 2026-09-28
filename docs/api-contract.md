@@ -168,7 +168,7 @@ Public: `POST /auth/login`, `POST /auth/register`, `POST /auth/register/code`, `
 }
 ```
 
-`displayName` may be `""` when the user did not set a name. `email` is the login identifier (not writable after register). `avatarUrl` is JSON `null` when absent. When set it is an absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` the browser can load as `<img src>`. The stored value is the path only; the origin is prefixed at read time.
+`displayName` may be `""` when the user did not set a name. Names: the text pipeline (reject U+FFFD, NFC, reject Cc and bidi controls, strip zero-width characters, trim), 1–80 code points for project and activity-type names. Display name is the same pipeline at 0–80 code points. `email` is the login identifier (not writable after register). `avatarUrl` is JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. The stored value is the path only; the origin is prefixed at read time.
 
 There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix).
 
@@ -226,7 +226,7 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 { "name": "New tool", "color": "#3b82f6", "code": "TOOL", "progressPercent": 60 }
 ```
 
-`code` may be `null` or omitted. `color` is a `#rrggbb` hex. `progressPercent` is optional 0–100; `null` or omit leaves it unset.
+`code` may be `null` or omitted. Project code: ASCII only, `^[A-Z0-9-]{1,8}$` with at least one letter or digit. `---` and `ı` are 400. `A-1` is accepted. Empty or whitespace clears the code. `color` is a `#rrggbb` hex. `progressPercent` is optional 0–100; `null` or omit leaves it unset. Names: the text pipeline above, 1–80 code points.
 
 `UpdateProjectDto` — all fields optional; `code: null` clears the chip; `progressPercent: null` clears the dashboard bar:
 
@@ -259,7 +259,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 }
 ```
 
-`name` is a display label (trim, 1–80 characters, stored as typed), unique per user case-insensitively. The SPA shows this string; chips render it uppercase.
+`name` is a display label (the text pipeline above, 1–80 code points, stored as typed), unique per user case-insensitively. `"D\u200bUP"` normalizes to `"DUP"`, so the existing index returns `409 name_in_use`. The SPA shows this string; chips render it uppercase.
 
 `color` is one of: `primary`, `secondary`, `tertiary`, `error`, `on-surface-variant`, `outline`, `primary-container`, `secondary-container`.
 

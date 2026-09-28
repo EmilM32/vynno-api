@@ -36,6 +36,24 @@ func TestNormalizeEmail(t *testing.T) {
 	}
 }
 
+func TestNormalizeDisplayNamePipeline(t *testing.T) {
+	t.Parallel()
+	got, err := NormalizeDisplayName("  Alex  ")
+	if err != nil || got != "Alex" {
+		t.Fatalf("%q %v", got, err)
+	}
+	got, err = NormalizeDisplayName(" \u200b ")
+	if err != nil || got != "" {
+		t.Fatalf("empty display %q %v", got, err)
+	}
+	if _, err := NormalizeDisplayName(strings.Repeat("a", 81)); err == nil {
+		t.Fatal("expected 81 rejected")
+	}
+	if _, err := NormalizeDisplayName("a\u202eb"); err == nil {
+		t.Fatal("expected bidi rejected")
+	}
+}
+
 func TestNormalizePassword(t *testing.T) {
 	t.Parallel()
 	if _, err := NormalizePassword("short"); err == nil {

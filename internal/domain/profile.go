@@ -2,7 +2,6 @@ package domain
 
 import (
 	"bytes"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -34,9 +33,12 @@ func AvatarPath(id string) string {
 	return "/v1/avatars/" + id
 }
 
-// NormalizeRequiredDisplayName trims and requires 1–80 characters.
+// NormalizeRequiredDisplayName applies the shared text pipeline and requires 1–80 code points.
 func NormalizeRequiredDisplayName(raw string) (string, error) {
-	n := strings.TrimSpace(raw)
+	n, err := normalizeLabel(raw)
+	if err != nil {
+		return "", err
+	}
 	if n == "" {
 		return "", ErrInvalidBody("Display name is required.")
 	}
