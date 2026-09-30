@@ -661,6 +661,69 @@ func TestListSessionsPagination(t *testing.T) {
 	}
 }
 
+// The per-session target left the contract (EMI-152). Sessions no longer carry it, and a
+// body that still sends it is an unknown field like any other.
+func TestSessionTargetRemoved(t *testing.T) {
+	r := testRouter(t)
+	auth := withCookie(loginCookie(t, r))
+
+	w := doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
+	var projects listDTO[projectDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatal(err)
+	}
+	projectID := projects.Items[0].ID
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "Deep work", "targetDurationMs": nil,
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{
+		"projectId":        projectID,
+		"note":             "Forgot to start",
+		"targetDurationMs": 25 * 60 * 1000,
+		"startedAt":        "2026-03-11T08:00:00.000Z",
+		"endedAt":          "2026-03-11T09:00:00.000Z",
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{
+		"projectId": projectID, "note": "Deep work",
+	}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("POST /sessions = %d %s", w.Code, w.Body.String())
+	}
+	var started map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &started); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := started["targetDurationMs"]; ok {
+		t.Fatalf("session still carries targetDurationMs: %s", w.Body.String())
+	}
+	var id string
+	if err := json.Unmarshal(started["id"], &id); err != nil {
+		t.Fatal(err)
+	}
+
+	w = doJSON(t, r, http.MethodPatch, "/v1/sessions/"+id, map[string]any{
+		"targetDurationMs": nil,
+	}, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+
+	w = doJSON(t, r, http.MethodGet, "/v1/sessions/active", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /sessions/active = %d %s", w.Code, w.Body.String())
+	}
+	var active map[string]json.RawMessage
+	if err := json.Unmarshal(w.Body.Bytes(), &active); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := active["targetDurationMs"]; ok {
+		t.Fatalf("active session still carries targetDurationMs: %s", w.Body.String())
+	}
+}
+
 func assertCode(t *testing.T, w *httptest.ResponseRecorder, status int, code string) {
 	t.Helper()
 	if w.Code != status {

@@ -1,6 +1,6 @@
 -- name: ListSessions :many
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1
   AND (
@@ -21,26 +21,26 @@ LIMIT sqlc.arg(lim)::int;
 
 -- name: GetSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1 AND id = $2;
 
 -- name: GetLiveSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1 AND status = 'active';
 
 -- name: InsertSession :one
 INSERT INTO sessions (
     id, user_id, project_id, note, ticket_id, activity_type_id, status,
-    started_at, ended_at, target_duration_ms
+    started_at, ended_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10
+    $8, $9
 )
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms;
+          started_at, ended_at;
 
 -- name: UpdateSession :one
 UPDATE sessions
@@ -50,11 +50,10 @@ SET project_id = $3,
     activity_type_id = $6,
     status = $7,
     started_at = $8,
-    ended_at = $9,
-    target_duration_ms = $10
+    ended_at = $9
 WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms;
+          started_at, ended_at;
 
 -- name: TransitionSession :one
 UPDATE sessions
@@ -64,18 +63,17 @@ SET project_id = $3,
     activity_type_id = $6,
     status = $7,
     started_at = $8,
-    ended_at = $9,
-    target_duration_ms = $10
-WHERE user_id = $1 AND id = $2 AND status = $11
+    ended_at = $9
+WHERE user_id = $1 AND id = $2 AND status = $10
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms;
+          started_at, ended_at;
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE user_id = $1 AND id = $2;
 
 -- name: ListStoppedSessionsStartedBetween :many
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1
   AND status = 'stopped'

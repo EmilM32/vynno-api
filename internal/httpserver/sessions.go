@@ -75,11 +75,10 @@ func (s *Server) startSession(c *gin.Context) {
 		return
 	}
 	sess, err := s.userSvc(c).StartSession(c.Request.Context(), service.StartSessionInput{
-		ProjectID:        body.ProjectID,
-		Note:             body.Note,
-		TicketID:         body.TicketID,
-		ActivityTypeID:   body.ActivityTypeID,
-		TargetDurationMs: body.TargetDurationMs,
+		ProjectID:      body.ProjectID,
+		Note:           body.Note,
+		TicketID:       body.TicketID,
+		ActivityTypeID: body.ActivityTypeID,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -113,13 +112,12 @@ func (s *Server) createManualSession(c *gin.Context) {
 		return
 	}
 	sess, err := s.userSvc(c).CreateManualSession(c.Request.Context(), service.CreateManualSessionInput{
-		ProjectID:        body.ProjectID,
-		Note:             body.Note,
-		TicketID:         body.TicketID,
-		ActivityTypeID:   body.ActivityTypeID,
-		TargetDurationMs: body.TargetDurationMs,
-		StartedAt:        startedAt,
-		EndedAt:          endedAt,
+		ProjectID:      body.ProjectID,
+		Note:           body.Note,
+		TicketID:       body.TicketID,
+		ActivityTypeID: body.ActivityTypeID,
+		StartedAt:      startedAt,
+		EndedAt:        endedAt,
 	})
 	if err != nil {
 		writeError(c, err)
@@ -167,15 +165,13 @@ func (s *Server) deleteSession(c *gin.Context) {
 
 func (b updateSessionBody) toPatch() (domain.SessionPatch, error) {
 	p := domain.SessionPatch{
-		ProjectID:        b.ProjectID,
-		Note:             b.Note,
-		TicketID:         b.TicketID,
-		TicketSet:        b.TicketSet,
-		ActivityTypeID:   b.ActivityTypeID,
-		ActivityTypeSet:  b.ActivityTypeSet,
-		TargetDurationMs: b.TargetDurationMs,
-		TargetSet:        b.TargetSet,
-		EndedSet:         b.EndedSet,
+		ProjectID:       b.ProjectID,
+		Note:            b.Note,
+		TicketID:        b.TicketID,
+		TicketSet:       b.TicketSet,
+		ActivityTypeID:  b.ActivityTypeID,
+		ActivityTypeSet: b.ActivityTypeSet,
+		EndedSet:        b.EndedSet,
 	}
 	if b.StartedAt != nil {
 		t, err := domain.ParseISOTime(*b.StartedAt)

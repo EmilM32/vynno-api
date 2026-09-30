@@ -11,10 +11,8 @@ const UntitledNote = "Untitled session"
 const (
 	DefaultSessionListLimit = 20
 	MaxSessionListLimit     = 100
-	// MaxTargetDurationMs is 2^53−1, the largest integer JSON can round-trip.
-	MaxTargetDurationMs int64 = 9007199254740991
-	MaxFutureSkew             = 5 * time.Minute
-	MaxSessionDuration        = 7 * 24 * time.Hour
+	MaxFutureSkew           = 5 * time.Minute
+	MaxSessionDuration      = 7 * 24 * time.Hour
 )
 
 // MinSessionTime is the earliest accepted startedAt.
@@ -29,15 +27,14 @@ var SessionStatuses = []string{StatusActive, StatusStopped}
 
 // Session is the server-side time session (not the wire DTO).
 type Session struct {
-	ID               string
-	ProjectID        string
-	Note             string
-	TicketID         *string
-	ActivityTypeID   *string
-	Status           string
-	StartedAt        time.Time
-	EndedAt          *time.Time
-	TargetDurationMs *int64
+	ID             string
+	ProjectID      string
+	Note           string
+	TicketID       *string
+	ActivityTypeID *string
+	Status         string
+	StartedAt      time.Time
+	EndedAt        *time.Time
 }
 
 func NormalizeOptionalString(s *string) *string {
@@ -51,16 +48,6 @@ func NormalizeOptionalString(s *string) *string {
 	return &t
 }
 
-func NormalizeTargetDurationMs(v *int64) (*int64, error) {
-	if v == nil {
-		return nil, nil
-	}
-	if *v < 0 || *v > MaxTargetDurationMs {
-		return nil, ErrInvalidBody("targetDurationMs must be an integer from 0 through 9007199254740991.")
-	}
-	return v, nil
-}
-
 func IsLiveStatus(status string) bool {
 	return status == StatusActive
 }
@@ -70,7 +57,7 @@ func ValidStatusFilter(s string) bool {
 }
 
 // StartSession builds a new active session at now, truncated to microseconds.
-func StartSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, now time.Time) (Session, error) {
+func StartSession(id, projectID, note string, ticketID, activityTypeID *string, now time.Time) (Session, error) {
 	n, err := NormalizeNote(note)
 	if err != nil {
 		return Session{}, err
@@ -80,15 +67,14 @@ func StartSession(id, projectID, note string, ticketID, activityTypeID *string, 
 		return Session{}, err
 	}
 	return Session{
-		ID:               id,
-		ProjectID:        projectID,
-		Note:             n,
-		TicketID:         ticket,
-		ActivityTypeID:   activityTypeID,
-		Status:           StatusActive,
-		StartedAt:        truncateInstant(now),
-		EndedAt:          nil,
-		TargetDurationMs: target,
+		ID:             id,
+		ProjectID:      projectID,
+		Note:           n,
+		TicketID:       ticket,
+		ActivityTypeID: activityTypeID,
+		Status:         StatusActive,
+		StartedAt:      truncateInstant(now),
+		EndedAt:        nil,
 	}, nil
 }
 
@@ -109,17 +95,15 @@ func Stop(s Session, now time.Time) (Session, error) {
 
 // SessionPatch is a partial update. Unset pointer / Set=false means leave unchanged.
 type SessionPatch struct {
-	ProjectID        *string
-	Note             *string
-	TicketID         *string
-	TicketSet        bool
-	ActivityTypeID   *string
-	ActivityTypeSet  bool
-	StartedAt        *time.Time
-	EndedAt          *time.Time
-	EndedSet         bool
-	TargetDurationMs *int64
-	TargetSet        bool
+	ProjectID       *string
+	Note            *string
+	TicketID        *string
+	TicketSet       bool
+	ActivityTypeID  *string
+	ActivityTypeSet bool
+	StartedAt       *time.Time
+	EndedAt         *time.Time
+	EndedSet        bool
 }
 
 func ParseISOTime(s string) (time.Time, error) {
@@ -134,7 +118,7 @@ func truncateInstant(t time.Time) time.Time {
 	return t.UTC().Truncate(time.Microsecond)
 }
 
-func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, target *int64, startedAt, endedAt, now time.Time) (Session, error) {
+func ManualSession(id, projectID, note string, ticketID, activityTypeID *string, startedAt, endedAt, now time.Time) (Session, error) {
 	n, err := NormalizeNote(note)
 	if err != nil {
 		return Session{}, err
@@ -145,15 +129,14 @@ func ManualSession(id, projectID, note string, ticketID, activityTypeID *string,
 	}
 	end := truncateInstant(endedAt)
 	s := Session{
-		ID:               id,
-		ProjectID:        projectID,
-		Note:             n,
-		TicketID:         ticket,
-		ActivityTypeID:   activityTypeID,
-		Status:           StatusStopped,
-		StartedAt:        truncateInstant(startedAt),
-		EndedAt:          &end,
-		TargetDurationMs: target,
+		ID:             id,
+		ProjectID:      projectID,
+		Note:           n,
+		TicketID:       ticket,
+		ActivityTypeID: activityTypeID,
+		Status:         StatusStopped,
+		StartedAt:      truncateInstant(startedAt),
+		EndedAt:        &end,
 	}
 	if err := validateSessionTimes(s); err != nil {
 		return Session{}, err
@@ -200,13 +183,6 @@ func ApplySessionPatch(s Session, p SessionPatch, now time.Time) (Session, error
 			t := truncateInstant(*p.EndedAt)
 			s.EndedAt = &t
 		}
-	}
-	if p.TargetSet {
-		target, err := NormalizeTargetDurationMs(p.TargetDurationMs)
-		if err != nil {
-			return Session{}, err
-		}
-		s.TargetDurationMs = target
 	}
 	// Omitting both instants does not re-check bounds. A grandfathered row
 	// (year 0001, or instants that already break the structural rule) can

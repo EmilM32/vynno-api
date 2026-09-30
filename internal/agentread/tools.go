@@ -171,7 +171,6 @@ type Session struct {
 	Status           string  `json:"status"`
 	StartedAt        string  `json:"startedAt"`
 	EndedAt          *string `json:"endedAt"`
-	TargetDurationMs *int64  `json:"targetDurationMs"`
 	DurationMs       int64   `json:"durationMs"`
 }
 
@@ -267,7 +266,6 @@ func toSession(row store.AgentSession, now time.Time) Session {
 		Status:           row.Status,
 		StartedAt:        formatTime(row.StartedAt),
 		EndedAt:          formatTimePtr(row.EndedAt),
-		TargetDurationMs: row.TargetDurationMs,
 		DurationMs:       sessionDuration(row, now),
 	}
 }

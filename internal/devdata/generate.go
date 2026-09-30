@@ -246,8 +246,8 @@ func pickDuration(rng *rand.Rand) time.Duration {
 }
 
 func buildStopped(rng *rand.Rand, spec projectSpec, proj domain.Project, start, end time.Time, activityIDs map[string]string, forcedTicket *string) (domain.Session, error) {
-	note, ticket, activity, target := sessionFields(rng, spec, activityIDs, forcedTicket)
-	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	note, ticket, activity := sessionFields(rng, spec, activityIDs, forcedTicket)
+	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, start)
 	if err != nil {
 		return domain.Session{}, err
 	}
@@ -280,8 +280,8 @@ func buildLive(rng *rand.Rand, now time.Time, specs []projectSpec, projects []do
 	}
 	spec := specs[idx]
 	proj := projects[idx]
-	note, ticket, activity, target := sessionFields(rng, spec, activityIDs, nil)
-	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, target, start)
+	note, ticket, activity := sessionFields(rng, spec, activityIDs, nil)
+	s, err := domain.StartSession(uuid.New().String(), proj.ID, note, ticket, activity, start)
 	if err != nil {
 		return domain.Session{}, false
 	}
@@ -302,7 +302,7 @@ func latestEnd(sessions []domain.Session) *time.Time {
 	return latest
 }
 
-func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]string, forcedTicket *string) (note string, ticket, activity *string, target *int64) {
+func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]string, forcedTicket *string) (note string, ticket, activity *string) {
 	if len(spec.notes) > 0 && rng.Float64() >= 0.04 {
 		note = spec.notes[rng.IntN(len(spec.notes))]
 	}
@@ -319,13 +319,5 @@ func sessionFields(rng *rand.Rand, spec projectSpec, activityIDs map[string]stri
 			activity = &id
 		}
 	}
-	switch {
-	case rng.Float64() < 0.10:
-		v := int64(25 * 60 * 1000)
-		target = &v
-	case rng.Float64() < 0.05:
-		v := int64(90 * 60 * 1000)
-		target = &v
-	}
-	return note, ticket, activity, target
+	return note, ticket, activity
 }

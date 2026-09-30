@@ -29,21 +29,20 @@ func (q *Queries) DeleteSession(ctx context.Context, arg DeleteSessionParams) er
 
 const getLiveSession = `-- name: GetLiveSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1 AND status = 'active'
 `
 
 type GetLiveSessionRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLiveSessionRow, error) {
@@ -58,14 +57,13 @@ func (q *Queries) GetLiveSession(ctx context.Context, userID uuid.UUID) (GetLive
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }
 
 const getSession = `-- name: GetSession :one
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1 AND id = $2
 `
@@ -76,15 +74,14 @@ type GetSessionParams struct {
 }
 
 type GetSessionRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSessionRow, error) {
@@ -99,7 +96,6 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }
@@ -107,38 +103,36 @@ func (q *Queries) GetSession(ctx context.Context, arg GetSessionParams) (GetSess
 const insertSession = `-- name: InsertSession :one
 INSERT INTO sessions (
     id, user_id, project_id, note, ticket_id, activity_type_id, status,
-    started_at, ended_at, target_duration_ms
+    started_at, ended_at
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7,
-    $8, $9, $10
+    $8, $9
 )
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms
+          started_at, ended_at
 `
 
 type InsertSessionParams struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 type InsertSessionRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (InsertSessionRow, error) {
@@ -152,7 +146,6 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
-		arg.TargetDurationMs,
 	)
 	var i InsertSessionRow
 	err := row.Scan(
@@ -164,14 +157,13 @@ func (q *Queries) InsertSession(ctx context.Context, arg InsertSessionParams) (I
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }
 
 const listSessions = `-- name: ListSessions :many
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1
   AND (
@@ -203,15 +195,14 @@ type ListSessionsParams struct {
 }
 
 type ListSessionsRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]ListSessionsRow, error) {
@@ -241,7 +232,6 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
-			&i.TargetDurationMs,
 		); err != nil {
 			return nil, err
 		}
@@ -258,7 +248,7 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 
 const listStoppedSessionsStartedBetween = `-- name: ListStoppedSessionsStartedBetween :many
 SELECT id, project_id, note, ticket_id, activity_type_id, status,
-       started_at, ended_at, target_duration_ms
+       started_at, ended_at
 FROM sessions
 WHERE user_id = $1
   AND status = 'stopped'
@@ -274,15 +264,14 @@ type ListStoppedSessionsStartedBetweenParams struct {
 }
 
 type ListStoppedSessionsStartedBetweenRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) ListStoppedSessionsStartedBetween(ctx context.Context, arg ListStoppedSessionsStartedBetweenParams) ([]ListStoppedSessionsStartedBetweenRow, error) {
@@ -303,7 +292,6 @@ func (q *Queries) ListStoppedSessionsStartedBetween(ctx context.Context, arg Lis
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
-			&i.TargetDurationMs,
 		); err != nil {
 			return nil, err
 		}
@@ -326,37 +314,34 @@ SET project_id = $3,
     activity_type_id = $6,
     status = $7,
     started_at = $8,
-    ended_at = $9,
-    target_duration_ms = $10
-WHERE user_id = $1 AND id = $2 AND status = $11
+    ended_at = $9
+WHERE user_id = $1 AND id = $2 AND status = $10
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms
+          started_at, ended_at
 `
 
 type TransitionSessionParams struct {
-	UserID           uuid.UUID
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
-	Status_2         string
+	UserID         uuid.UUID
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
+	Status_2       string
 }
 
 type TransitionSessionRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) TransitionSession(ctx context.Context, arg TransitionSessionParams) (TransitionSessionRow, error) {
@@ -370,7 +355,6 @@ func (q *Queries) TransitionSession(ctx context.Context, arg TransitionSessionPa
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
-		arg.TargetDurationMs,
 		arg.Status_2,
 	)
 	var i TransitionSessionRow
@@ -383,7 +367,6 @@ func (q *Queries) TransitionSession(ctx context.Context, arg TransitionSessionPa
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }
@@ -396,36 +379,33 @@ SET project_id = $3,
     activity_type_id = $6,
     status = $7,
     started_at = $8,
-    ended_at = $9,
-    target_duration_ms = $10
+    ended_at = $9
 WHERE user_id = $1 AND id = $2
 RETURNING id, project_id, note, ticket_id, activity_type_id, status,
-          started_at, ended_at, target_duration_ms
+          started_at, ended_at
 `
 
 type UpdateSessionParams struct {
-	UserID           uuid.UUID
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	UserID         uuid.UUID
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 type UpdateSessionRow struct {
-	ID               uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	ActivityTypeID   *uuid.UUID
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
+	ID             uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	ActivityTypeID *uuid.UUID
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
 }
 
 func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (UpdateSessionRow, error) {
@@ -439,7 +419,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		arg.Status,
 		arg.StartedAt,
 		arg.EndedAt,
-		arg.TargetDurationMs,
 	)
 	var i UpdateSessionRow
 	err := row.Scan(
@@ -451,7 +430,6 @@ func (q *Queries) UpdateSession(ctx context.Context, arg UpdateSessionParams) (U
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }

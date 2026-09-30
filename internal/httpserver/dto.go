@@ -26,15 +26,14 @@ type projectDTO struct {
 }
 
 type sessionDTO struct {
-	ID               string  `json:"id"`
-	ProjectID        string  `json:"projectId"`
-	Note             string  `json:"note"`
-	TicketID         *string `json:"ticketId"`
-	ActivityTypeID   *string `json:"activityTypeId"`
-	Status           string  `json:"status"`
-	StartedAt        string  `json:"startedAt"`
-	EndedAt          *string `json:"endedAt"`
-	TargetDurationMs *int64  `json:"targetDurationMs"`
+	ID             string  `json:"id"`
+	ProjectID      string  `json:"projectId"`
+	Note           string  `json:"note"`
+	TicketID       *string `json:"ticketId"`
+	ActivityTypeID *string `json:"activityTypeId"`
+	Status         string  `json:"status"`
+	StartedAt      string  `json:"startedAt"`
+	EndedAt        *string `json:"endedAt"`
 }
 
 type listDTO[T any] struct {
@@ -116,35 +115,31 @@ func (u *updateProjectBody) UnmarshalJSON(b []byte) error {
 }
 
 type startSessionBody struct {
-	ProjectID        string  `json:"projectId"`
-	Note             string  `json:"note"`
-	TicketID         *string `json:"ticketId"`
-	ActivityTypeID   *string `json:"activityTypeId"`
-	TargetDurationMs *int64  `json:"targetDurationMs"`
+	ProjectID      string  `json:"projectId"`
+	Note           string  `json:"note"`
+	TicketID       *string `json:"ticketId"`
+	ActivityTypeID *string `json:"activityTypeId"`
 }
 
 type createManualSessionBody struct {
-	ProjectID        string  `json:"projectId"`
-	Note             string  `json:"note"`
-	TicketID         *string `json:"ticketId"`
-	ActivityTypeID   *string `json:"activityTypeId"`
-	TargetDurationMs *int64  `json:"targetDurationMs"`
-	StartedAt        string  `json:"startedAt"`
-	EndedAt          string  `json:"endedAt"`
+	ProjectID      string  `json:"projectId"`
+	Note           string  `json:"note"`
+	TicketID       *string `json:"ticketId"`
+	ActivityTypeID *string `json:"activityTypeId"`
+	StartedAt      string  `json:"startedAt"`
+	EndedAt        string  `json:"endedAt"`
 }
 
 type updateSessionBody struct {
-	ProjectID        *string `json:"projectId"`
-	Note             *string `json:"note"`
-	TicketID         *string `json:"ticketId"`
-	TicketSet        bool    `json:"-"`
-	ActivityTypeID   *string `json:"activityTypeId"`
-	ActivityTypeSet  bool    `json:"-"`
-	StartedAt        *string `json:"startedAt"`
-	EndedAt          *string `json:"endedAt"`
-	EndedSet         bool    `json:"-"`
-	TargetDurationMs *int64  `json:"targetDurationMs"`
-	TargetSet        bool    `json:"-"`
+	ProjectID       *string `json:"projectId"`
+	Note            *string `json:"note"`
+	TicketID        *string `json:"ticketId"`
+	TicketSet       bool    `json:"-"`
+	ActivityTypeID  *string `json:"activityTypeId"`
+	ActivityTypeSet bool    `json:"-"`
+	StartedAt       *string `json:"startedAt"`
+	EndedAt         *string `json:"endedAt"`
+	EndedSet        bool    `json:"-"`
 }
 
 func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
@@ -154,7 +149,7 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 	}
 	for k := range raw {
 		switch k {
-		case "projectId", "note", "ticketId", "activityTypeId", "startedAt", "endedAt", "targetDurationMs":
+		case "projectId", "note", "ticketId", "activityTypeId", "startedAt", "endedAt":
 		case "status":
 			return errWritable("status is not writable; use stop.")
 		case "pausedAt":
@@ -222,16 +217,6 @@ func (u *updateSessionBody) UnmarshalJSON(b []byte) error {
 				return err
 			}
 			u.EndedAt = &s
-		}
-	}
-	if v, ok := raw["targetDurationMs"]; ok {
-		u.TargetSet = true
-		if string(v) != "null" {
-			var n int64
-			if err := json.Unmarshal(v, &n); err != nil {
-				return err
-			}
-			u.TargetDurationMs = &n
 		}
 	}
 	return nil
@@ -315,15 +300,14 @@ func toProjectDTO(p domain.Project) projectDTO {
 
 func toSessionDTO(s domain.Session) sessionDTO {
 	return sessionDTO{
-		ID:               s.ID,
-		ProjectID:        s.ProjectID,
-		Note:             s.Note,
-		TicketID:         s.TicketID,
-		ActivityTypeID:   s.ActivityTypeID,
-		Status:           s.Status,
-		StartedAt:        formatTime(s.StartedAt),
-		EndedAt:          formatTimePtr(s.EndedAt),
-		TargetDurationMs: s.TargetDurationMs,
+		ID:             s.ID,
+		ProjectID:      s.ProjectID,
+		Note:           s.Note,
+		TicketID:       s.TicketID,
+		ActivityTypeID: s.ActivityTypeID,
+		Status:         s.Status,
+		StartedAt:      formatTime(s.StartedAt),
+		EndedAt:        formatTimePtr(s.EndedAt),
 	}
 }
 

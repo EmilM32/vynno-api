@@ -76,6 +76,17 @@ Stored sessions are at most 7 days long. Clause 5 changes: **Stop** sets `endedA
 | Reject Stop after 7 days | A forgotten timer could not be stopped without first editing it; the client would need a new error flow. |
 | Allow any length on Stop | Breaks the 7-day bound that manual and PATCH writes already enforce; one row can skew every insight total. |
 
+## Amendment (2026-09-30): no per-session target
+
+The SPA dropped its per-session target (vynno EMI-147), so the API drops `targetDurationMs` (EMI-152). Clause 8's writable fields are `note`, `projectId`, `activityTypeId`, `ticketId`, `startedAt`, `endedAt`. `SessionDto` no longer carries the field, and a start, manual or PATCH body that still sends it is `400 invalid_body` (unknown field), like any other field that is not in the contract. The daily target in account prefs is unrelated and stays.
+
+Migration `00013_drop_session_target` drops `sessions.target_duration_ms`; its down migration restores the column empty.
+
+| Option | Why not |
+| --- | --- |
+| Return `targetDurationMs: null` and ignore it on writes for a release | Keeps a dead field on the wire and needs a third change to remove it. The only client is the SPA, which stopped reading and sending it first; a tab opened before that deploy needs a reload. |
+| Keep the column, drop only the wire field | Leaves data nothing reads; `tags` and pause were dropped the same way (migrations `00008`, `00010`). |
+
 ## Related
 
 - [../domain-model.md](../domain-model.md)

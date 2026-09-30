@@ -67,16 +67,15 @@ type Project struct {
 }
 
 type Session struct {
-	ID               uuid.UUID
-	UserID           uuid.UUID
-	ProjectID        uuid.UUID
-	Note             string
-	TicketID         sql.NullString
-	Status           string
-	StartedAt        time.Time
-	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
-	ActivityTypeID   *uuid.UUID
+	ID             uuid.UUID
+	UserID         uuid.UUID
+	ProjectID      uuid.UUID
+	Note           string
+	TicketID       sql.NullString
+	Status         string
+	StartedAt      time.Time
+	EndedAt        sql.NullTime
+	ActivityTypeID *uuid.UUID
 }
 
 type User struct {

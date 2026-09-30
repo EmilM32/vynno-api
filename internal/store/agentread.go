@@ -45,7 +45,6 @@ type AgentSession struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          *time.Time
-	TargetDurationMs *int64
 }
 
 func (p *Postgres) ListAgentProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {
@@ -98,7 +97,7 @@ func (p *Postgres) ListAgentSessions(ctx context.Context, userID uuid.UUID, f Ag
 	}
 	out := make([]AgentSession, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs))
+		out = append(out, agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt))
 	}
 	return out, nil
 }
@@ -111,7 +110,7 @@ func (p *Postgres) GetAgentLiveSession(ctx context.Context, userID uuid.UUID) (A
 		}
 		return AgentSession{}, false, err
 	}
-	return agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs), true, nil
+	return agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt), true, nil
 }
 
 func (p *Postgres) ListAgentSessionsInWindow(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]AgentSession, error) {
@@ -128,12 +127,12 @@ func (p *Postgres) ListAgentSessionsInWindow(ctx context.Context, userID uuid.UU
 	}
 	out := make([]AgentSession, 0, len(rows))
 	for _, r := range rows {
-		out = append(out, agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs))
+		out = append(out, agentSessionFrom(r.ID, r.ProjectID, r.ProjectName, r.Note, r.TicketID, r.ActivityTypeID, r.ActivityTypeName, r.Status, r.StartedAt, r.EndedAt))
 	}
 	return out, nil
 }
 
-func agentSessionFrom(id, projectID uuid.UUID, projectName, note string, ticket sql.NullString, activityID *uuid.UUID, activityName, status string, started time.Time, ended sql.NullTime, target sql.NullInt64) AgentSession {
+func agentSessionFrom(id, projectID uuid.UUID, projectName, note string, ticket sql.NullString, activityID *uuid.UUID, activityName, status string, started time.Time, ended sql.NullTime) AgentSession {
 	var activityTypeID *string
 	if activityID != nil {
 		s := activityID.String()
@@ -154,6 +153,5 @@ func agentSessionFrom(id, projectID uuid.UUID, projectName, note string, ticket 
 		Status:           status,
 		StartedAt:        started,
 		EndedAt:          nullTimePtr(ended),
-		TargetDurationMs: nullInt64Ptr(target),
 	}
 }
