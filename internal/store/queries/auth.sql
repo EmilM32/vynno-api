@@ -12,3 +12,6 @@ DELETE FROM auth_tokens WHERE token_hash = $1;
 
 -- name: DeleteAuthTokensByUser :exec
 DELETE FROM auth_tokens WHERE user_id = $1;
+
+-- name: DeleteOtherAuthTokens :exec
+DELETE FROM auth_tokens WHERE user_id = $1 AND token_hash <> $2;

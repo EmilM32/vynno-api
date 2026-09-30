@@ -17,7 +17,7 @@ Contract extensions are requested by frontend features ([open work](https://gith
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| AUTH-EXT | OAuth / passwordless / 2FA / change-email / logged-in change-password | Cookie session, register confirmation, and password reset already shipped. |
+| AUTH-EXT | OAuth / passwordless / 2FA | Cookie session, register confirmation, password reset, and signed-in password and email change already shipped. |
 | MULTI | Team workspaces | Contradicts [ADR-0006](./adr/0006-single-user-tenancy.md) until we supersede it. |
 | OPENAPI | Generated TypeScript / Valibot client | Spec + Swagger UI shipped ([ADR-0013](./adr/0013-openapi-swagger.md)). SPA already has Valibot schemas. |
 | WEBHOOK | Outbound webhooks | No product request. |

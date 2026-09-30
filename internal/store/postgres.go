@@ -216,6 +216,10 @@ func (p *Postgres) DeleteTokensByUser(ctx context.Context, userID uuid.UUID) err
 	return p.q.DeleteAuthTokensByUser(ctx, userID)
 }
 
+func (p *Postgres) DeleteOtherTokens(ctx context.Context, userID uuid.UUID, keepHash string) error {
+	return p.q.DeleteOtherAuthTokens(ctx, sqlcgen.DeleteOtherAuthTokensParams{UserID: userID, TokenHash: keepHash})
+}
+
 func (p *Postgres) GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error) {
 	row, err := p.q.GetEmailChallenge(ctx, sqlcgen.GetEmailChallengeParams{Email: email, Purpose: purpose})
 	if err != nil {
@@ -234,6 +238,7 @@ func (p *Postgres) UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) 
 		SentAt:          ch.SentAt,
 		SendCount:       int32(ch.SendCount),
 		SendWindowStart: ch.SendWindowStart,
+		UserID:          uuid.NullUUID{UUID: ch.UserID, Valid: ch.UserID != uuid.Nil},
 	})
 }
 
@@ -259,6 +264,7 @@ func challengeFromRow(row sqlcgen.EmailChallenge) EmailChallenge {
 		SentAt:          row.SentAt,
 		SendCount:       int(row.SendCount),
 		SendWindowStart: row.SendWindowStart,
+		UserID:          row.UserID.UUID,
 	}
 }
 

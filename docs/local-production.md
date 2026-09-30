@@ -86,7 +86,7 @@ Goose runs at process start against **that process’s** database only. `scripts
 
 ## Mail
 
-Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation and password reset share it.
+Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation, password reset, email change, and the password/email changed notices share it.
 
 | `MAIL_MODE` | Who | What happens |
 | --- | --- | --- |
@@ -105,6 +105,8 @@ Client IP for the per-IP caps is `X-Forwarded-For` only when the TCP peer is in 
 **First daily account.** Production `vynno` has no bootstrap user. The SPA register tab calls `POST /v1/auth/register/code`, you read the 6-digit code from Mailpit (or a real inbox), then `POST /v1/auth/register`. If SMTP is down, send-code returns a generic 500; existing accounts still log in. A down Mailpit blocks **new** production users, not login.
 
 **Password reset.** Login → Forgot password? → same inbox → new password. Reset revokes every session and does not set a cookie; sign in afterwards. Unknown emails still get `204` and no mail.
+
+**Password and email change.** Settings → Security, signed in. A password change keeps this browser signed in and signs out the others. An email change sends a code to the new address (same inbox locally) and a notice to the old one.
 
 **Do not put codes on disk in `smtp` mode.** Request logs are method/path/status only. Successful SMTP logs `mail sent to=…` — not the body. `log` mode is the exception (playground). JSON never includes the code.
 

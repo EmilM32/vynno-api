@@ -305,6 +305,17 @@ func (m *Memory) DeleteTokensByUser(_ context.Context, userID uuid.UUID) error {
 	return nil
 }
 
+func (m *Memory) DeleteOtherTokens(_ context.Context, userID uuid.UUID, keepHash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for hash, tok := range m.tokens {
+		if tok.UserID == userID && hash != keepHash {
+			delete(m.tokens, hash)
+		}
+	}
+	return nil
+}
+
 func (m *Memory) GetEmailChallenge(_ context.Context, email, purpose string) (EmailChallenge, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

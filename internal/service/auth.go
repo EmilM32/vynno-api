@@ -106,7 +106,7 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email, clientIP strin
 	if err := s.allowSend(clientIP, now); err != nil {
 		return err
 	}
-	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposeRegister)
+	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposeRegister, uuid.Nil)
 	if err != nil {
 		return err
 	}
@@ -134,7 +134,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, clientIP stri
 		}
 		// Unknown addresses do not send mail and do not consume the client-IP cap.
 		// The per-email challenge is still issued so cooldown matches a real account.
-		_, err = s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset)
+		_, err = s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset, uuid.Nil)
 		return err
 	}
 	now := s.Now()
@@ -144,7 +144,7 @@ func (s *Service) RequestPasswordReset(ctx context.Context, email, clientIP stri
 	if err := s.allowSend(clientIP, now); err != nil {
 		return err
 	}
-	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset)
+	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset, uuid.Nil)
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,9 @@ func (s *Service) recordLoginFailure(email, clientIP string, now time.Time) {
 	s.Limiter.Hit(loginIPKey(clientIP), now, s.Limits.LoginWindow)
 }
 
-func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string) (string, error) {
+// issueOTPChallenge stores a fresh code for email+purpose. userID binds a change_email
+// challenge to the account that asked; register and reset pass uuid.Nil.
+func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string, userID uuid.UUID) (string, error) {
 	now := s.Now()
 	ch, err := s.Store.GetEmailChallenge(ctx, email, purpose)
 	if err != nil {
@@ -240,6 +242,7 @@ func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string) 
 	ch.SentAt = now
 	ch.SendCount = sendCount + 1
 	ch.SendWindowStart = windowStart
+	ch.UserID = userID
 	if err := s.Store.UpsertEmailChallenge(ctx, ch); err != nil {
 		return "", err
 	}
@@ -276,7 +279,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 		return AuthResult{}, domain.ErrEmailInUse()
 	}
 
-	if err := s.consumeEmailChallenge(ctx, email, domain.PurposeRegister, code); err != nil {
+	if err := s.consumeEmailChallenge(ctx, email, domain.PurposeRegister, code, uuid.Nil); err != nil {
 		return AuthResult{}, err
 	}
 
@@ -323,7 +326,7 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	if err != nil {
 		return err
 	}
-	if err := s.consumeEmailChallenge(ctx, email, domain.PurposePasswordReset, code); err != nil {
+	if err := s.consumeEmailChallenge(ctx, email, domain.PurposePasswordReset, code, uuid.Nil); err != nil {
 		return err
 	}
 	acc, err := s.Store.GetAccountByEmail(ctx, email)
@@ -344,7 +347,9 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	return s.Store.DeleteTokensByUser(ctx, acc.ID)
 }
 
-func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, code string) error {
+// consumeEmailChallenge spends a matching code. A challenge bound to another account
+// reads as no challenge: it is not this caller's to guess, so it does not count a guess.
+func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, code string, userID uuid.UUID) error {
 	ch, err := s.Store.GetEmailChallenge(ctx, email, purpose)
 	if err != nil {
 		var de *domain.Error
@@ -352,6 +357,9 @@ func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, cod
 			return domain.ErrInvalidCode()
 		}
 		return err
+	}
+	if ch.UserID != userID {
+		return domain.ErrInvalidCode()
 	}
 	if domain.OTPGuessesSpent(ch.AttemptCount) {
 		_ = s.Store.DeleteEmailChallenge(ctx, email, purpose)

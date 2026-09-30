@@ -3,6 +3,7 @@
 **Status:** Accepted  
 **Date:** 2026-08-14  
 **Accepted:** 2026-08-17  
+**Amended:** 2026-09-30 (signed-in password and email change)  
 **Deciders:** Project owner
 
 ## Context
@@ -31,7 +32,7 @@ This ADR decides the mechanism. Login/register routes are in [../api-contract.md
 | --- | --- |
 | Mechanism | HttpOnly cookie `vynno_session` (opaque token) |
 | Credential fields | `email`, `password`, optional `rememberMe` |
-| New routes | `POST /v1/auth/register`, `POST /v1/auth/register/code`, `POST /v1/auth/login`, `POST /v1/auth/logout`, `POST /v1/auth/password/forgot`, `POST /v1/auth/password/reset` |
+| New routes | `POST /v1/auth/register`, `POST /v1/auth/register/code`, `POST /v1/auth/login`, `POST /v1/auth/logout`, `POST /v1/auth/password/forgot`, `POST /v1/auth/password/reset`, and signed in: `POST /v1/auth/password/change`, `POST /v1/auth/email/code`, `POST /v1/auth/email/change` |
 | CORS / cookie flags | `SPA_ORIGIN` allowlist, credentials on, flags in §9–10 |
 | What is public | Health + login + register + register code + password forgot/reset + `GET /v1/avatars/:id`. Everything else under `/v1` is authenticated. |
 
@@ -96,6 +97,21 @@ Outbound mail: [0015-outbound-email.md](./0015-outbound-email.md).
 4. **Existing accounts are not re-verified.** Operator seed/reset still inserts users without mail. Email remains not writable after register. Magic links, OAuth, 2FA, and change-email stay out.
 
 Public-route list and the routes table in the Decision section are updated in place so a reader of the current decision sees the live set. History of the previous public-route list is this amendment.
+
+## Amendment (2026-09-30) — signed-in password and email change
+
+Backlog AUTH-EXT asked for a logged-in password change and a change-email flow. The forgot-password flow was the only way to change a password, and the email was fixed at register.
+
+1. **`POST /v1/auth/password/change`** `{ currentPassword, newPassword }` → `204`. The current password is re-checked. Wrong is `401 invalid_credentials` (not `unauthorized`, so the SPA does not sign the user out).
+2. **Email change is confirm-before-change**, like register. `POST /v1/auth/email/code` `{ email, password }` checks the password and mails a code to the new address. `POST /v1/auth/email/change` `{ email, code }` switches the email and returns `ProfileDto`. Taken address is `409 email_in_use` on either step.
+3. **The password is required to start an email change.** A stolen session cookie alone cannot move the account to an attacker's mailbox and then reset the password there.
+4. **Password checks share the login caps.** A wrong current password counts as a login failure for that account's email and the client IP, so a signed-in session is not a way around the 10-per-15-minute cap. Code sends share the per-IP send cap.
+5. **Change-email codes are bound to the account.** `email_challenges` gains `user_id`. The row is keyed by the new address and purpose `change_email`; another account presenting the code gets `invalid_code` and does not spend a guess.
+6. **Other sessions are signed out.** Both changes keep the caller's token and delete every other `auth_tokens` row for the user. Password reset (not signed in) still deletes all of them.
+7. **Notices.** A password change mails the account's address. An email change mails the **old** address, naming the new one. These are best effort: the change has happened, so a mail failure is logged, not returned.
+8. **Still out:** OAuth, passwordless, and 2FA stay in the backlog.
+
+Email is no longer "not writable after register". It is not writable on `PATCH /me`; this flow is the only way to change it.
 
 ## Related
 

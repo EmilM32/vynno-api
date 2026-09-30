@@ -158,6 +158,32 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Empty:       true,
 		ClearCookie: true,
 	})
+	s.route(authed, http.MethodPost, "/auth/password/change", s.changePassword, op{
+		Summary:     "Change password",
+		Description: "Signed in. Checks currentPassword, sets newPassword, and signs out every other session. Wrong current password counts toward the login failure caps. 204 empty.",
+		Tags:        []string{"Auth"},
+		Body:        changePasswordBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeInvalidCredentials, domain.CodeRateLimited},
+	})
+	s.route(authed, http.MethodPost, "/auth/email/code", s.requestEmailChange, op{
+		Summary:     "Request email change code",
+		Description: "Signed in. Checks password, then mails a 6-digit code to the new address. 204 empty. The email does not change yet.",
+		Tags:        []string{"Auth"},
+		Body:        emailChangeCodeBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeInvalidCredentials, domain.CodeEmailInUse, domain.CodeRateLimited},
+	})
+	s.route(authed, http.MethodPost, "/auth/email/change", s.changeEmail, op{
+		Summary:     "Change email",
+		Description: "Signed in. Requires the code sent to the new address. Switches the sign-in email, signs out every other session, and notifies the old address.",
+		Tags:        []string{"Auth"},
+		Body:        changeEmailBody{},
+		Success:     profileDTO{},
+		Errors:      []string{domain.CodeInvalidCode, domain.CodeEmailInUse, domain.CodeRateLimited},
+	})
 	s.route(authed, http.MethodGet, "/me", s.getMe, op{
 		Summary: "Current profile",
 		Tags:    []string{"Profile"},

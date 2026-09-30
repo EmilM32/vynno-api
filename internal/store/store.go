@@ -23,7 +23,9 @@ type Token struct {
 	ExpiresAt time.Time
 }
 
-// EmailChallenge is a one-time code for register or password reset. No user FK.
+// EmailChallenge is a one-time code. Register and password reset are keyed by
+// email alone (UserID is uuid.Nil). change_email is keyed by the new address and
+// bound to the account that asked for it.
 type EmailChallenge struct {
 	Email           string
 	Purpose         string
@@ -33,6 +35,7 @@ type EmailChallenge struct {
 	SentAt          time.Time
 	SendCount       int
 	SendWindowStart time.Time
+	UserID          uuid.UUID
 }
 
 // Store is the persistence port. Postgres is the system of record; Memory is a test double.
@@ -59,6 +62,8 @@ type Store interface {
 	GetTokenByHash(ctx context.Context, hash string) (Token, error)
 	DeleteTokenByHash(ctx context.Context, hash string) error
 	DeleteTokensByUser(ctx context.Context, userID uuid.UUID) error
+	// DeleteOtherTokens signs out every session of userID except the one with keepHash.
+	DeleteOtherTokens(ctx context.Context, userID uuid.UUID, keepHash string) error
 
 	GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error)
 	UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) error

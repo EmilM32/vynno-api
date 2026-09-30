@@ -45,6 +45,7 @@ type EmailChallenge struct {
 	SentAt          time.Time
 	SendCount       int32
 	SendWindowStart time.Time
+	UserID          uuid.NullUUID
 }
 
 type Profile struct {
