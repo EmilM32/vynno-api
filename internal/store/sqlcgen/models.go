@@ -83,3 +83,10 @@ type User struct {
 	Email        string
 	PasswordHash sql.NullString
 }
+
+type UserPref struct {
+	UserID           uuid.UUID
+	DailyTargetMs    sql.NullInt64
+	DefaultProjectID uuid.NullUUID
+	UpdatedAt        time.Time
+}

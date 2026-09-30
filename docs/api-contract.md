@@ -2,8 +2,8 @@
 
 **Status:** Living — canonical copy. The frontend `docs/api-contract.md` is generated from this file by `scripts/sync-contract`.  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-09-28  
-**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md))
+**Last updated:** 2026-09-30  
+**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md)); account preferences ([ADR-0017](./adr/0017-account-prefs.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -205,6 +205,33 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 
 `GET /avatars/:id` is public (no cookie). Success is the raw bytes with `Content-Type` from the stored row and `Cache-Control: public, max-age=31536000, immutable`. Unknown id → `404` `{ "error": { "code": "not_found", "message": "…" } }`.
 
+### Preferences
+
+Account-wide settings that follow the user across devices. [ADR-0017](./adr/0017-account-prefs.md). Theme and locale stay device-local.
+
+| Method | Path | Auth | Body | Success | Errors |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/me/prefs` | yes | — | `PrefsDto` | `unauthorized` |
+| PATCH | `/me/prefs` | yes | `UpdatePrefsDto` | `PrefsDto` `200` | `unauthorized`, `invalid_json`, `invalid_body`, `not_found` |
+
+`PrefsDto`:
+
+```json
+{ "dailyTargetMs": 28800000, "defaultProjectId": "proj-auth" }
+```
+
+Both fields are JSON `null` when unset. A user who never saved prefs gets both as `null`; the SPA applies its defaults (8 hours, first active project).
+
+`UpdatePrefsDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`: omit leaves a field unchanged, `null` clears it.
+
+```json
+{ "dailyTargetMs": 21600000, "defaultProjectId": null }
+```
+
+- `dailyTargetMs`: integer from 60000 through 86400000 (one minute to one day). Anything else → `invalid_body`.
+- `defaultProjectId`: a project this user owns. Archived is allowed. Unknown, malformed, or another user's id → `404 not_found`. Hard-deleting that project clears the pref.
+- Any other field → `invalid_body`.
+
 ### Projects
 
 | Method | Path | Body | Success | Typical errors |
@@ -398,10 +425,8 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 | Area | Client today |
 | --- | --- |
-| Prefs (daily target, default project) | Device cookie `vynno_prefs` (not an API resource) |
 | Theme / locale | Device-local |
 | Insights / dashboard totals | Computed on the client from loaded sessions |
-| Session target duration UI | Field exists on `StartSessionDto`; UI is P2 |
 
 ---
 

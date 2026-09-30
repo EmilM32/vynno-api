@@ -44,6 +44,11 @@ type Store interface {
 	DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error
 	GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, error)
 
+	// GetPrefs returns unset prefs (all nil) when the user never saved any.
+	GetPrefs(ctx context.Context, userID uuid.UUID) (domain.Prefs, error)
+	// SavePrefs replaces every pref. An unknown default project is not_found.
+	SavePrefs(ctx context.Context, userID uuid.UUID, p domain.Prefs) error
+
 	GetAccountByEmail(ctx context.Context, email string) (Account, error)
 	GetAccountByID(ctx context.Context, id uuid.UUID) (Account, error)
 	CreateAccount(ctx context.Context, a Account) error

@@ -1,6 +1,6 @@
 # Backlog — Vynno API
 
-**Last updated:** 2026-09-28  
+**Last updated:** 2026-09-30  
 **Context:** Work we are deliberately **not** doing now. Do not pull these in without a contract amendment and a roadmap change.
 
 Contract extensions are requested by frontend features ([open work](https://github.com/EmilM32/vynno/blob/main/docs/open.md)), but the amendment is made here in [api-contract.md](./api-contract.md) first and synced to the frontend. They imply API work only when the SPA is ready to call new endpoints.
@@ -11,9 +11,7 @@ Contract extensions are requested by frontend features ([open work](https://gith
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| PREFS | Persist daily target and default project | Client `prefsStore` is in-memory. New resource. |
 | INS | Insights / dashboard aggregate endpoints | Client computes these from sessions. |
-| TMR-9 | Session target duration UI | Field already exists on `StartSessionDto`; no API change until the UI ships. |
 
 ## Backend-only later
 

@@ -113,6 +113,44 @@ func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, 
 	}, nil
 }
 
+func (p *Postgres) GetPrefs(ctx context.Context, userID uuid.UUID) (domain.Prefs, error) {
+	row, err := p.q.GetPrefs(ctx, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Prefs{}, nil
+	}
+	if err != nil {
+		return domain.Prefs{}, err
+	}
+	out := domain.Prefs{DailyTargetMs: nullInt64Ptr(row.DailyTargetMs)}
+	if row.DefaultProjectID.Valid {
+		id := row.DefaultProjectID.UUID.String()
+		out.DefaultProjectID = &id
+	}
+	return out, nil
+}
+
+func (p *Postgres) SavePrefs(ctx context.Context, userID uuid.UUID, prefs domain.Prefs) error {
+	project := uuid.NullUUID{}
+	if prefs.DefaultProjectID != nil {
+		id, err := uuid.Parse(*prefs.DefaultProjectID)
+		if err != nil {
+			return domain.ErrNotFound()
+		}
+		project = uuid.NullUUID{UUID: id, Valid: true}
+	}
+	err := p.q.UpsertPrefs(ctx, sqlcgen.UpsertPrefsParams{
+		UserID:           userID,
+		DailyTargetMs:    ptrNullInt64(prefs.DailyTargetMs),
+		DefaultProjectID: project,
+	})
+	// A project hard-deleted after the service checked it.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return domain.ErrNotFound()
+	}
+	return err
+}
+
 func (p *Postgres) GetAccountByEmail(ctx context.Context, email string) (Account, error) {
 	row, err := p.q.GetUserByEmail(ctx, email)
 	if err != nil {

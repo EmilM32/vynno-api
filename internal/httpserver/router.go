@@ -183,6 +183,20 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Tags:    []string{"Profile"},
 		Success: profileDTO{},
 	})
+	s.route(authed, http.MethodGet, "/me/prefs", s.getPrefs, op{
+		Summary:     "Account preferences",
+		Description: "Daily target and default project. Unset values are null; the SPA applies its own defaults.",
+		Tags:        []string{"Profile"},
+		Success:     prefsDTO{},
+	})
+	s.route(authed, http.MethodPatch, "/me/prefs", s.patchPrefs, op{
+		Summary:     "Update account preferences",
+		Description: "All fields optional. Omit = leave unchanged. null clears. dailyTargetMs is 60000 to 86400000. defaultProjectId must be a project you own (archived is allowed).",
+		Tags:        []string{"Profile"},
+		Body:        updatePrefsBody{},
+		Success:     prefsDTO{},
+		Errors:      []string{domain.CodeNotFound},
+	})
 
 	s.route(authed, http.MethodGet, "/projects", s.listProjects, op{
 		Summary:     "List projects",

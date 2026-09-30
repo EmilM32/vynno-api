@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Accepted  
-**Last updated:** 2026-09-10
+**Last updated:** 2026-09-30
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -20,7 +20,8 @@ If this file and the live API disagree, treat the documented rules here plus [ap
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
 | **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier. |
-| **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
+| **Preferences** | Account-wide settings: daily target and default project. Follow the user across devices. Theme and locale stay on the device. |
+| **User** | Login account. Owns a profile, preferences, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active`. |
 
 v1 does **not** have a Task table. “Recent tasks” on the client are reconstructed from recent sessions.
@@ -37,6 +38,10 @@ User* (many personal accounts; isolated; no teams)
  │    ├── displayName
  │    ├── email
  │    └── avatarUrl?
+ │
+ ├── Prefs
+ │    ├── dailyTargetMs?
+ │    └── defaultProjectId?
  │
  ├── Project*
  │    ├── id
@@ -142,7 +147,7 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 | `status` | `active` \| `stopped` | |
 | `startedAt` | ISO-8601 | UTC |
 | `endedAt` | ISO-8601? | Set on stop |
-| `targetDurationMs` | number? | Optional session goal; UI is P2 |
+| `targetDurationMs` | number? | Optional session goal. The SPA sets it from the Timer target control. |
 
 ### 5.3 ActivityType
 
@@ -184,7 +189,23 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 | **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
 | **Avatar GET** | `GET /avatars/:id` is public. Unknown id is `404 not_found`. Bytes are not on the profile row. |
 
-### 5.5 Aggregates
+### 5.5 Preferences
+
+Full decision: [ADR-0017](./adr/0017-account-prefs.md).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `dailyTargetMs` | number? | 60000–86400000. `null` = unset; the SPA defaults to 8 hours. |
+| `defaultProjectId` | string? | A project this user owns. Archived allowed. `null` = unset. |
+
+| Rule | Description |
+| --- | --- |
+| **No row** | A user who never saved prefs reads both fields as `null`. |
+| **Patch** | Omit leaves a field unchanged; `null` clears it. Unknown fields are `invalid_body`. |
+| **Default project** | Unknown or other-user id is `404 not_found`. Hard-deleting the project clears the pref. Archiving does not. |
+| **Device-local** | Theme and locale are not preferences on the server. |
+
+### 5.6 Aggregates
 
 **Not stored and not served in v1.** The client computes today/week totals, insights KPIs, and charts from loaded `GET /sessions` pages. Do not add aggregate endpoints without a contract amendment.
 

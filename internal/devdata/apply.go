@@ -14,6 +14,7 @@ const wipeSQL = `
 TRUNCATE TABLE
 	auth_tokens,
 	avatars,
+	user_prefs,
 	sessions,
 	activity_types,
 	projects,

@@ -22,6 +22,7 @@ type memAccount struct {
 	email         string
 	passwordHash  string
 	profile       domain.Profile
+	prefs         domain.Prefs
 	projects      map[uuid.UUID]domain.Project
 	activityTypes map[uuid.UUID]domain.ActivityType
 	sessions      map[uuid.UUID]domain.Session
@@ -165,6 +166,36 @@ func (m *Memory) GetAvatar(_ context.Context, id uuid.UUID) (domain.Avatar, erro
 		ContentType: row.contentType,
 		Bytes:       append([]byte(nil), row.bytes...),
 	}, nil
+}
+
+func (m *Memory) GetPrefs(_ context.Context, userID uuid.UUID) (domain.Prefs, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Prefs{}, domain.ErrNotFound()
+	}
+	return clonePrefs(a.prefs), nil
+}
+
+func (m *Memory) SavePrefs(_ context.Context, userID uuid.UUID, p domain.Prefs) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	if p.DefaultProjectID != nil {
+		id, err := uuid.Parse(*p.DefaultProjectID)
+		if err != nil {
+			return domain.ErrNotFound()
+		}
+		if _, ok := a.projects[id]; !ok {
+			return domain.ErrNotFound()
+		}
+	}
+	a.prefs = clonePrefs(p)
+	return nil
 }
 
 func (m *Memory) GetAccountByEmail(_ context.Context, email string) (Account, error) {
@@ -393,6 +424,9 @@ func (m *Memory) DeleteProject(_ context.Context, userID, id uuid.UUID) error {
 		return domain.ErrNotFound()
 	}
 	delete(a.projects, id)
+	if a.prefs.DefaultProjectID != nil && *a.prefs.DefaultProjectID == id.String() {
+		a.prefs.DefaultProjectID = nil
+	}
 	return nil
 }
 
@@ -767,6 +801,19 @@ func cloneProject(p domain.Project) domain.Project {
 	if p.ProgressPercent != nil {
 		n := *p.ProgressPercent
 		out.ProgressPercent = &n
+	}
+	return out
+}
+
+func clonePrefs(p domain.Prefs) domain.Prefs {
+	out := domain.Prefs{}
+	if p.DailyTargetMs != nil {
+		v := *p.DailyTargetMs
+		out.DailyTargetMs = &v
+	}
+	if p.DefaultProjectID != nil {
+		v := *p.DefaultProjectID
+		out.DefaultProjectID = &v
 	}
 	return out
 }
