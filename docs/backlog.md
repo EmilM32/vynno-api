@@ -11,7 +11,7 @@ Contract extensions are requested by frontend features ([open work](https://gith
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| INS | Insights / dashboard aggregate endpoints | Client computes these from sessions. |
+| LOGS-RANGE | `from` / `to` filter on `GET /sessions` | Logs date filters still page back from the newest session. Charts use `/stats/days`. |
 
 ## Backend-only later
 

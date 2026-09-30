@@ -96,6 +96,7 @@ func marshalOpenAPI(ops []documentedOp) ([]byte, error) {
 			{Name: "Projects", Description: "Projects the signed-in user owns."},
 			{Name: "Activity types", Description: "Per-user activity type dictionary."},
 			{Name: "Sessions", Description: "Focus sessions (timer)."},
+			{Name: "Stats", Description: "Totals computed from stopped sessions."},
 		},
 		Paths: paths,
 		Components: oaComponents{

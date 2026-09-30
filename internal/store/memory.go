@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/google/uuid"
@@ -647,6 +648,29 @@ func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []st
 		return out[i].StartedAt.After(out[j].StartedAt)
 	})
 	return paginateSessions(out, limit, cursor)
+}
+
+func (m *Memory) ListStoppedSessionsStartedBetween(_ context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return nil, domain.ErrNotFound()
+	}
+	out := []domain.Session{}
+	for _, s := range a.sessions {
+		if s.Status != domain.StatusStopped || s.StartedAt.Before(from) || !s.StartedAt.Before(to) {
+			continue
+		}
+		out = append(out, cloneSession(s))
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StartedAt.Equal(out[j].StartedAt) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].StartedAt.Before(out[j].StartedAt)
+	})
+	return out, nil
 }
 
 func (m *Memory) GetSession(_ context.Context, userID, id uuid.UUID) (domain.Session, error) {

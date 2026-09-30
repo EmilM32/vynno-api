@@ -256,6 +256,68 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 	return items, nil
 }
 
+const listStoppedSessionsStartedBetween = `-- name: ListStoppedSessionsStartedBetween :many
+SELECT id, project_id, note, ticket_id, activity_type_id, status,
+       started_at, ended_at, target_duration_ms
+FROM sessions
+WHERE user_id = $1
+  AND status = 'stopped'
+  AND started_at >= $2::timestamptz
+  AND started_at < $3::timestamptz
+ORDER BY started_at, id
+`
+
+type ListStoppedSessionsStartedBetweenParams struct {
+	UserID uuid.UUID
+	FromAt time.Time
+	ToAt   time.Time
+}
+
+type ListStoppedSessionsStartedBetweenRow struct {
+	ID               uuid.UUID
+	ProjectID        uuid.UUID
+	Note             string
+	TicketID         sql.NullString
+	ActivityTypeID   *uuid.UUID
+	Status           string
+	StartedAt        time.Time
+	EndedAt          sql.NullTime
+	TargetDurationMs sql.NullInt64
+}
+
+func (q *Queries) ListStoppedSessionsStartedBetween(ctx context.Context, arg ListStoppedSessionsStartedBetweenParams) ([]ListStoppedSessionsStartedBetweenRow, error) {
+	rows, err := q.db.QueryContext(ctx, listStoppedSessionsStartedBetween, arg.UserID, arg.FromAt, arg.ToAt)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListStoppedSessionsStartedBetweenRow
+	for rows.Next() {
+		var i ListStoppedSessionsStartedBetweenRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ProjectID,
+			&i.Note,
+			&i.TicketID,
+			&i.ActivityTypeID,
+			&i.Status,
+			&i.StartedAt,
+			&i.EndedAt,
+			&i.TargetDurationMs,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const transitionSession = `-- name: TransitionSession :one
 UPDATE sessions
 SET project_id = $3,

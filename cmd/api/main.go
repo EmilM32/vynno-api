@@ -10,6 +10,9 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
+	// GET /stats/days resolves IANA zones; embed the database so the binary does
+	// not depend on the host's zoneinfo.
+	_ "time/tzdata"
 
 	"github.com/EmilM32/vynno-api/internal/config"
 	"github.com/EmilM32/vynno-api/internal/httpserver"

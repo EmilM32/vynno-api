@@ -3,7 +3,7 @@
 **Status:** Living — canonical copy. The frontend `docs/api-contract.md` is generated from this file by `scripts/sync-contract`.  
 **Snapshot date:** 2026-08-14  
 **Last updated:** 2026-09-30  
-**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md)); account preferences ([ADR-0017](./adr/0017-account-prefs.md)); signed-in password and email change ([ADR-0008](./adr/0008-authentication.md) amendment 2026-09-30)
+**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md)); account preferences ([ADR-0017](./adr/0017-account-prefs.md)); signed-in password and email change ([ADR-0008](./adr/0008-authentication.md) amendment 2026-09-30); day totals ([ADR-0018](./adr/0018-day-totals.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -37,7 +37,7 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | Code | Status | When | Frontend UI string |
 | --- | --- | --- | --- |
 | `not_found` | 404 | Unknown project, session, or activity type id | `error_not_found` |
-| `invalid_query` | 400 | Bad `status` / `limit` / `cursor` | fallback |
+| `invalid_query` | 400 | Bad `status` / `limit` / `cursor`, or bad `from` / `to` / `timeZone` on `/stats/days` | fallback |
 | `invalid_json` | 400 | Request body is not JSON | `error_invalid_response` |
 | `invalid_body` | 400 | Write body failed the request schema / validation | fallback (`error_failed_*`) |
 | `invalid_response` | 502 | Client-only: body did not match the response schema | `error_invalid_response` |
@@ -426,6 +426,32 @@ Session list body:
 
 `projectId`, `startedAt`, and `endedAt` are required. Same note / activity / target rules as start. `endedAt` must be after `startedAt`.
 
+### Stats
+
+Tracked time summed on the server, so charts over a long or past range do not page through `GET /sessions`. [ADR-0018](./adr/0018-day-totals.md).
+
+| Method | Path | Body | Success | Typical errors |
+| --- | --- | --- | --- | --- |
+| GET | `/stats/days?from=YYYY-MM-DD&to=YYYY-MM-DD&timeZone=Area/City` | — | `{ items: DayTotalDto[] }` | `invalid_query` |
+
+`DayTotalDto`:
+
+```json
+{
+	"date": "2026-09-28",
+	"projectId": "proj-auth",
+	"activityTypeId": null,
+	"durationMs": 5400000,
+	"sessionCount": 2
+}
+```
+
+- One row per `date` + `projectId` + `activityTypeId` with tracked time. Days with nothing are absent. Sorted by `date`, then `projectId`, then `activityTypeId` (`null` first).
+- Only **stopped** sessions. The live session is not included; the client adds its elapsed time.
+- A session belongs to the local date of its `startedAt` in `timeZone`, and its whole duration counts there, even if it runs past midnight.
+- `durationMs` is the sum of `endedAt − startedAt` with both instants at millisecond precision (as in `SessionDto`).
+- `from` and `to` are required, inclusive, and at most 400 days apart (`to` ≥ `from`). `timeZone` is a required IANA name such as `Europe/Warsaw` or `UTC`. Anything else is `400 invalid_query`.
+
 ---
 
 ## Domain vs DTO
@@ -441,7 +467,7 @@ Not in this contract. Do not invent them to “complete” the API without a con
 | Area | Client today |
 | --- | --- |
 | Theme / locale | Device-local |
-| Insights / dashboard totals | Computed on the client from loaded sessions |
+| Percentages, labels, chart series | Computed on the client from `/stats/days` rows or loaded sessions |
 
 ---
 

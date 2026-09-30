@@ -72,3 +72,13 @@ RETURNING id, project_id, note, ticket_id, activity_type_id, status,
 
 -- name: DeleteSession :exec
 DELETE FROM sessions WHERE user_id = $1 AND id = $2;
+
+-- name: ListStoppedSessionsStartedBetween :many
+SELECT id, project_id, note, ticket_id, activity_type_id, status,
+       started_at, ended_at, target_duration_ms
+FROM sessions
+WHERE user_id = $1
+  AND status = 'stopped'
+  AND started_at >= sqlc.arg(from_at)::timestamptz
+  AND started_at < sqlc.arg(to_at)::timestamptz
+ORDER BY started_at, id;

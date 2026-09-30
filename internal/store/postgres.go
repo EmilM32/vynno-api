@@ -470,6 +470,20 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 	return paginateSessions(out, limit, "")
 }
 
+func (p *Postgres) ListStoppedSessionsStartedBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error) {
+	rows, err := p.q.ListStoppedSessionsStartedBetween(ctx, sqlcgen.ListStoppedSessionsStartedBetweenParams{
+		UserID: userID, FromAt: from, ToAt: to,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Session, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs))
+	}
+	return out, nil
+}
+
 func (p *Postgres) GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error) {
 	row, err := p.q.GetSession(ctx, sqlcgen.GetSessionParams{UserID: userID, ID: id})
 	if err != nil {

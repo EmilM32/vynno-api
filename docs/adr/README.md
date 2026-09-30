@@ -23,6 +23,7 @@ Inherited decisions cite the frontend ADR they came from. Numbers in this folder
 | [0015](./0015-outbound-email.md) | Outbound email (SMTP + Mailer port) | Accepted |
 | [0016](./0016-readonly-mcp.md) | Read-only MCP for one account | Accepted |
 | [0017](./0017-account-prefs.md) | Account preferences | Accepted |
+| [0018](./0018-day-totals.md) | Day totals endpoint | Accepted |
 
 ## Format
 

@@ -386,6 +386,19 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
 	})
 
+	s.route(authed, http.MethodGet, "/stats/days", s.listDayTotals, op{
+		Summary:     "Tracked time per day",
+		Description: "Stopped sessions summed by the local date of startedAt in timeZone, then project, then activity type. Inclusive civil dates, at most 400 days. The live session is not included.",
+		Tags:        []string{"Stats"},
+		Success:     listDTO[dayTotalDTO]{},
+		Query: []queryParam{
+			{Name: "from", Type: "string", Description: "First date, YYYY-MM-DD. Required."},
+			{Name: "to", Type: "string", Description: "Last date, YYYY-MM-DD, inclusive. Required."},
+			{Name: "timeZone", Type: "string", Description: "IANA time zone for the dates, e.g. Europe/Warsaw. Required."},
+		},
+		Errors: []string{domain.CodeInvalidQuery},
+	})
+
 	s.mountDocs(r)
 	notFound := func(c *gin.Context) {
 		writeError(c, domain.ErrNotFound())

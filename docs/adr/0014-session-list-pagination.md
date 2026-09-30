@@ -44,6 +44,10 @@ Unbounded `limit` dumps the table. Offset pages (`?offset=&limit=`) skip or dupl
 | Return `total` | Extra count query; Logs does not show it. |
 | Insights endpoints now | Separate backlog item (INS); not required for scroll. |
 
+## Amendment (2026-09-30)
+
+Backlog INS shipped as `GET /v1/stats/days` ([0018](./0018-day-totals.md)). Charts over past or long ranges read day totals instead of paging here. §6 stands for this endpoint: `GET /sessions` still has no aggregates and no date filter.
+
 ## Related
 
 - [../api-contract.md](../api-contract.md)

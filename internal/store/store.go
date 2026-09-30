@@ -89,6 +89,8 @@ type Store interface {
 
 	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error)
 	GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error)
+	// ListStoppedSessionsStartedBetween returns stopped sessions with from <= startedAt < to.
+	ListStoppedSessionsStartedBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error)
 	GetLiveSession(ctx context.Context, userID uuid.UUID) (domain.Session, bool, error)
 	CreateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)
 	UpdateSession(ctx context.Context, userID uuid.UUID, s domain.Session) (domain.Session, error)

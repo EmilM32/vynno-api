@@ -209,7 +209,14 @@ Full decision: [ADR-0017](./adr/0017-account-prefs.md).
 
 ### 5.6 Aggregates
 
-**Not stored and not served in v1.** The client computes today/week totals, insights KPIs, and charts from loaded `GET /sessions` pages. Do not add aggregate endpoints without a contract amendment.
+**Not stored.** `GET /stats/days` sums stopped sessions per local date, project, and activity type on each request ([ADR-0018](./adr/0018-day-totals.md)). The client still computes today's total, the live session, percentages, and labels.
+
+| Rule | Description |
+| --- | --- |
+| **Day of a session** | The local date of `startedAt` in the requested `timeZone`. The whole duration counts on that date, even past midnight. |
+| **Duration** | `endedAt − startedAt` at millisecond precision, the same as the wire. |
+| **Live session** | Not in day totals. |
+| **Range** | Inclusive civil dates, at most 400 days per request. |
 
 ---
 
