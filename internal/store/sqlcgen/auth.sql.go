@@ -30,6 +30,20 @@ func (q *Queries) DeleteAuthTokensByUser(ctx context.Context, userID uuid.UUID) 
 	return err
 }
 
+const deleteOtherAuthTokens = `-- name: DeleteOtherAuthTokens :exec
+DELETE FROM auth_tokens WHERE user_id = $1 AND token_hash <> $2
+`
+
+type DeleteOtherAuthTokensParams struct {
+	UserID    uuid.UUID
+	TokenHash string
+}
+
+func (q *Queries) DeleteOtherAuthTokens(ctx context.Context, arg DeleteOtherAuthTokensParams) error {
+	_, err := q.db.ExecContext(ctx, deleteOtherAuthTokens, arg.UserID, arg.TokenHash)
+	return err
+}
+
 const getAuthTokenByHash = `-- name: GetAuthTokenByHash :one
 SELECT id, user_id, token_hash, expires_at
 FROM auth_tokens

@@ -8,6 +8,8 @@ package sqlcgen
 import (
 	"context"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 const deleteEmailChallenge = `-- name: DeleteEmailChallenge :exec
@@ -25,7 +27,7 @@ func (q *Queries) DeleteEmailChallenge(ctx context.Context, arg DeleteEmailChall
 }
 
 const getEmailChallenge = `-- name: GetEmailChallenge :one
-SELECT email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start
+SELECT email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 FROM email_challenges
 WHERE email = $1 AND purpose = $2
 `
@@ -47,6 +49,7 @@ func (q *Queries) GetEmailChallenge(ctx context.Context, arg GetEmailChallengePa
 		&i.SentAt,
 		&i.SendCount,
 		&i.SendWindowStart,
+		&i.UserID,
 	)
 	return i, err
 }
@@ -72,9 +75,9 @@ func (q *Queries) IncrementChallengeAttempts(ctx context.Context, arg IncrementC
 
 const upsertEmailChallenge = `-- name: UpsertEmailChallenge :exec
 INSERT INTO email_challenges (
-    email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start
+    email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 ON CONFLICT (email, purpose) DO UPDATE SET
     code_hash = EXCLUDED.code_hash,
@@ -82,7 +85,8 @@ ON CONFLICT (email, purpose) DO UPDATE SET
     attempt_count = EXCLUDED.attempt_count,
     sent_at = EXCLUDED.sent_at,
     send_count = EXCLUDED.send_count,
-    send_window_start = EXCLUDED.send_window_start
+    send_window_start = EXCLUDED.send_window_start,
+    user_id = EXCLUDED.user_id
 `
 
 type UpsertEmailChallengeParams struct {
@@ -94,6 +98,7 @@ type UpsertEmailChallengeParams struct {
 	SentAt          time.Time
 	SendCount       int32
 	SendWindowStart time.Time
+	UserID          uuid.NullUUID
 }
 
 func (q *Queries) UpsertEmailChallenge(ctx context.Context, arg UpsertEmailChallengeParams) error {
@@ -106,6 +111,7 @@ func (q *Queries) UpsertEmailChallenge(ctx context.Context, arg UpsertEmailChall
 		arg.SentAt,
 		arg.SendCount,
 		arg.SendWindowStart,
+		arg.UserID,
 	)
 	return err
 }

@@ -1,13 +1,13 @@
 -- name: GetEmailChallenge :one
-SELECT email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start
+SELECT email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 FROM email_challenges
 WHERE email = $1 AND purpose = $2;
 
 -- name: UpsertEmailChallenge :exec
 INSERT INTO email_challenges (
-    email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start
+    email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, $9
 )
 ON CONFLICT (email, purpose) DO UPDATE SET
     code_hash = EXCLUDED.code_hash,
@@ -15,7 +15,8 @@ ON CONFLICT (email, purpose) DO UPDATE SET
     attempt_count = EXCLUDED.attempt_count,
     sent_at = EXCLUDED.sent_at,
     send_count = EXCLUDED.send_count,
-    send_window_start = EXCLUDED.send_window_start;
+    send_window_start = EXCLUDED.send_window_start,
+    user_id = EXCLUDED.user_id;
 
 -- name: DeleteEmailChallenge :exec
 DELETE FROM email_challenges WHERE email = $1 AND purpose = $2;

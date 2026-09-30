@@ -32,7 +32,7 @@ Wire format: [api-contract.md](./api-contract.md). Server rules: [domain-model.m
 | Team / multi-user workspaces | Single-user product first ([ADR-0006](./adr/0006-single-user-tenancy.md)) |
 | Invoicing, payroll, client portals | Out of product scope for v1 |
 | Calendar / IDE / Git integrations | No screen or flow calls for them |
-| Insights / dashboard aggregation endpoints | Client computes these from the session list |
+| Chart-specific aggregate endpoints | One day-totals resource ([ADR-0018](./adr/0018-day-totals.md)); the client shapes charts |
 | Theme, locale, command palette | Device-local on the client |
 | Inventing resources not in the contract | Amend the contract first |
 | Shared DTO package with the frontend | Dual docs until both sides extract one |
@@ -44,7 +44,7 @@ Wire format: [api-contract.md](./api-contract.md). Server rules: [domain-model.m
 2. Single concurrent live session (`active`) per user. A break is stop, then start a new session.
 3. Single-user product for v1 ([ADR-0006](./adr/0006-single-user-tenancy.md)).
 4. Activity types are a per-user dictionary ([ADR-0012](./adr/0012-activity-types.md)). Empty on register.
-5. Insights, prefs, theme, and locale stay on the client until the contract says otherwise.
+5. Theme and locale stay on the client. Insights charts come from `/stats/days` totals shaped on the client ([ADR-0018](./adr/0018-day-totals.md)). The daily target and default project are account preferences ([ADR-0017](./adr/0017-account-prefs.md)).
 6. Project `color` is any `#rrggbb`. Restricting to the SPA palette is a UI concern unless [ADR-0004](./adr/0004-project-lifecycle.md) is amended.
 7. IDs are opaque strings; do not require `proj-` / `sess-` prefixes.
 8. Time is UTC ISO-8601 on the wire; display timezone is the client.

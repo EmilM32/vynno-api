@@ -1,7 +1,7 @@
 # Domain Model — Vynno API
 
 **Status:** Accepted  
-**Last updated:** 2026-09-10
+**Last updated:** 2026-09-30
 
 This is the conceptual model the **server** must implement. It is not a SQL schema and it is **not** the HTTP wire format.
 
@@ -19,8 +19,9 @@ If this file and the live API disagree, treat the documented rules here plus [ap
 | **Session / time entry** | A continuous timed interval. While `active` it is the *live session*; when `stopped` it is a historical log entry. |
 | **Task / note** | Free-text description on a session (`note`). Not a separate entity in v1. |
 | **Activity type** | User-owned dictionary row (display `name` + token `color`). Optional on a session. |
-| **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier. |
-| **User** | Login account. Owns a profile, projects, and sessions. Not on the wire. |
+| **Profile** | Display name, email, optional avatar. Display name and avatar are writable after register. Email is the login identifier and changes only through the confirm-before-change flow. |
+| **Preferences** | Account-wide settings: daily target and default project. Follow the user across devices. Theme and locale stay on the device. |
+| **User** | Login account. Owns a profile, preferences, projects, and sessions. Not on the wire. |
 | **Live session** | The at-most-one session whose status is `active`. |
 
 v1 does **not** have a Task table. “Recent tasks” on the client are reconstructed from recent sessions.
@@ -37,6 +38,10 @@ User* (many personal accounts; isolated; no teams)
  │    ├── displayName
  │    ├── email
  │    └── avatarUrl?
+ │
+ ├── Prefs
+ │    ├── dailyTargetMs?
+ │    └── defaultProjectId?
  │
  ├── Project*
  │    ├── id
@@ -142,7 +147,7 @@ The frontend domain type uses `isArchived`. The wire and this API use `archived`
 | `status` | `active` \| `stopped` | |
 | `startedAt` | ISO-8601 | UTC |
 | `endedAt` | ISO-8601? | Set on stop |
-| `targetDurationMs` | number? | Optional session goal; UI is P2 |
+| `targetDurationMs` | number? | Optional session goal. The SPA sets it from the Timer target control. |
 
 ### 5.3 ActivityType
 
@@ -166,7 +171,7 @@ Per-user dictionary. Empty until the user creates rows. Full decision: [ADR-0012
 | Field | Type | Notes |
 | --- | --- | --- |
 | `displayName` | string | Trimmed, at most 80. May be empty. Writable via `PATCH /me`. |
-| `email` | string | Login identifier. Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. Not writable after register. |
+| `email` | string | Login identifier. Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. Not writable on `PATCH /me`; see **Email change** below. |
 | `avatarUrl` | string? | JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. |
 
 Each account has its own profile. A fresh production database has no users; the first account is `POST /auth/register`. `scripts/reset` / `scripts/seed` are operator-only against `vynno_dev`.
@@ -178,15 +183,40 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 | **Register** | Two steps. `POST /auth/register/code` sends a 6-digit code when the email is free. `POST /auth/register` with that code creates the profile (`avatarUrl` null). Omitted / empty `displayName` is stored `""`. No photo on register. No user row exists until the code is accepted. |
 | **Display name** | Same text pipeline as names, 0–80 code points. `PATCH /me`. Omit leaves it unchanged. `""` clears it. `null` is `invalid_body`. |
 | **Email** | Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. Still one address whose domain contains a `.`, 3–254 characters. Not accepted on `PATCH /me`. |
-| **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset`). Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. Never on the wire except in the mail body. |
+| **Email change** | Signed in. `POST /auth/email/code` checks the current password and mails a code to the new address (`change_email` challenge, bound to this account). `POST /auth/email/change` with that code switches the email, keeps this session, deletes every other session token, and mails a notice to the old address. Taken address → `409 email_in_use` on either step. |
+| **Password change** | Signed in. `POST /auth/password/change` checks the current password (wrong → `invalid_credentials`, counted against the login caps), sets the new hash, keeps this session, deletes every other session token, and mails a notice. |
+| **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset` \| `change_email`). A `change_email` challenge is keyed by the new address and bound to the account that asked. Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. Never on the wire except in the mail body. |
 | **Password reset** | `POST /auth/password/forgot` always succeeds for a well-formed email; mail only if the account exists. `POST /auth/password/reset` sets a new hash and deletes every session token for that user. No cookie. Login afterwards. |
 | **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
 | **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
 | **Avatar GET** | `GET /avatars/:id` is public. Unknown id is `404 not_found`. Bytes are not on the profile row. |
 
-### 5.5 Aggregates
+### 5.5 Preferences
 
-**Not stored and not served in v1.** The client computes today/week totals, insights KPIs, and charts from loaded `GET /sessions` pages. Do not add aggregate endpoints without a contract amendment.
+Full decision: [ADR-0017](./adr/0017-account-prefs.md).
+
+| Field | Type | Notes |
+| --- | --- | --- |
+| `dailyTargetMs` | number? | 60000–86400000. `null` = unset; the SPA defaults to 8 hours. |
+| `defaultProjectId` | string? | A project this user owns. Archived allowed. `null` = unset. |
+
+| Rule | Description |
+| --- | --- |
+| **No row** | A user who never saved prefs reads both fields as `null`. |
+| **Patch** | Omit leaves a field unchanged; `null` clears it. Unknown fields are `invalid_body`. |
+| **Default project** | Unknown or other-user id is `404 not_found`. Hard-deleting the project clears the pref. Archiving does not. |
+| **Device-local** | Theme and locale are not preferences on the server. |
+
+### 5.6 Aggregates
+
+**Not stored.** `GET /stats/days` sums stopped sessions per local date, project, and activity type on each request ([ADR-0018](./adr/0018-day-totals.md)). The client still computes today's total, the live session, percentages, and labels.
+
+| Rule | Description |
+| --- | --- |
+| **Day of a session** | The local date of `startedAt` in the requested `timeZone`. The whole duration counts on that date, even past midnight. |
+| **Duration** | `endedAt − startedAt` at millisecond precision, the same as the wire. |
+| **Live session** | Not in day totals. |
+| **Range** | Inclusive civil dates, at most 400 days per request. |
 
 ---
 

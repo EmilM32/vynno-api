@@ -45,6 +45,7 @@ type EmailChallenge struct {
 	SentAt          time.Time
 	SendCount       int32
 	SendWindowStart time.Time
+	UserID          uuid.NullUUID
 }
 
 type Profile struct {
@@ -82,4 +83,11 @@ type User struct {
 	ID           uuid.UUID
 	Email        string
 	PasswordHash sql.NullString
+}
+
+type UserPref struct {
+	UserID           uuid.UUID
+	DailyTargetMs    sql.NullInt64
+	DefaultProjectID uuid.NullUUID
+	UpdatedAt        time.Time
 }

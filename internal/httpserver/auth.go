@@ -38,6 +38,21 @@ type resetPasswordBody struct {
 	Password string `json:"password"`
 }
 
+type changePasswordBody struct {
+	CurrentPassword string `json:"currentPassword"`
+	NewPassword     string `json:"newPassword"`
+}
+
+type emailChangeCodeBody struct {
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type changeEmailBody struct {
+	Email string `json:"email"`
+	Code  string `json:"code"`
+}
+
 type authResponse struct {
 	Profile profileDTO `json:"profile"`
 }
@@ -132,6 +147,55 @@ func (s *Server) logout(c *gin.Context) {
 	}
 	s.clearSessionCookie(c)
 	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) changePassword(c *gin.Context) {
+	var body changePasswordBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.userSvc(c).ChangePassword(c.Request.Context(), service.ChangePasswordInput{
+		CurrentPassword: body.CurrentPassword,
+		NewPassword:     body.NewPassword,
+	}, sessionFromRequest(c), c.ClientIP()); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) requestEmailChange(c *gin.Context) {
+	var body emailChangeCodeBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	if err := s.userSvc(c).RequestEmailChange(c.Request.Context(), service.RequestEmailChangeInput{
+		Email:    body.Email,
+		Password: body.Password,
+	}, c.ClientIP()); err != nil {
+		writeError(c, err)
+		return
+	}
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) changeEmail(c *gin.Context) {
+	var body changeEmailBody
+	if err := decodeJSON(c, &body); err != nil {
+		writeError(c, err)
+		return
+	}
+	p, err := s.userSvc(c).ChangeEmail(c.Request.Context(), service.ChangeEmailInput{
+		Email: body.Email,
+		Code:  body.Code,
+	}, sessionFromRequest(c))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, s.toProfileDTO(p))
 }
 
 func (s *Server) requireAuth() gin.HandlerFunc {

@@ -2,8 +2,8 @@
 
 **Status:** Living — canonical copy. The frontend `docs/api-contract.md` is generated from this file by `scripts/sync-contract`.  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-09-28  
-**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md))
+**Last updated:** 2026-09-30  
+**Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md)); account preferences ([ADR-0017](./adr/0017-account-prefs.md)); signed-in password and email change ([ADR-0008](./adr/0008-authentication.md) amendment 2026-09-30); day totals ([ADR-0018](./adr/0018-day-totals.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
 
@@ -37,7 +37,7 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | Code | Status | When | Frontend UI string |
 | --- | --- | --- | --- |
 | `not_found` | 404 | Unknown project, session, or activity type id | `error_not_found` |
-| `invalid_query` | 400 | Bad `status` / `limit` / `cursor` | fallback |
+| `invalid_query` | 400 | Bad `status` / `limit` / `cursor`, or bad `from` / `to` / `timeZone` on `/stats/days` | fallback |
 | `invalid_json` | 400 | Request body is not JSON | `error_invalid_response` |
 | `invalid_body` | 400 | Write body failed the request schema / validation | fallback (`error_failed_*`) |
 | `invalid_response` | 502 | Client-only: body did not match the response schema | `error_invalid_response` |
@@ -52,15 +52,15 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 | `activity_type_has_sessions` | 409 | Hard-delete of an activity type that has sessions | `activity_types_cannot_delete_has_sessions` |
 | `invalid_transition` | 409 | Stop (or archive/restore) in a bad state | fallback |
 | `unauthorized` | 401 | Missing, unknown, or expired session on a protected route | `error_unauthorized` |
-| `invalid_credentials` | 401 | Login email/password do not match | `error_invalid_credentials` |
-| `email_in_use` | 409 | Register with a taken email | `error_email_in_use` |
+| `invalid_credentials` | 401 | Login email/password do not match, or the current password on a signed-in credential change is wrong | `error_invalid_credentials` |
+| `email_in_use` | 409 | Register or email change to a taken email | `error_email_in_use` |
 | `invalid_code` | 401 | Wrong, expired, or already used one-time code | `error_invalid_code` |
 | `rate_limited` | 429 | Login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client | `error_rate_limited` |
 | `internal_error` | 500 | Unhandled faults (not `invalid_body`) | fallback |
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
-`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. 5 `register/code` or `password/forgot` sends / 10 min per client IP; the 6th is 429 and sends no mail. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
+`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. A wrong current password on `/auth/password/change` or `/auth/email/code` counts as a login failure for that account's email and the client IP. 5 `register/code`, `password/forgot`, or `email/code` sends / 10 min per client IP; the 6th is 429 and sends no mail. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
 
 `internal_error` is 500 for unhandled faults (not `invalid_body`).
 
@@ -124,6 +124,9 @@ Anything else on a protected route is `401 unauthorized`. A project or session i
 | POST | `/auth/logout` | yes | — | `204` + clear cookie | `unauthorized` |
 | POST | `/auth/password/forgot` | no | `{ "email" }` | `204` empty | `invalid_body`, `rate_limited` |
 | POST | `/auth/password/reset` | no | `ResetPasswordDto` | `204` empty | `invalid_body`, `invalid_code`, `rate_limited` |
+| POST | `/auth/password/change` | yes | `ChangePasswordDto` | `204` empty | `unauthorized`, `invalid_body`, `invalid_credentials`, `rate_limited` |
+| POST | `/auth/email/code` | yes | `{ "email", "password" }` | `204` empty | `unauthorized`, `invalid_body`, `invalid_credentials`, `email_in_use`, `rate_limited` |
+| POST | `/auth/email/change` | yes | `{ "email", "code" }` | `ProfileDto` `200` | `unauthorized`, `invalid_body`, `invalid_code`, `email_in_use`, `rate_limited` |
 
 Register is two steps. `POST /auth/register/code` emails a 6-digit code (15 minute TTL) when the address is free. Taken email is `409 email_in_use`. The account is **not** created until `POST /auth/register` accepts that code.
 
@@ -155,6 +158,18 @@ Password reset is also two steps. `POST /auth/password/forgot` always returns `2
 
 Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required. A resend replaces the previous code. Operator seed/reset accounts skip this flow.
 
+Signed in, the password and the email can change without the reset flow. Each keeps the caller's session and deletes every **other** session token for the account.
+
+`ChangePasswordDto`:
+
+```json
+{ "currentPassword": "a-long-enough-secret", "newPassword": "a-new-long-enough-secret" }
+```
+
+`newPassword` follows the password rule above (`invalid_body`). A wrong `currentPassword` is `401 invalid_credentials`, not `unauthorized`: the session stays valid. Success is `204`, and the account's address gets a notice mail.
+
+Email change is two steps, like register. `POST /auth/email/code` `{ "email": "<new address>", "password": "<current password>" }` checks the password, then mails a 6-digit code to the **new** address. The email does not change yet. Same address as now → `invalid_body`. Taken → `409 email_in_use`. `POST /auth/email/change` `{ "email": "<new address>", "code": "123456" }` switches the sign-in email and returns the updated `ProfileDto`. The old address gets a notice mail. The code is bound to the account that asked for it; another account sending it gets `invalid_code`. If someone registers the address between the two steps, the change is `409 email_in_use`. Code TTL, cooldown, send cap, and guess cap are the same as register.
+
 Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is configured for HTTPS.
 
 CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
@@ -179,7 +194,7 @@ Public: `POST /auth/login`, `POST /auth/register`, `POST /auth/register/code`, `
 }
 ```
 
-`displayName` may be `""` when the user did not set a name. Names: the text pipeline (reject U+FFFD, NFC, reject Cc and bidi controls, strip zero-width characters, trim), 1–80 code points for project and activity-type names. Display name is the same pipeline at 0–80 code points. `email` is the login identifier (not writable after register). `avatarUrl` is JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. The stored value is the path only; the origin is prefixed at read time.
+`displayName` may be `""` when the user did not set a name. Names: the text pipeline (reject U+FFFD, NFC, reject Cc and bidi controls, strip zero-width characters, trim), 1–80 code points for project and activity-type names. Display name is the same pipeline at 0–80 code points. `email` is the login identifier. It is not writable on `PATCH /me`; change it with `/auth/email/code` then `/auth/email/change`. `avatarUrl` is JSON `null` when absent. `avatarUrl` stays the absolute URL `{PUBLIC_API_ORIGIN}/v1/avatars/{uuid}` (internal origin on local prod). The SPA rewrites it to a same-origin path before rendering. This is intentional. The stored value is the path only; the origin is prefixed at read time.
 
 There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix).
 
@@ -190,7 +205,7 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 ```
 
 - `displayName`: the text pipeline above, at most 80 code points. Omit = leave unchanged. Input that is empty after the pipeline clears the name so the UI falls back to email: `""`, and also whitespace-only (including NBSP) or zero-width/FEFF-only input. That is `200` with `displayName: ""`, not `400` (shared text vectors, kind `displayName`). Bidi or Cc controls → `invalid_body`. `null` → `invalid_body`.
-- Do not send `email` or `avatarUrl` on this body. Email is not user-editable. Avatar is only `PUT` / `DELETE /me/avatar`.
+- Do not send `email` or `avatarUrl` on this body. Email changes through `/auth/email/*`. Avatar is only `PUT` / `DELETE /me/avatar`.
 
 `PUT /me/avatar`:
 
@@ -204,6 +219,33 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 `DELETE /me/avatar` when already null is still `200` with `avatarUrl: null`.
 
 `GET /avatars/:id` is public (no cookie). Success is the raw bytes with `Content-Type` from the stored row and `Cache-Control: public, max-age=31536000, immutable`. Unknown id → `404` `{ "error": { "code": "not_found", "message": "…" } }`.
+
+### Preferences
+
+Account-wide settings that follow the user across devices. [ADR-0017](./adr/0017-account-prefs.md). Theme and locale stay device-local.
+
+| Method | Path | Auth | Body | Success | Errors |
+| --- | --- | --- | --- | --- | --- |
+| GET | `/me/prefs` | yes | — | `PrefsDto` | `unauthorized` |
+| PATCH | `/me/prefs` | yes | `UpdatePrefsDto` | `PrefsDto` `200` | `unauthorized`, `invalid_json`, `invalid_body`, `not_found` |
+
+`PrefsDto`:
+
+```json
+{ "dailyTargetMs": 28800000, "defaultProjectId": "proj-auth" }
+```
+
+Both fields are JSON `null` when unset. A user who never saved prefs gets both as `null`; the SPA applies its defaults (8 hours, first active project).
+
+`UpdatePrefsDto` — all fields optional. Same present-vs-absent rule as `UpdateProjectDto`: omit leaves a field unchanged, `null` clears it.
+
+```json
+{ "dailyTargetMs": 21600000, "defaultProjectId": null }
+```
+
+- `dailyTargetMs`: integer from 60000 through 86400000 (one minute to one day). Anything else → `invalid_body`.
+- `defaultProjectId`: a project this user owns. Archived is allowed. Unknown, malformed, or another user's id → `404 not_found`. Hard-deleting that project clears the pref.
+- Any other field → `invalid_body`.
 
 ### Projects
 
@@ -384,6 +426,32 @@ Session list body:
 
 `projectId`, `startedAt`, and `endedAt` are required. Same note / activity / target rules as start. `endedAt` must be after `startedAt`.
 
+### Stats
+
+Tracked time summed on the server, so charts over a long or past range do not page through `GET /sessions`. [ADR-0018](./adr/0018-day-totals.md).
+
+| Method | Path | Body | Success | Typical errors |
+| --- | --- | --- | --- | --- |
+| GET | `/stats/days?from=YYYY-MM-DD&to=YYYY-MM-DD&timeZone=Area/City` | — | `{ items: DayTotalDto[] }` | `invalid_query` |
+
+`DayTotalDto`:
+
+```json
+{
+	"date": "2026-09-28",
+	"projectId": "proj-auth",
+	"activityTypeId": null,
+	"durationMs": 5400000,
+	"sessionCount": 2
+}
+```
+
+- One row per `date` + `projectId` + `activityTypeId` with tracked time. Days with nothing are absent. Sorted by `date`, then `projectId`, then `activityTypeId` (`null` first).
+- Only **stopped** sessions. The live session is not included; the client adds its elapsed time.
+- A session belongs to the local date of its `startedAt` in `timeZone`, and its whole duration counts there, even if it runs past midnight.
+- `durationMs` is the sum of `endedAt − startedAt` with both instants at millisecond precision (as in `SessionDto`).
+- `from` and `to` are required, inclusive, and at most 400 days apart (`to` ≥ `from`). `timeZone` is a required IANA name such as `Europe/Warsaw` or `UTC`. Anything else is `400 invalid_query`.
+
 ---
 
 ## Domain vs DTO
@@ -398,10 +466,8 @@ Not in this contract. Do not invent them to “complete” the API without a con
 
 | Area | Client today |
 | --- | --- |
-| Prefs (daily target, default project) | Device cookie `vynno_prefs` (not an API resource) |
 | Theme / locale | Device-local |
-| Insights / dashboard totals | Computed on the client from loaded sessions |
-| Session target duration UI | Field exists on `StartSessionDto`; UI is P2 |
+| Percentages, labels, chart series | Computed on the client from `/stats/days` rows or loaded sessions |
 
 ---
 

@@ -9,6 +9,7 @@ import (
 const (
 	PurposeRegister           = "register"
 	PurposePasswordReset      = "password_reset"
+	PurposeChangeEmail        = "change_email"
 	OTPTTL                    = 15 * time.Minute
 	OTPSendCooldown           = 60 * time.Second
 	OTPSendWindow             = time.Hour

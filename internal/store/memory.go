@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/google/uuid"
@@ -22,6 +23,7 @@ type memAccount struct {
 	email         string
 	passwordHash  string
 	profile       domain.Profile
+	prefs         domain.Prefs
 	projects      map[uuid.UUID]domain.Project
 	activityTypes map[uuid.UUID]domain.ActivityType
 	sessions      map[uuid.UUID]domain.Session
@@ -167,6 +169,36 @@ func (m *Memory) GetAvatar(_ context.Context, id uuid.UUID) (domain.Avatar, erro
 	}, nil
 }
 
+func (m *Memory) GetPrefs(_ context.Context, userID uuid.UUID) (domain.Prefs, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.Prefs{}, domain.ErrNotFound()
+	}
+	return clonePrefs(a.prefs), nil
+}
+
+func (m *Memory) SavePrefs(_ context.Context, userID uuid.UUID, p domain.Prefs) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return domain.ErrNotFound()
+	}
+	if p.DefaultProjectID != nil {
+		id, err := uuid.Parse(*p.DefaultProjectID)
+		if err != nil {
+			return domain.ErrNotFound()
+		}
+		if _, ok := a.projects[id]; !ok {
+			return domain.ErrNotFound()
+		}
+	}
+	a.prefs = clonePrefs(p)
+	return nil
+}
+
 func (m *Memory) GetAccountByEmail(_ context.Context, email string) (Account, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -268,6 +300,17 @@ func (m *Memory) DeleteTokensByUser(_ context.Context, userID uuid.UUID) error {
 	defer m.mu.Unlock()
 	for hash, tok := range m.tokens {
 		if tok.UserID == userID {
+			delete(m.tokens, hash)
+		}
+	}
+	return nil
+}
+
+func (m *Memory) DeleteOtherTokens(_ context.Context, userID uuid.UUID, keepHash string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	for hash, tok := range m.tokens {
+		if tok.UserID == userID && hash != keepHash {
 			delete(m.tokens, hash)
 		}
 	}
@@ -393,6 +436,9 @@ func (m *Memory) DeleteProject(_ context.Context, userID, id uuid.UUID) error {
 		return domain.ErrNotFound()
 	}
 	delete(a.projects, id)
+	if a.prefs.DefaultProjectID != nil && *a.prefs.DefaultProjectID == id.String() {
+		a.prefs.DefaultProjectID = nil
+	}
 	return nil
 }
 
@@ -604,6 +650,29 @@ func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []st
 	return paginateSessions(out, limit, cursor)
 }
 
+func (m *Memory) ListStoppedSessionsStartedBetween(_ context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	a, ok := m.account(userID)
+	if !ok {
+		return nil, domain.ErrNotFound()
+	}
+	out := []domain.Session{}
+	for _, s := range a.sessions {
+		if s.Status != domain.StatusStopped || s.StartedAt.Before(from) || !s.StartedAt.Before(to) {
+			continue
+		}
+		out = append(out, cloneSession(s))
+	}
+	sort.Slice(out, func(i, j int) bool {
+		if out[i].StartedAt.Equal(out[j].StartedAt) {
+			return out[i].ID < out[j].ID
+		}
+		return out[i].StartedAt.Before(out[j].StartedAt)
+	})
+	return out, nil
+}
+
 func (m *Memory) GetSession(_ context.Context, userID, id uuid.UUID) (domain.Session, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -767,6 +836,19 @@ func cloneProject(p domain.Project) domain.Project {
 	if p.ProgressPercent != nil {
 		n := *p.ProgressPercent
 		out.ProgressPercent = &n
+	}
+	return out
+}
+
+func clonePrefs(p domain.Prefs) domain.Prefs {
+	out := domain.Prefs{}
+	if p.DailyTargetMs != nil {
+		v := *p.DailyTargetMs
+		out.DailyTargetMs = &v
+	}
+	if p.DefaultProjectID != nil {
+		v := *p.DefaultProjectID
+		out.DefaultProjectID = &v
 	}
 	return out
 }

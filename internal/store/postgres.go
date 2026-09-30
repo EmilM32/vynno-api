@@ -113,6 +113,44 @@ func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, 
 	}, nil
 }
 
+func (p *Postgres) GetPrefs(ctx context.Context, userID uuid.UUID) (domain.Prefs, error) {
+	row, err := p.q.GetPrefs(ctx, userID)
+	if errors.Is(err, sql.ErrNoRows) {
+		return domain.Prefs{}, nil
+	}
+	if err != nil {
+		return domain.Prefs{}, err
+	}
+	out := domain.Prefs{DailyTargetMs: nullInt64Ptr(row.DailyTargetMs)}
+	if row.DefaultProjectID.Valid {
+		id := row.DefaultProjectID.UUID.String()
+		out.DefaultProjectID = &id
+	}
+	return out, nil
+}
+
+func (p *Postgres) SavePrefs(ctx context.Context, userID uuid.UUID, prefs domain.Prefs) error {
+	project := uuid.NullUUID{}
+	if prefs.DefaultProjectID != nil {
+		id, err := uuid.Parse(*prefs.DefaultProjectID)
+		if err != nil {
+			return domain.ErrNotFound()
+		}
+		project = uuid.NullUUID{UUID: id, Valid: true}
+	}
+	err := p.q.UpsertPrefs(ctx, sqlcgen.UpsertPrefsParams{
+		UserID:           userID,
+		DailyTargetMs:    ptrNullInt64(prefs.DailyTargetMs),
+		DefaultProjectID: project,
+	})
+	// A project hard-deleted after the service checked it.
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+		return domain.ErrNotFound()
+	}
+	return err
+}
+
 func (p *Postgres) GetAccountByEmail(ctx context.Context, email string) (Account, error) {
 	row, err := p.q.GetUserByEmail(ctx, email)
 	if err != nil {
@@ -178,6 +216,10 @@ func (p *Postgres) DeleteTokensByUser(ctx context.Context, userID uuid.UUID) err
 	return p.q.DeleteAuthTokensByUser(ctx, userID)
 }
 
+func (p *Postgres) DeleteOtherTokens(ctx context.Context, userID uuid.UUID, keepHash string) error {
+	return p.q.DeleteOtherAuthTokens(ctx, sqlcgen.DeleteOtherAuthTokensParams{UserID: userID, TokenHash: keepHash})
+}
+
 func (p *Postgres) GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error) {
 	row, err := p.q.GetEmailChallenge(ctx, sqlcgen.GetEmailChallengeParams{Email: email, Purpose: purpose})
 	if err != nil {
@@ -196,6 +238,7 @@ func (p *Postgres) UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) 
 		SentAt:          ch.SentAt,
 		SendCount:       int32(ch.SendCount),
 		SendWindowStart: ch.SendWindowStart,
+		UserID:          uuid.NullUUID{UUID: ch.UserID, Valid: ch.UserID != uuid.Nil},
 	})
 }
 
@@ -221,6 +264,7 @@ func challengeFromRow(row sqlcgen.EmailChallenge) EmailChallenge {
 		SentAt:          row.SentAt,
 		SendCount:       int(row.SendCount),
 		SendWindowStart: row.SendWindowStart,
+		UserID:          row.UserID.UUID,
 	}
 }
 
@@ -424,6 +468,20 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 		out = append(out, sessionFromList(r))
 	}
 	return paginateSessions(out, limit, "")
+}
+
+func (p *Postgres) ListStoppedSessionsStartedBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error) {
+	rows, err := p.q.ListStoppedSessionsStartedBetween(ctx, sqlcgen.ListStoppedSessionsStartedBetweenParams{
+		UserID: userID, FromAt: from, ToAt: to,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := make([]domain.Session, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, sessionFromRow(r.ID, r.ProjectID, r.Note, r.TicketID, r.ActivityTypeID, r.Status, r.StartedAt, r.EndedAt, r.TargetDurationMs))
+	}
+	return out, nil
 }
 
 func (p *Postgres) GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error) {

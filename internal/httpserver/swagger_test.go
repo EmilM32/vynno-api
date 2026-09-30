@@ -62,6 +62,7 @@ func TestOpenAPIDocumentShape(t *testing.T) {
 		"/v1/projects", "/v1/projects/{id}",
 		"/v1/activity-types", "/v1/activity-types/{id}",
 		"/v1/sessions", "/v1/sessions/active", "/v1/sessions/manual", "/v1/sessions/{id}",
+		"/v1/me/prefs", "/v1/stats/days", "/v1/auth/password/change", "/v1/auth/email/code", "/v1/auth/email/change",
 	} {
 		if _, ok := paths[p]; !ok {
 			t.Fatalf("missing path %s", p)

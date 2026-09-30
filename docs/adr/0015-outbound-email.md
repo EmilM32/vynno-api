@@ -26,7 +26,7 @@ The API runs on the owner’s machine ([0011-local-production-host.md](./0011-lo
 
 ### Positive
 
-- Register confirmation and password reset share one send path.
+- Register confirmation, password reset, and email change share one send path. Security notices (password changed, email changed) use it too ([0008](./0008-authentication.md) amendment 2026-09-30).
 - Tests inject `discard` or a recording double; CI has no inbox.
 - Moving to a real mailbox is env-only (Gmail app password, Fastmail, a provider’s SMTP).
 - Mailpit gives a local inbox for SPA register e2e without a public MX.

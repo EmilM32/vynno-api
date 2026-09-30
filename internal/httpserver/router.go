@@ -158,6 +158,32 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Empty:       true,
 		ClearCookie: true,
 	})
+	s.route(authed, http.MethodPost, "/auth/password/change", s.changePassword, op{
+		Summary:     "Change password",
+		Description: "Signed in. Checks currentPassword, sets newPassword, and signs out every other session. Wrong current password counts toward the login failure caps. 204 empty.",
+		Tags:        []string{"Auth"},
+		Body:        changePasswordBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeInvalidCredentials, domain.CodeRateLimited},
+	})
+	s.route(authed, http.MethodPost, "/auth/email/code", s.requestEmailChange, op{
+		Summary:     "Request email change code",
+		Description: "Signed in. Checks password, then mails a 6-digit code to the new address. 204 empty. The email does not change yet.",
+		Tags:        []string{"Auth"},
+		Body:        emailChangeCodeBody{},
+		Empty:       true,
+		SuccessCode: http.StatusNoContent,
+		Errors:      []string{domain.CodeInvalidCredentials, domain.CodeEmailInUse, domain.CodeRateLimited},
+	})
+	s.route(authed, http.MethodPost, "/auth/email/change", s.changeEmail, op{
+		Summary:     "Change email",
+		Description: "Signed in. Requires the code sent to the new address. Switches the sign-in email, signs out every other session, and notifies the old address.",
+		Tags:        []string{"Auth"},
+		Body:        changeEmailBody{},
+		Success:     profileDTO{},
+		Errors:      []string{domain.CodeInvalidCode, domain.CodeEmailInUse, domain.CodeRateLimited},
+	})
 	s.route(authed, http.MethodGet, "/me", s.getMe, op{
 		Summary: "Current profile",
 		Tags:    []string{"Profile"},
@@ -182,6 +208,20 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Summary: "Remove avatar",
 		Tags:    []string{"Profile"},
 		Success: profileDTO{},
+	})
+	s.route(authed, http.MethodGet, "/me/prefs", s.getPrefs, op{
+		Summary:     "Account preferences",
+		Description: "Daily target and default project. Unset values are null; the SPA applies its own defaults.",
+		Tags:        []string{"Profile"},
+		Success:     prefsDTO{},
+	})
+	s.route(authed, http.MethodPatch, "/me/prefs", s.patchPrefs, op{
+		Summary:     "Update account preferences",
+		Description: "All fields optional. Omit = leave unchanged. null clears. dailyTargetMs is 60000 to 86400000. defaultProjectId must be a project you own (archived is allowed).",
+		Tags:        []string{"Profile"},
+		Body:        updatePrefsBody{},
+		Success:     prefsDTO{},
+		Errors:      []string{domain.CodeNotFound},
 	})
 
 	s.route(authed, http.MethodGet, "/projects", s.listProjects, op{
@@ -344,6 +384,19 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 		Tags:    []string{"Sessions"},
 		Success: sessionDTO{},
 		Errors:  []string{domain.CodeNotFound, domain.CodeInvalidTransition},
+	})
+
+	s.route(authed, http.MethodGet, "/stats/days", s.listDayTotals, op{
+		Summary:     "Tracked time per day",
+		Description: "Stopped sessions summed by the local date of startedAt in timeZone, then project, then activity type. Inclusive civil dates, at most 400 days. The live session is not included.",
+		Tags:        []string{"Stats"},
+		Success:     listDTO[dayTotalDTO]{},
+		Query: []queryParam{
+			{Name: "from", Type: "string", Description: "First date, YYYY-MM-DD. Required."},
+			{Name: "to", Type: "string", Description: "Last date, YYYY-MM-DD, inclusive. Required."},
+			{Name: "timeZone", Type: "string", Description: "IANA time zone for the dates, e.g. Europe/Warsaw. Required."},
+		},
+		Errors: []string{domain.CodeInvalidQuery},
 	})
 
 	s.mountDocs(r)
