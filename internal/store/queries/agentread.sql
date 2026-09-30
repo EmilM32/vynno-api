@@ -19,8 +19,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id
@@ -56,8 +55,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id
@@ -74,8 +72,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id

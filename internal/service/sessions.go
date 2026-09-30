@@ -10,21 +10,19 @@ import (
 )
 
 type StartSessionInput struct {
-	ProjectID        string
-	Note             string
-	TicketID         *string
-	ActivityTypeID   *string
-	TargetDurationMs *int64
+	ProjectID      string
+	Note           string
+	TicketID       *string
+	ActivityTypeID *string
 }
 
 type CreateManualSessionInput struct {
-	ProjectID        string
-	Note             string
-	TicketID         *string
-	ActivityTypeID   *string
-	TargetDurationMs *int64
-	StartedAt        time.Time
-	EndedAt          time.Time
+	ProjectID      string
+	Note           string
+	TicketID       *string
+	ActivityTypeID *string
+	StartedAt      time.Time
+	EndedAt        time.Time
 }
 
 func (s *Service) ListSessions(ctx context.Context, statuses []string, limit int, cursor string) (store.SessionPage, error) {
@@ -55,10 +53,6 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 	if err != nil {
 		return domain.Session{}, err
 	}
-	target, err := domain.NormalizeTargetDurationMs(in.TargetDurationMs)
-	if err != nil {
-		return domain.Session{}, err
-	}
 
 	project, err := s.Store.GetProject(ctx, s.User, projectID)
 	if err != nil {
@@ -82,7 +76,6 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 		in.Note,
 		in.TicketID,
 		activityID,
-		target,
 		s.Now(),
 	)
 	if err != nil {
@@ -137,17 +130,12 @@ func (s *Service) CreateManualSession(ctx context.Context, in CreateManualSessio
 	if err != nil {
 		return domain.Session{}, err
 	}
-	target, err := domain.NormalizeTargetDurationMs(in.TargetDurationMs)
-	if err != nil {
-		return domain.Session{}, err
-	}
 	sess, err := domain.ManualSession(
 		s.NewID().String(),
 		projectID,
 		in.Note,
 		in.TicketID,
 		activityID,
-		target,
 		in.StartedAt,
 		in.EndedAt,
 		s.Now(),

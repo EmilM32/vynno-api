@@ -352,8 +352,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 	"activityTypeId": "8f3e0c1a-2b4d-4e6f-8a90-b1c2d3e4f567",
 	"status": "stopped",
 	"startedAt": "2026-03-11T08:00:00.000Z",
-	"endedAt": "2026-03-11T10:15:00.000Z",
-	"targetDurationMs": null
+	"endedAt": "2026-03-11T10:15:00.000Z"
 }
 ```
 
@@ -364,8 +363,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 	"projectId": "proj-auth",
 	"note": "Refactoring Auth Service",
 	"ticketId": null,
-	"activityTypeId": null,
-	"targetDurationMs": null
+	"activityTypeId": null
 }
 ```
 
@@ -376,7 +374,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 `status` query is a comma-separated list of those enum values. Empty `status` query means no filter. `limit` is a positive integer, default **20**, max **100**. `cursor` is an opaque string from the previous page’s `nextCursor`; omit it on the first page. Anything else is `400 invalid_query`.
 
-Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days; for a live session that is `now − startedAt`, so a live `startedAt` older than 7 days is `400 invalid_body`. Stopping a session that has run longer than 7 days stores `endedAt = startedAt + 7 days`. A patch that omits both instants does not re-check bounds. `targetDurationMs` is an integer from 0 through 9007199254740991.
+Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days; for a live session that is `now − startedAt`, so a live `startedAt` older than 7 days is `400 invalid_body`. Stopping a session that has run longer than 7 days stores `endedAt = startedAt + 7 days`. A patch that omits both instants does not re-check bounds.
 
 Notes ≤ 500 code points after trim; ticketId ≤ 64; one emoji counts as 1. Tabs, LF, CR allowed in notes. Other Cc and bidi controls rejected. Existing oversized notes still load; a patch that omits `note` still succeeds.
 
@@ -400,14 +398,13 @@ Session list body:
 	"ticketId": null,
 	"activityTypeId": null,
 	"startedAt": "2026-03-11T08:00:00.000Z",
-	"endedAt": "2026-03-11T10:15:00.000Z",
-	"targetDurationMs": null
+	"endedAt": "2026-03-11T10:15:00.000Z"
 }
 ```
 
 - `note`: trim; empty → `"Untitled session"`.
 - `projectId`: must exist for this user. Archived is allowed.
-- `activityTypeId` / `ticketId` / `targetDurationMs`: `null` clears.
+- `activityTypeId` / `ticketId`: `null` clears.
 - `endedAt`: required to stay set on stopped sessions; must stay `null` on live (use `/stop`).
 
 `CreateManualSessionDto` — always inserts `status=stopped`. Allowed while a live session exists. Archived projects are allowed.
@@ -418,13 +415,12 @@ Session list body:
 	"note": "Forgot to start the timer",
 	"ticketId": null,
 	"activityTypeId": null,
-	"targetDurationMs": null,
 	"startedAt": "2026-03-11T08:00:00.000Z",
 	"endedAt": "2026-03-11T10:15:00.000Z"
 }
 ```
 
-`projectId`, `startedAt`, and `endedAt` are required. Same note / activity / target rules as start. `endedAt` must be after `startedAt`.
+`projectId`, `startedAt`, and `endedAt` are required. Same note / activity rules as start. `endedAt` must be after `startedAt`.
 
 ### Stats
 

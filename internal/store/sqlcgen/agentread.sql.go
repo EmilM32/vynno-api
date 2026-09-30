@@ -24,8 +24,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id
@@ -43,7 +42,6 @@ type GetAgentLiveSessionRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
 }
 
 func (q *Queries) GetAgentLiveSession(ctx context.Context, userID uuid.UUID) (GetAgentLiveSessionRow, error) {
@@ -60,7 +58,6 @@ func (q *Queries) GetAgentLiveSession(ctx context.Context, userID uuid.UUID) (Ge
 		&i.Status,
 		&i.StartedAt,
 		&i.EndedAt,
-		&i.TargetDurationMs,
 	)
 	return i, err
 }
@@ -131,8 +128,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id
@@ -182,7 +178,6 @@ type ListAgentSessionsRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
 }
 
 func (q *Queries) ListAgentSessions(ctx context.Context, arg ListAgentSessionsParams) ([]ListAgentSessionsRow, error) {
@@ -216,7 +211,6 @@ func (q *Queries) ListAgentSessions(ctx context.Context, arg ListAgentSessionsPa
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
-			&i.TargetDurationMs,
 		); err != nil {
 			return nil, err
 		}
@@ -242,8 +236,7 @@ SELECT
     COALESCE(a.name, '') AS activity_type_name,
     s.status,
     s.started_at,
-    s.ended_at,
-    s.target_duration_ms
+    s.ended_at
 FROM sessions s
 JOIN projects p ON p.id = s.project_id AND p.user_id = s.user_id
 LEFT JOIN activity_types a ON a.id = s.activity_type_id AND a.user_id = s.user_id
@@ -271,7 +264,6 @@ type ListAgentSessionsInWindowRow struct {
 	Status           string
 	StartedAt        time.Time
 	EndedAt          sql.NullTime
-	TargetDurationMs sql.NullInt64
 }
 
 func (q *Queries) ListAgentSessionsInWindow(ctx context.Context, arg ListAgentSessionsInWindowParams) ([]ListAgentSessionsInWindowRow, error) {
@@ -294,7 +286,6 @@ func (q *Queries) ListAgentSessionsInWindow(ctx context.Context, arg ListAgentSe
 			&i.Status,
 			&i.StartedAt,
 			&i.EndedAt,
-			&i.TargetDurationMs,
 		); err != nil {
 			return nil, err
 		}
