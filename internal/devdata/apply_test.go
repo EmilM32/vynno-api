@@ -30,7 +30,7 @@ func TestApplyMemory(t *testing.T) {
 		if len(projects) != len(acc.Projects) {
 			t.Fatalf("%s projects stored %d want %d", acc.Email, len(projects), len(acc.Projects))
 		}
-		sessions, err := mem.ListSessions(ctx, acc.ID, nil, 10000, "")
+		sessions, err := mem.ListSessions(ctx, acc.ID, nil, store.SessionWindow{}, 10000, "")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -57,7 +57,7 @@ func TestApplyResetMemory(t *testing.T) {
 	if err := Apply(ctx, mem, ds); err != nil {
 		t.Fatal(err)
 	}
-	sessions, err := mem.ListSessions(ctx, ds.Accounts[0].ID, nil, 10000, "")
+	sessions, err := mem.ListSessions(ctx, ds.Accounts[0].ID, nil, store.SessionWindow{}, 10000, "")
 	if err != nil {
 		t.Fatal(err)
 	}

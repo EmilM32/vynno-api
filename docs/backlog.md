@@ -1,6 +1,6 @@
 # Backlog — Vynno API
 
-**Last updated:** 2026-09-30  
+**Last updated:** 2026-10-05  
 **Context:** Work we are deliberately **not** doing now. Do not pull these in without a contract amendment and a roadmap change.
 
 Contract extensions are requested by frontend features ([open work](https://github.com/EmilM32/vynno/blob/main/docs/open.md)), but the amendment is made here in [api-contract.md](./api-contract.md) first and synced to the frontend. They imply API work only when the SPA is ready to call new endpoints.
@@ -11,7 +11,7 @@ Contract extensions are requested by frontend features ([open work](https://gith
 
 | ID | Item | Notes |
 | --- | --- | --- |
-| LOGS-RANGE | `from` / `to` filter on `GET /sessions` | Logs date filters still page back from the newest session. Charts use `/stats/days`. |
+| — | None open | LOGS-RANGE shipped 2026-10-05 ([ADR-0014](./adr/0014-session-list-pagination.md) amendment). |
 
 ## Backend-only later
 

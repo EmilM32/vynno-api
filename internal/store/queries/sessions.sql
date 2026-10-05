@@ -9,6 +9,15 @@ WHERE user_id = $1
     OR (sqlc.arg(want_stopped)::boolean AND status = 'stopped')
   )
   AND (
+    sqlc.arg(filter_from)::boolean = FALSE
+    OR ended_at IS NULL
+    OR ended_at > sqlc.arg(from_at)::timestamptz
+  )
+  AND (
+    sqlc.arg(filter_to)::boolean = FALSE
+    OR started_at < sqlc.arg(to_at)::timestamptz
+  )
+  AND (
     sqlc.arg(use_cursor)::boolean = FALSE
     OR started_at < sqlc.arg(cursor_started)::timestamptz
     OR (

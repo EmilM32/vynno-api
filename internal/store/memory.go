@@ -623,7 +623,7 @@ func (m *Memory) activityNameTaken(a *memAccount, name string, excludeID uuid.UU
 	return false
 }
 
-func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error) {
+func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []string, window SessionWindow, limit int, cursor string) (SessionPage, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	a, ok := m.account(userID)
@@ -637,6 +637,9 @@ func (m *Memory) ListSessions(_ context.Context, userID uuid.UUID, statuses []st
 	out := make([]domain.Session, 0, len(a.sessions))
 	for _, s := range a.sessions {
 		if len(allow) > 0 && !allow[s.Status] {
+			continue
+		}
+		if !window.Overlaps(s) {
 			continue
 		}
 		out = append(out, cloneSession(s))

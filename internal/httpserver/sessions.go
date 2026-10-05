@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/service"
@@ -24,12 +25,17 @@ func (s *Server) listSessions(c *gin.Context) {
 		writeError(c, err)
 		return
 	}
+	window, err := parseSessionWindow(c.Query("from"), c.Query("to"))
+	if err != nil {
+		writeError(c, err)
+		return
+	}
 	cursor, err := parseCursor(c.Query("cursor"))
 	if err != nil {
 		writeError(c, err)
 		return
 	}
-	page, err := s.userSvc(c).ListSessions(c.Request.Context(), statuses, limit, cursor)
+	page, err := s.userSvc(c).ListSessions(c.Request.Context(), statuses, window, limit, cursor)
 	if err != nil {
 		writeError(c, err)
 		return
@@ -232,6 +238,33 @@ func parseLimit(raw string) (int, error) {
 		return 0, domain.ErrInvalidQuery("limit must be a positive integer not greater than 100.")
 	}
 	return n, nil
+}
+
+// parseSessionWindow reads the optional from / to overlap bounds of GET /sessions.
+func parseSessionWindow(rawFrom, rawTo string) (store.SessionWindow, error) {
+	from, err := parseOptionalInstant(rawFrom, "from")
+	if err != nil {
+		return store.SessionWindow{}, err
+	}
+	to, err := parseOptionalInstant(rawTo, "to")
+	if err != nil {
+		return store.SessionWindow{}, err
+	}
+	if from != nil && to != nil && !to.After(*from) {
+		return store.SessionWindow{}, domain.ErrInvalidQuery("to must be after from.")
+	}
+	return store.SessionWindow{From: from, To: to}, nil
+}
+
+func parseOptionalInstant(raw, name string) (*time.Time, error) {
+	if raw == "" {
+		return nil, nil
+	}
+	t, err := domain.ParseISOTime(raw)
+	if err != nil {
+		return nil, domain.ErrInvalidQuery(name + " must be an ISO-8601 timestamp.")
+	}
+	return &t, nil
 }
 
 func parseCursor(raw string) (string, error) {

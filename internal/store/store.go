@@ -87,7 +87,7 @@ type Store interface {
 	CountActivityTypeSessions(ctx context.Context, userID, activityTypeID uuid.UUID) (int, error)
 	ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, name string, excludeID uuid.UUID) (bool, error)
 
-	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error)
+	ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, window SessionWindow, limit int, cursor string) (SessionPage, error)
 	GetSession(ctx context.Context, userID, id uuid.UUID) (domain.Session, error)
 	// ListStoppedSessionsStartedBetween returns stopped sessions with from <= startedAt < to.
 	ListStoppedSessionsStartedBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error)

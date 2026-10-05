@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"slices"
 	"strconv"
 	"testing"
 
@@ -658,6 +659,96 @@ func TestListSessionsPagination(t *testing.T) {
 		if item.Status != "stopped" {
 			t.Fatalf("status = %s", item.Status)
 		}
+	}
+}
+
+func TestListSessionsWindow(t *testing.T) {
+	r := testRouter(t)
+	auth := withCookie(loginCookie(t, r))
+
+	w := doJSON(t, r, http.MethodGet, "/v1/projects", nil, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("GET /projects = %d %s", w.Code, w.Body.String())
+	}
+	var projects listDTO[projectDTO]
+	if err := json.Unmarshal(w.Body.Bytes(), &projects); err != nil {
+		t.Fatal(err)
+	}
+	projectID := projects.Items[0].ID
+
+	// Window [2026-03-11T00:00Z, 2026-03-12T00:00Z).
+	logs := []struct{ note, started, ended string }{
+		{"before", "2026-03-10T08:00:00.000Z", "2026-03-10T09:00:00.000Z"},
+		{"ends-at-from", "2026-03-10T22:00:00.000Z", "2026-03-11T00:00:00.000Z"},
+		{"crosses-from", "2026-03-10T23:00:00.000Z", "2026-03-11T01:00:00.000Z"},
+		{"inside", "2026-03-11T09:00:00.000Z", "2026-03-11T10:00:00.000Z"},
+		{"crosses-to", "2026-03-11T23:30:00.000Z", "2026-03-12T00:30:00.000Z"},
+		{"starts-at-to", "2026-03-12T00:00:00.000Z", "2026-03-12T01:00:00.000Z"},
+	}
+	for _, l := range logs {
+		w = doJSON(t, r, http.MethodPost, "/v1/sessions/manual", map[string]any{
+			"projectId": projectID, "note": l.note, "startedAt": l.started, "endedAt": l.ended,
+		}, auth)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("manual %s = %d %s", l.note, w.Code, w.Body.String())
+		}
+	}
+	w = doJSON(t, r, http.MethodPost, "/v1/sessions", map[string]any{"projectId": projectID, "note": "live"}, auth)
+	if w.Code != http.StatusCreated {
+		t.Fatalf("start = %d %s", w.Code, w.Body.String())
+	}
+
+	notes := func(path string) []string {
+		t.Helper()
+		var out []string
+		cursor := ""
+		for pages := 0; ; pages++ {
+			p := path
+			if cursor != "" {
+				p += "&cursor=" + cursor
+			}
+			w := doJSON(t, r, http.MethodGet, p, nil, auth)
+			if w.Code != http.StatusOK {
+				t.Fatalf("GET %s = %d %s", p, w.Code, w.Body.String())
+			}
+			var page sessionListDTO
+			if err := json.Unmarshal(w.Body.Bytes(), &page); err != nil {
+				t.Fatal(err)
+			}
+			for _, item := range page.Items {
+				out = append(out, item.Note)
+			}
+			if page.NextCursor == nil || pages > 10 {
+				return out
+			}
+			cursor = *page.NextCursor
+		}
+	}
+
+	from := "2026-03-11T00:00:00.000Z"
+	to := "2026-03-12T00:00:00.000Z"
+	if got, want := notes("/v1/sessions?limit=2&from="+from+"&to="+to), []string{"crosses-to", "inside", "crosses-from"}; !slices.Equal(got, want) {
+		t.Fatalf("window = %v, want %v", got, want)
+	}
+	// Only from: everything still running or ending after it, the live session included.
+	if got, want := notes("/v1/sessions?limit=100&from="+from), []string{"live", "starts-at-to", "crosses-to", "inside", "crosses-from"}; !slices.Equal(got, want) {
+		t.Fatalf("from only = %v, want %v", got, want)
+	}
+	if got, want := notes("/v1/sessions?limit=100&to="+from), []string{"crosses-from", "ends-at-from", "before"}; !slices.Equal(got, want) {
+		t.Fatalf("to only = %v, want %v", got, want)
+	}
+	if got, want := notes("/v1/sessions?limit=100&status=stopped&from="+from), []string{"starts-at-to", "crosses-to", "inside", "crosses-from"}; !slices.Equal(got, want) {
+		t.Fatalf("stopped from = %v, want %v", got, want)
+	}
+
+	for _, bad := range []string{
+		"from=yesterday",
+		"to=2026-03-12",
+		"from=" + to + "&to=" + from,
+		"from=" + from + "&to=" + from,
+	} {
+		w = doJSON(t, r, http.MethodGet, "/v1/sessions?"+bad, nil, auth)
+		assertCode(t, w, http.StatusBadRequest, "invalid_query")
 	}
 }
 

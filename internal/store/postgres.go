@@ -430,7 +430,7 @@ func (p *Postgres) ActivityTypeNameInUse(ctx context.Context, userID uuid.UUID, 
 	})
 }
 
-func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, limit int, cursor string) (SessionPage, error) {
+func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses []string, window SessionWindow, limit int, cursor string) (SessionPage, error) {
 	want := map[string]bool{}
 	for _, s := range statuses {
 		want[s] = true
@@ -455,6 +455,10 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 		FilterStatuses: len(statuses) > 0,
 		WantActive:     want[domain.StatusActive],
 		WantStopped:    want[domain.StatusStopped],
+		FilterFrom:     window.From != nil,
+		FromAt:         timeOrZero(window.From),
+		FilterTo:       window.To != nil,
+		ToAt:           timeOrZero(window.To),
 		UseCursor:      useCursor,
 		CursorStarted:  cursorStarted,
 		CursorID:       cursorID,
@@ -468,6 +472,13 @@ func (p *Postgres) ListSessions(ctx context.Context, userID uuid.UUID, statuses 
 		out = append(out, sessionFromList(r))
 	}
 	return paginateSessions(out, limit, "")
+}
+
+func timeOrZero(t *time.Time) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+	return *t
 }
 
 func (p *Postgres) ListStoppedSessionsStartedBetween(ctx context.Context, userID uuid.UUID, from, to time.Time) ([]domain.Session, error) {

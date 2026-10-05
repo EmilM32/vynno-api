@@ -19,6 +19,24 @@ type SessionPage struct {
 	NextCursor *string
 }
 
+// SessionWindow narrows GET /sessions to sessions that overlap [From, To).
+// A nil bound is open. A live session (no EndedAt) overlaps every From.
+type SessionWindow struct {
+	From *time.Time
+	To   *time.Time
+}
+
+// Overlaps reports whether s falls in the window: StartedAt < To, and EndedAt > From or live.
+func (w SessionWindow) Overlaps(s domain.Session) bool {
+	if w.To != nil && !s.StartedAt.Before(*w.To) {
+		return false
+	}
+	if w.From != nil && s.EndedAt != nil && !s.EndedAt.After(*w.From) {
+		return false
+	}
+	return true
+}
+
 func EncodeSessionCursor(startedAt time.Time, id uuid.UUID) string {
 	raw := startedAt.UTC().Format(time.RFC3339Nano) + sessionCursorSep + id.String()
 	return base64.RawURLEncoding.EncodeToString([]byte(raw))

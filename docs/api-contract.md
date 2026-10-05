@@ -332,7 +332,7 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 
 | Method | Path | Body | Success | Typical errors |
 | --- | --- | --- | --- | --- |
-| GET | `/sessions?status=active,stopped&limit=n&cursor=…` | — | `{ items: SessionDto[], nextCursor: string \| null }` newest-first | `invalid_query` |
+| GET | `/sessions?status=active,stopped&from=…&to=…&limit=n&cursor=…` | — | `{ items: SessionDto[], nextCursor: string \| null }` newest-first | `invalid_query` |
 | GET | `/sessions/active` | — | `SessionDto` | `session_not_active` |
 | GET | `/sessions/:id` | — | `SessionDto` | `not_found` |
 | POST | `/sessions` | `StartSessionDto` | `SessionDto` `201` | `session_already_active`, `not_found`, `project_archived`, `invalid_body` |
@@ -373,6 +373,8 @@ Per-user dictionary. Empty until the user creates rows. [ADR-0012](./adr/0012-ac
 `GET /sessions/active` returns the active session. Idle → `404` `{ "error": { "code": "session_not_active", "message": "…" } }`.
 
 `status` query is a comma-separated list of those enum values. Empty `status` query means no filter. `limit` is a positive integer, default **20**, max **100**. `cursor` is an opaque string from the previous page’s `nextCursor`; omit it on the first page. Anything else is `400 invalid_query`.
+
+`from` and `to` are optional ISO-8601 instants with an offset, as in `SessionDto` (`2026-09-01T00:00:00.000Z`). They keep the sessions that **overlap** `[from, to)`: `startedAt < to`, and `endedAt > from` or the session is live. Either may be sent alone; with both, `to` must be after `from`. Order, `limit`, and `cursor` work as without them; send the same `from` / `to` with every page. A session that runs past an edge is returned whole — the client clips it. Use them to load one period (a timeline for a past range) instead of paging back from the newest session. Unparseable values or `to ≤ from` are `400 invalid_query`. [ADR-0014](./adr/0014-session-list-pagination.md) amendment 2026-10-05.
 
 Session instants are compared at microsecond precision. `startedAt >= 2000-01-01T00:00:00Z`. `startedAt` and `endedAt` ≤ now+5min. Duration ≤ 7 days; for a live session that is `now − startedAt`, so a live `startedAt` older than 7 days is `400 invalid_body`. Stopping a session that has run longer than 7 days stores `endedAt = startedAt + 7 days`. A patch that omits both instants does not re-check bounds.
 
