@@ -323,11 +323,13 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 
 	s.route(authed, http.MethodGet, "/sessions", s.listSessions, op{
 		Summary:     "List sessions",
-		Description: "Newest first. status is a comma-separated list of active, stopped. limit defaults to 20, max 100. cursor is an opaque nextCursor from the previous page.",
+		Description: "Newest first. status is a comma-separated list of active, stopped. from / to keep sessions that overlap [from, to). limit defaults to 20, max 100. cursor is an opaque nextCursor from the previous page.",
 		Tags:        []string{"Sessions"},
 		Success:     sessionListDTO{},
 		Query: []queryParam{
 			{Name: "status", Type: "string", Description: "Comma-separated: active, stopped."},
+			{Name: "from", Type: "string", Description: "ISO-8601 instant. Keeps sessions with endedAt > from, or live."},
+			{Name: "to", Type: "string", Description: "ISO-8601 instant, after from. Keeps sessions with startedAt < to."},
 			{Name: "limit", Type: "integer", Description: "Positive integer, default 20, max 100."},
 			{Name: "cursor", Type: "string", Description: "Opaque cursor from nextCursor. Omit on the first page."},
 		},

@@ -25,8 +25,8 @@ type CreateManualSessionInput struct {
 	EndedAt        time.Time
 }
 
-func (s *Service) ListSessions(ctx context.Context, statuses []string, limit int, cursor string) (store.SessionPage, error) {
-	return s.Store.ListSessions(ctx, s.User, statuses, limit, cursor)
+func (s *Service) ListSessions(ctx context.Context, statuses []string, window store.SessionWindow, limit int, cursor string) (store.SessionPage, error) {
+	return s.Store.ListSessions(ctx, s.User, statuses, window, limit, cursor)
 }
 
 func (s *Service) GetSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {

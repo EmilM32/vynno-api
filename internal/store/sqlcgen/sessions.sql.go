@@ -173,14 +173,23 @@ WHERE user_id = $1
   )
   AND (
     $5::boolean = FALSE
-    OR started_at < $6::timestamptz
+    OR ended_at IS NULL
+    OR ended_at > $6::timestamptz
+  )
+  AND (
+    $7::boolean = FALSE
+    OR started_at < $8::timestamptz
+  )
+  AND (
+    $9::boolean = FALSE
+    OR started_at < $10::timestamptz
     OR (
-      started_at = $6::timestamptz
-      AND id < $7::uuid
+      started_at = $10::timestamptz
+      AND id < $11::uuid
     )
   )
 ORDER BY started_at DESC, id DESC
-LIMIT $8::int
+LIMIT $12::int
 `
 
 type ListSessionsParams struct {
@@ -188,6 +197,10 @@ type ListSessionsParams struct {
 	FilterStatuses bool
 	WantActive     bool
 	WantStopped    bool
+	FilterFrom     bool
+	FromAt         time.Time
+	FilterTo       bool
+	ToAt           time.Time
 	UseCursor      bool
 	CursorStarted  time.Time
 	CursorID       uuid.UUID
@@ -211,6 +224,10 @@ func (q *Queries) ListSessions(ctx context.Context, arg ListSessionsParams) ([]L
 		arg.FilterStatuses,
 		arg.WantActive,
 		arg.WantStopped,
+		arg.FilterFrom,
+		arg.FromAt,
+		arg.FilterTo,
+		arg.ToAt,
 		arg.UseCursor,
 		arg.CursorStarted,
 		arg.CursorID,

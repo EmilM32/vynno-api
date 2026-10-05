@@ -48,6 +48,15 @@ Unbounded `limit` dumps the table. Offset pages (`?offset=&limit=`) skip or dupl
 
 Backlog INS shipped as `GET /v1/stats/days` ([0018](./0018-day-totals.md)). Charts over past or long ranges read day totals instead of paging here. §6 stands for this endpoint: `GET /sessions` still has no aggregates and no date filter.
 
+## Amendment (2026-10-05)
+
+Backlog LOGS-RANGE. `GET /sessions` takes optional `from` / `to` instants and keeps the sessions that **overlap** `[from, to)` (`startedAt < to`, and `endedAt > from` or live). Keyset order, `limit`, and `cursor` are unchanged.
+
+- Overlap, not "started in range": the SPA Insights timeline draws a session that crosses the range edge on both sides of it. A client that wants "started in range" filters the page it already has.
+- Instants, not dates + `timeZone`: the client already holds the range edges in its zone. `/stats/days` needs a zone because the server buckets by local date; this filter does not bucket.
+- No lower bound on `started_at` from the 7-day cap: a live session can outlive it, and a single user's history is small enough for the existing `(user_id, started_at)` index.
+- §6 still stands: no aggregates here. Totals stay on `/stats/days` ([0018](./0018-day-totals.md)).
+
 ## Related
 
 - [../api-contract.md](../api-contract.md)
