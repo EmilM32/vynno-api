@@ -242,16 +242,27 @@ func (p *Postgres) UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) 
 	})
 }
 
-func (p *Postgres) DeleteEmailChallenge(ctx context.Context, email, purpose string) error {
-	return p.q.DeleteEmailChallenge(ctx, sqlcgen.DeleteEmailChallengeParams{Email: email, Purpose: purpose})
+func (p *Postgres) ReserveChallengeGuess(ctx context.Context, email, purpose string, userID uuid.UUID, maxAttempts int) (EmailChallenge, error) {
+	row, err := p.q.ReserveChallengeGuess(ctx, sqlcgen.ReserveChallengeGuessParams{
+		Email:       email,
+		Purpose:     purpose,
+		UserID:      uuid.NullUUID{UUID: userID, Valid: userID != uuid.Nil},
+		MaxAttempts: int32(maxAttempts),
+	})
+	if err != nil {
+		return EmailChallenge{}, mapNotFound(err)
+	}
+	return challengeFromRow(row), nil
 }
 
-func (p *Postgres) IncrementChallengeAttempts(ctx context.Context, email, purpose string) (int, error) {
-	n, err := p.q.IncrementChallengeAttempts(ctx, sqlcgen.IncrementChallengeAttemptsParams{Email: email, Purpose: purpose})
+func (p *Postgres) ConsumeEmailChallenge(ctx context.Context, email, purpose, codeHash string) (bool, error) {
+	n, err := p.q.ConsumeEmailChallenge(ctx, sqlcgen.ConsumeEmailChallengeParams{
+		Email: email, Purpose: purpose, CodeHash: codeHash,
+	})
 	if err != nil {
-		return 0, mapNotFound(err)
+		return false, err
 	}
-	return int(n), nil
+	return n > 0, nil
 }
 
 func challengeFromRow(row sqlcgen.EmailChallenge) EmailChallenge {

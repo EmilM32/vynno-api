@@ -35,18 +35,16 @@ type ChangeEmailInput struct {
 // against the same per-email and per-client caps as login, so a stolen session
 // cookie cannot be used to guess the password.
 func (s *Service) verifyAccountPassword(acc store.Account, password, clientIP string, now time.Time) error {
-	if retry, limited := s.loginLimited(acc.Email, clientIP, now); limited {
+	if retry, limited := s.reserveLoginAttempt(acc.Email, clientIP, now); limited {
 		return domain.ErrRateLimitedAfter(retry)
 	}
 	if _, err := domain.NormalizePassword(password); err != nil || acc.PasswordHash == "" {
-		s.recordLoginFailure(acc.Email, clientIP, now)
 		return domain.ErrInvalidCredentials()
 	}
 	if err := comparePassword([]byte(acc.PasswordHash), []byte(password)); err != nil {
-		s.recordLoginFailure(acc.Email, clientIP, now)
 		return domain.ErrInvalidCredentials()
 	}
-	s.Limiter.Reset(loginEmailKey(acc.Email))
+	s.loginSucceeded(acc.Email, clientIP, now)
 	return nil
 }
 

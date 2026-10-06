@@ -12,18 +12,24 @@ import (
 	"github.com/google/uuid"
 )
 
-const deleteEmailChallenge = `-- name: DeleteEmailChallenge :exec
-DELETE FROM email_challenges WHERE email = $1 AND purpose = $2
+const consumeEmailChallenge = `-- name: ConsumeEmailChallenge :execrows
+DELETE FROM email_challenges
+WHERE email = $1 AND purpose = $2 AND code_hash = $3
 `
 
-type DeleteEmailChallengeParams struct {
-	Email   string
-	Purpose string
+type ConsumeEmailChallengeParams struct {
+	Email    string
+	Purpose  string
+	CodeHash string
 }
 
-func (q *Queries) DeleteEmailChallenge(ctx context.Context, arg DeleteEmailChallengeParams) error {
-	_, err := q.db.ExecContext(ctx, deleteEmailChallenge, arg.Email, arg.Purpose)
-	return err
+// Deletes the challenge only while it still holds the code that was compared.
+func (q *Queries) ConsumeEmailChallenge(ctx context.Context, arg ConsumeEmailChallengeParams) (int64, error) {
+	result, err := q.db.ExecContext(ctx, consumeEmailChallenge, arg.Email, arg.Purpose, arg.CodeHash)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
 }
 
 const getEmailChallenge = `-- name: GetEmailChallenge :one
@@ -54,23 +60,45 @@ func (q *Queries) GetEmailChallenge(ctx context.Context, arg GetEmailChallengePa
 	return i, err
 }
 
-const incrementChallengeAttempts = `-- name: IncrementChallengeAttempts :one
+const reserveChallengeGuess = `-- name: ReserveChallengeGuess :one
 UPDATE email_challenges
 SET attempt_count = attempt_count + 1
-WHERE email = $1 AND purpose = $2
-RETURNING attempt_count
+WHERE email = $1
+  AND purpose = $2
+  AND user_id IS NOT DISTINCT FROM $3::uuid
+  AND attempt_count < $4::int
+RETURNING email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 `
 
-type IncrementChallengeAttemptsParams struct {
-	Email   string
-	Purpose string
+type ReserveChallengeGuessParams struct {
+	Email       string
+	Purpose     string
+	UserID      uuid.NullUUID
+	MaxAttempts int32
 }
 
-func (q *Queries) IncrementChallengeAttempts(ctx context.Context, arg IncrementChallengeAttemptsParams) (int32, error) {
-	row := q.db.QueryRowContext(ctx, incrementChallengeAttempts, arg.Email, arg.Purpose)
-	var attempt_count int32
-	err := row.Scan(&attempt_count)
-	return attempt_count, err
+// Takes one guess atomically before the code is compared. No row when the challenge
+// is missing, bound to another account, or already out of guesses.
+func (q *Queries) ReserveChallengeGuess(ctx context.Context, arg ReserveChallengeGuessParams) (EmailChallenge, error) {
+	row := q.db.QueryRowContext(ctx, reserveChallengeGuess,
+		arg.Email,
+		arg.Purpose,
+		arg.UserID,
+		arg.MaxAttempts,
+	)
+	var i EmailChallenge
+	err := row.Scan(
+		&i.Email,
+		&i.Purpose,
+		&i.CodeHash,
+		&i.ExpiresAt,
+		&i.AttemptCount,
+		&i.SentAt,
+		&i.SendCount,
+		&i.SendWindowStart,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const upsertEmailChallenge = `-- name: UpsertEmailChallenge :exec

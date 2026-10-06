@@ -113,6 +113,16 @@ func TestNormalizePassword(t *testing.T) {
 	if got != "long-enough" {
 		t.Fatalf("got %q", got)
 	}
+	if _, err := NormalizePassword(strings.Repeat("a", 72)); err != nil {
+		t.Fatalf("72 bytes: %v", err)
+	}
+	if _, err := NormalizePassword(strings.Repeat("a", 73)); err == nil {
+		t.Fatal("expected 73 bytes rejected")
+	}
+	// 30 characters, 75 bytes: under the character cap, over bcrypt's byte limit.
+	if _, err := NormalizePassword(strings.Repeat("ż€", 15)); err == nil {
+		t.Fatal("expected multi-byte password over 72 bytes rejected")
+	}
 }
 
 func TestRememberMe(t *testing.T) {

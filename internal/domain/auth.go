@@ -15,6 +15,9 @@ const (
 	emailMax    = 254
 	passwordMin = 8
 	passwordMax = 128
+	// passwordMaxBytes is bcrypt's input limit. Longer input is rejected by
+	// bcrypt.GenerateFromPassword, so the domain refuses it first.
+	passwordMaxBytes = 72
 )
 
 // NormalizeEmail trims, rejects Cc/Cf, applies NFC, lowercases, and stores the
@@ -62,11 +65,15 @@ func containsCategory(s string, cat *unicode.RangeTable) bool {
 	return false
 }
 
-// NormalizePassword checks length only. The caller hashes the result.
+// NormalizePassword checks length only: 8–128 characters and at most 72 bytes
+// of UTF-8 (bcrypt's limit). The caller hashes the result.
 func NormalizePassword(raw string) (string, error) {
 	n := utf8.RuneCountInString(raw)
 	if n < passwordMin || n > passwordMax {
 		return "", ErrInvalidBody("Password must be 8–128 characters.")
+	}
+	if len(raw) > passwordMaxBytes {
+		return "", ErrInvalidBody("Password must be at most 72 bytes.")
 	}
 	return raw, nil
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -190,19 +191,32 @@ func loginEmailKey(email string) string { return "login-email:" + email }
 func loginIPKey(ip string) string       { return "login-ip:" + ip }
 func sendIPKey(ip string) string        { return "send-ip:" + ip }
 
-func (s *Service) loginLimited(email, clientIP string, now time.Time) (time.Duration, bool) {
-	if ok, retry := s.Limiter.Allow(loginEmailKey(email), now, s.Limits.LoginEmailFails, s.Limits.LoginWindow); !ok {
+// reserveLoginAttempt counts this attempt against the per-email and per-client caps
+// before the password is compared. Reserving first means concurrent guesses cannot
+// all pass the check while bcrypt runs. A success gives the slots back with
+// loginSucceeded; a failure keeps them.
+func (s *Service) reserveLoginAttempt(email, clientIP string, now time.Time) (time.Duration, bool) {
+	if ok, retry := s.Limiter.Reserve(loginEmailKey(email), now, s.Limits.LoginEmailFails, s.Limits.LoginWindow); !ok {
 		return retry, true
 	}
-	if ok, retry := s.Limiter.Allow(loginIPKey(clientIP), now, s.Limits.LoginIPFails, s.Limits.LoginWindow); !ok {
+	if ok, retry := s.Limiter.Reserve(loginIPKey(clientIP), now, s.Limits.LoginIPFails, s.Limits.LoginWindow); !ok {
+		s.Limiter.Release(loginEmailKey(email), now)
 		return retry, true
 	}
 	return 0, false
 }
 
-func (s *Service) recordLoginFailure(email, clientIP string, now time.Time) {
-	s.Limiter.Hit(loginEmailKey(email), now, s.Limits.LoginWindow)
-	s.Limiter.Hit(loginIPKey(clientIP), now, s.Limits.LoginWindow)
+// releaseLoginAttempt returns both slots when the attempt ended without a verdict
+// on the password (a store error).
+func (s *Service) releaseLoginAttempt(email, clientIP string, now time.Time) {
+	s.Limiter.Release(loginEmailKey(email), now)
+	s.Limiter.Release(loginIPKey(clientIP), now)
+}
+
+// loginSucceeded clears the per-email failures and returns this attempt's client slot.
+func (s *Service) loginSucceeded(email, clientIP string, now time.Time) {
+	s.Limiter.Reset(loginEmailKey(email))
+	s.Limiter.Release(loginIPKey(clientIP), now)
 }
 
 // issueOTPChallenge stores a fresh code for email+purpose. userID binds a change_email
@@ -347,10 +361,13 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	return s.Store.DeleteTokensByUser(ctx, acc.ID)
 }
 
-// consumeEmailChallenge spends a matching code. A challenge bound to another account
-// reads as no challenge: it is not this caller's to guess, so it does not count a guess.
+// consumeEmailChallenge spends a matching code. The guess is reserved in the store
+// before the code is compared, so concurrent requests cannot make more than
+// OTPMaxAttempts comparisons against one challenge. A challenge bound to another
+// account, or one already spent, reads as no challenge and does not count a guess.
+// A spent challenge stays in place so its send cooldown and hourly cap still hold.
 func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, code string, userID uuid.UUID) error {
-	ch, err := s.Store.GetEmailChallenge(ctx, email, purpose)
+	ch, err := s.Store.ReserveChallengeGuess(ctx, email, purpose, userID, domain.OTPMaxAttempts)
 	if err != nil {
 		var de *domain.Error
 		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
@@ -358,25 +375,23 @@ func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, cod
 		}
 		return err
 	}
-	if ch.UserID != userID {
-		return domain.ErrInvalidCode()
-	}
-	if domain.OTPGuessesSpent(ch.AttemptCount) {
-		_ = s.Store.DeleteEmailChallenge(ctx, email, purpose)
-		return domain.ErrInvalidCode()
-	}
-	if domain.OTPExpired(ch.ExpiresAt, s.Now()) || ch.CodeHash != hashToken(code) {
-		n, incErr := s.Store.IncrementChallengeAttempts(ctx, email, purpose)
-		if incErr != nil {
-			return incErr
-		}
-		if domain.OTPGuessesSpent(n) {
-			_ = s.Store.DeleteEmailChallenge(ctx, email, purpose)
+	if domain.OTPExpired(ch.ExpiresAt, s.Now()) ||
+		subtle.ConstantTimeCompare([]byte(ch.CodeHash), []byte(hashToken(code))) != 1 {
+		if domain.OTPGuessesSpent(ch.AttemptCount) {
 			return domain.ErrRateLimited()
 		}
 		return domain.ErrInvalidCode()
 	}
-	return s.Store.DeleteEmailChallenge(ctx, email, purpose)
+	// Delete only the code we compared: a concurrent request that already used it,
+	// or a resend that replaced it, leaves nothing to delete.
+	consumed, err := s.Store.ConsumeEmailChallenge(ctx, email, purpose, ch.CodeHash)
+	if err != nil {
+		return err
+	}
+	if !consumed {
+		return domain.ErrInvalidCode()
+	}
+	return nil
 }
 
 func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (AuthResult, error) {
@@ -385,11 +400,10 @@ func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (Au
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	now := s.Now()
-	if retry, limited := s.loginLimited(email, clientIP, now); limited {
+	if retry, limited := s.reserveLoginAttempt(email, clientIP, now); limited {
 		return AuthResult{}, domain.ErrRateLimitedAfter(retry)
 	}
 	if _, err := domain.NormalizePassword(in.Password); err != nil {
-		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	acc, err := s.Store.GetAccountByEmail(ctx, email)
@@ -397,21 +411,19 @@ func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (Au
 		var de *domain.Error
 		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
 			_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
-			s.recordLoginFailure(email, clientIP, now)
 			return AuthResult{}, domain.ErrInvalidCredentials()
 		}
+		s.releaseLoginAttempt(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	if acc.PasswordHash == "" {
 		_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
-		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	if err := comparePassword([]byte(acc.PasswordHash), []byte(in.Password)); err != nil {
-		s.recordLoginFailure(email, clientIP, now)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
-	s.Limiter.Reset(loginEmailKey(email))
+	s.loginSucceeded(email, clientIP, now)
 	return s.issueToken(ctx, acc.ID, domain.RememberMe(in.RememberMe))
 }
 

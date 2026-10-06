@@ -6,8 +6,8 @@ Daily driver for the production API **on this machine**. No cloud host. Decision
 browser  →  https://vynno.localhost        (vynno repo, Caddy loopback :443)
                 └── reverse_proxy ──►  127.0.0.1:27180  (adapter-node)
                                           └── /v1 BFF ──►  127.0.0.1:27182  (this repo, bin/vynno-api → database vynno)
-                                                                ├── Postgres (Docker Compose, port 5433)
-                                                                └── Mailpit SMTP :1025 / UI :8025  (first register + password reset)
+                                                                ├── Postgres (Docker Compose, 127.0.0.1:5433)
+                                                                └── Mailpit SMTP 127.0.0.1:1025 / UI :8025  (first register + password reset)
 browser  →  http://vynno.localhost         (Caddy :80 → 308 to HTTPS)
 browser  →  http://vynno.localhost:27182   (this process; /swagger/)
 ```
@@ -94,7 +94,7 @@ Outbound mail is [ADR-0015](./adr/0015-outbound-email.md). Register confirmation
 | `log` | Opt-in playground (`DEV_MAIL_MODE=log`) | Prints the body, **including the one-time code**, to process logs. Breaks frontend e2e (Mailpit never sees the code). Do not use on production. |
 | `unset` / `discard` | Tests; an old `.env` | Accepts the message and sends nothing. Register/reset appear to work until you look for mail. |
 
-`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=smtp` (unless `DEV_MAIL_MODE` is set) so playground OTP codes reach Mailpit without changing `.env`. Frontend e2e scrapes that inbox.
+`scripts/start` and `scripts/dev` start Mailpit with Postgres (SMTP `:1025`, UI [http://127.0.0.1:8025](http://127.0.0.1:8025)). `.env.example` points SMTP at it. `scripts/dev` sets `MAIL_MODE=smtp` (unless `DEV_MAIL_MODE` is set) so playground OTP codes reach Mailpit without changing `.env`. Frontend e2e scrapes that inbox. Compose publishes Postgres and Mailpit on `127.0.0.1` only: the Mailpit UI lists every one-time code, so it must not be reachable from the LAN. Use `127.0.0.1` (or a client that falls back from `::1`) to reach them.
 
 ## Auth rate limits
 
