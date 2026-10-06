@@ -144,7 +144,7 @@ Register is two steps. `POST /auth/register/code` emails a 6-digit code (15 minu
 { "email": "alex@example.com", "password": "a-long-enough-secret", "rememberMe": true }
 ```
 
-Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. The address is still one address (`net/mail.ParseAddress` equals the whole string) whose domain contains a `.`, 3–254 characters. Unique among accounts. Password: 8–128 characters. Login with a malformed email is `invalid_credentials` (same as unknown email).
+Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one account. An IDN domain and its punycode form are one stored email. Cc/Cf anywhere → `400 invalid_body`. Local part longer than 64 octets → 400; 64 is accepted. Non-ASCII local parts are allowed. The address is still one address (`net/mail.ParseAddress` equals the whole string) whose domain contains a `.`, 3–254 characters. Unique among accounts. Password: 8–128 characters and at most 72 bytes of UTF-8 (the bcrypt input limit); longer is `400 invalid_body`. Login with a malformed email is `invalid_credentials` (same as unknown email).
 
 `rememberMe: true` (default) sets cookie `Max-Age` to 30 days. `false` sets a session cookie (cleared when the browser quits). The server still expires the token after 30 days.
 
@@ -156,7 +156,7 @@ Password reset is also two steps. `POST /auth/password/forgot` always returns `2
 { "email": "alex@example.com", "code": "123456", "password": "a-new-long-enough-secret" }
 ```
 
-Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required. A resend replaces the previous code. Operator seed/reset accounts skip this flow.
+Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required; concurrent guesses share the same 5. A spent challenge keeps its cooldown and send count. A resend replaces the previous code. Operator seed/reset accounts skip this flow.
 
 Signed in, the password and the email can change without the reset flow. Each keeps the caller's session and deletes every **other** session token for the account.
 

@@ -334,24 +334,29 @@ func (m *Memory) UpsertEmailChallenge(_ context.Context, ch EmailChallenge) erro
 	return nil
 }
 
-func (m *Memory) DeleteEmailChallenge(_ context.Context, email, purpose string) error {
-	m.mu.Lock()
-	defer m.mu.Unlock()
-	delete(m.challenges, challengeKey(email, purpose))
-	return nil
-}
-
-func (m *Memory) IncrementChallengeAttempts(_ context.Context, email, purpose string) (int, error) {
+func (m *Memory) ReserveChallengeGuess(_ context.Context, email, purpose string, userID uuid.UUID, maxAttempts int) (EmailChallenge, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	key := challengeKey(email, purpose)
 	ch, ok := m.challenges[key]
-	if !ok {
-		return 0, domain.ErrNotFound()
+	if !ok || ch.UserID != userID || ch.AttemptCount >= maxAttempts {
+		return EmailChallenge{}, domain.ErrNotFound()
 	}
 	ch.AttemptCount++
 	m.challenges[key] = ch
-	return ch.AttemptCount, nil
+	return ch, nil
+}
+
+func (m *Memory) ConsumeEmailChallenge(_ context.Context, email, purpose, codeHash string) (bool, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	key := challengeKey(email, purpose)
+	ch, ok := m.challenges[key]
+	if !ok || ch.CodeHash != codeHash {
+		return false, nil
+	}
+	delete(m.challenges, key)
+	return true, nil
 }
 
 func (m *Memory) ListProjects(_ context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error) {

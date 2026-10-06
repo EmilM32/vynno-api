@@ -35,6 +35,42 @@ func (l *Limiter) Allow(key string, now time.Time, limit int, window time.Durati
 	return true, 0
 }
 
+// Reserve is Allow and Hit under one lock: when key is under limit it records an
+// event at now and reports true. Callers that count attempts before doing slow work
+// (bcrypt) use it so concurrent attempts cannot all pass the check before any is
+// recorded. Undo an attempt that should not count with Release.
+func (l *Limiter) Reserve(key string, now time.Time, limit int, window time.Duration) (bool, time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	now = now.UTC()
+	kept := prune(l.events[key], now, window)
+	if len(kept) >= limit {
+		l.events[key] = kept
+		retry := kept[0].Add(window).Sub(now)
+		if retry < time.Second {
+			retry = time.Second
+		}
+		return false, retry
+	}
+	l.events[key] = append(kept, now)
+	return true, 0
+}
+
+// Release removes one event recorded at exactly at, the newest such event first.
+// It undoes a Reserve made with the same time. Nothing happens when none matches.
+func (l *Limiter) Release(key string, at time.Time) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	at = at.UTC()
+	events := l.events[key]
+	for i := len(events) - 1; i >= 0; i-- {
+		if events[i].Equal(at) {
+			l.events[key] = append(events[:i], events[i+1:]...)
+			return
+		}
+	}
+}
+
 // Hit records an event at now. The caller passes now; there is no hidden clock.
 func (l *Limiter) Hit(key string, now time.Time, window time.Duration) {
 	l.mu.Lock()

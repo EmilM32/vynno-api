@@ -67,8 +67,13 @@ type Store interface {
 
 	GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error)
 	UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) error
-	DeleteEmailChallenge(ctx context.Context, email, purpose string) error
-	IncrementChallengeAttempts(ctx context.Context, email, purpose string) (int, error)
+	// ReserveChallengeGuess takes one guess atomically and returns the challenge as it
+	// is after the increment. not_found when there is no challenge for email+purpose
+	// bound to userID (uuid.Nil = unbound) with fewer than maxAttempts guesses taken.
+	ReserveChallengeGuess(ctx context.Context, email, purpose string, userID uuid.UUID, maxAttempts int) (EmailChallenge, error)
+	// ConsumeEmailChallenge deletes the challenge if it still holds codeHash and
+	// reports whether it did.
+	ConsumeEmailChallenge(ctx context.Context, email, purpose, codeHash string) (bool, error)
 
 	ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error)
 	GetProject(ctx context.Context, userID, id uuid.UUID) (domain.Project, error)

@@ -18,11 +18,18 @@ ON CONFLICT (email, purpose) DO UPDATE SET
     send_window_start = EXCLUDED.send_window_start,
     user_id = EXCLUDED.user_id;
 
--- name: DeleteEmailChallenge :exec
-DELETE FROM email_challenges WHERE email = $1 AND purpose = $2;
-
--- name: IncrementChallengeAttempts :one
+-- name: ReserveChallengeGuess :one
+-- Takes one guess atomically before the code is compared. No row when the challenge
+-- is missing, bound to another account, or already out of guesses.
 UPDATE email_challenges
 SET attempt_count = attempt_count + 1
-WHERE email = $1 AND purpose = $2
-RETURNING attempt_count;
+WHERE email = $1
+  AND purpose = $2
+  AND user_id IS NOT DISTINCT FROM sqlc.narg(user_id)::uuid
+  AND attempt_count < sqlc.arg(max_attempts)::int
+RETURNING email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id;
+
+-- name: ConsumeEmailChallenge :execrows
+-- Deletes the challenge only while it still holds the code that was compared.
+DELETE FROM email_challenges
+WHERE email = $1 AND purpose = $2 AND code_hash = $3;
