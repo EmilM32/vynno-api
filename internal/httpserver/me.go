@@ -129,5 +129,9 @@ func (s *Server) getAvatar(c *gin.Context) {
 		return
 	}
 	c.Header("Cache-Control", "public, max-age=31536000, immutable")
+	// The bytes are user-uploaded. Only magic bytes are checked, so a file can also
+	// parse as HTML: never sniff it, and if it is opened as a document, run nothing.
+	c.Header("X-Content-Type-Options", "nosniff")
+	c.Header("Content-Security-Policy", "default-src 'none'; sandbox")
 	c.Data(http.StatusOK, av.ContentType, av.Bytes)
 }

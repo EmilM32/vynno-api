@@ -184,6 +184,7 @@ Chrome shows `displayName` if non-empty, otherwise the raw email (no `@` prefix)
 | **Email change** | Signed in. `POST /auth/email/code` checks the current password and mails a code to the new address (`change_email` challenge, bound to this account). `POST /auth/email/change` with that code switches the email, keeps this session, deletes every other session token, and mails a notice to the old address. Taken address → `409 email_in_use` on either step. |
 | **Password change** | Signed in. `POST /auth/password/change` checks the current password (wrong → `invalid_credentials`, counted against the login caps), sets the new hash, keeps this session, deletes every other session token, and mails a notice. |
 | **One-time code** | Six digits. 15 minute TTL. SHA-256 at rest. One active challenge per email+purpose (`register` \| `password_reset` \| `change_email`). A `change_email` challenge is keyed by the new address and bound to the account that asked. Resend replaces. 60 s cooldown; 5 sends / hour; 5 guesses then spent. A guess is reserved in the database before the code is compared, so concurrent requests cannot exceed 5. A spent challenge stays (keeping cooldown and send count) until a resend replaces it. Never on the wire except in the mail body. |
+| **Expired rows** | An expired session token or code is refused on use. The API process also deletes expired tokens, and challenges whose code expired more than one send window (1 hour) ago, at start and every hour. The send window outlives the code by up to 45 minutes, so a sooner delete would reset the send cap. |
 | **Password reset** | `POST /auth/password/forgot` always succeeds for a well-formed email; mail only if the account exists. `POST /auth/password/reset` sets a new hash and deletes every session token for that user. No cookie. Login afterwards. |
 | **Avatar upload** | `PUT /me/avatar`, multipart field `file`. JPEG / PNG / WebP by magic bytes. Max 1 MiB. Replacing allocates a new UUID and deletes the previous row. |
 | **Avatar delete** | `DELETE /me/avatar`. Idempotent: already-null still succeeds. |
@@ -262,7 +263,7 @@ Wrong JSON type → `400 invalid_body`. Malformed JSON and trailing data → `40
 1. **One live session** — enforced on the server, not only in the SPA store.
 2. **Sessions are mutable.** PATCH and DELETE apply to any row. Status still changes only via stop. Manual create is always `stopped`.
 3. **Duration precision** — milliseconds. Display formatting is the client.
-4. **`user_id` is internal** — not on the wire. Accounts are isolated; there are no team workspaces ([ADR-0006](./adr/0006-single-user-tenancy.md)).
+4. **`user_id` is internal** — not on the wire. Accounts are isolated; there are no team workspaces ([ADR-0006](./adr/0006-single-user-tenancy.md)). The service checks that a referenced project or activity type is the caller's, and the foreign keys are `(user_id, id)` pairs, so the database also refuses a session or default project that points at another account's row.
 5. **UTC on the wire.** Day grouping and local clocks are the client.
 6. **IDs are opaque.** The mock’s `proj-` / `sess-` prefixes are not a contract.
 

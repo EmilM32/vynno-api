@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 
 	gomail "github.com/wneessen/go-mail"
 )
@@ -67,6 +68,15 @@ func (s *smtpMailer) Send(ctx context.Context, msg Message) error {
 	if err := s.client.DialAndSendWithContext(ctx, m); err != nil {
 		return err
 	}
-	slog.Info("mail sent", "to", msg.To)
+	// The address is personal data and logs/api.log is kept for days; the domain is
+	// enough to tell which provider a delivery went to.
+	slog.Info("mail sent", "to_domain", recipientDomain(msg.To))
 	return nil
+}
+
+func recipientDomain(addr string) string {
+	if i := strings.LastIndex(addr, "@"); i >= 0 {
+		return addr[i+1:]
+	}
+	return ""
 }

@@ -88,11 +88,27 @@ func TestSMTPSourceDoesNotLogBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !bytes.Contains(src, []byte(`slog.Info("mail sent", "to", msg.To)`)) {
-		t.Fatal("smtp success log must record only the recipient")
+	if !bytes.Contains(src, []byte(`slog.Info("mail sent", "to_domain", recipientDomain(msg.To))`)) {
+		t.Fatal("smtp success log must record only the recipient domain")
+	}
+	if bytes.Contains(src, []byte(`"to", msg.To`)) {
+		t.Fatal("smtp must not log the full recipient address")
 	}
 	if bytes.Contains(src, []byte(`"text"`)) {
 		t.Fatal("smtp must not log the mail body or one-time code")
+	}
+}
+
+func TestRecipientDomain(t *testing.T) {
+	t.Parallel()
+	for in, want := range map[string]string{
+		"ada@example.com":      "example.com",
+		"a@b@xn--bcher-kva.de": "xn--bcher-kva.de",
+		"no-at":                "",
+	} {
+		if got := recipientDomain(in); got != want {
+			t.Fatalf("recipientDomain(%q) = %q, want %q", in, got, want)
+		}
 	}
 }
 

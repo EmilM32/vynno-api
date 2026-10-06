@@ -220,6 +220,14 @@ func (p *Postgres) DeleteOtherTokens(ctx context.Context, userID uuid.UUID, keep
 	return p.q.DeleteOtherAuthTokens(ctx, sqlcgen.DeleteOtherAuthTokensParams{UserID: userID, TokenHash: keepHash})
 }
 
+func (p *Postgres) DeleteExpiredTokens(ctx context.Context, now time.Time) (int64, error) {
+	return p.q.DeleteExpiredAuthTokens(ctx, now)
+}
+
+func (p *Postgres) DeleteEmailChallengesExpiredBefore(ctx context.Context, cutoff time.Time) (int64, error) {
+	return p.q.DeleteEmailChallengesExpiredBefore(ctx, cutoff)
+}
+
 func (p *Postgres) GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error) {
 	row, err := p.q.GetEmailChallenge(ctx, sqlcgen.GetEmailChallengeParams{Email: email, Purpose: purpose})
 	if err != nil {

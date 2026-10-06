@@ -108,7 +108,9 @@ Client IP for the per-IP caps is `X-Forwarded-For` only when the TCP peer is in 
 
 **Password and email change.** Settings → Security, signed in. A password change keeps this browser signed in and signs out the others. An email change sends a code to the new address (same inbox locally) and a notice to the old one.
 
-**Do not put codes on disk in `smtp` mode.** Request logs are method/path/status only. Successful SMTP logs `mail sent to=…` — not the body. `log` mode is the exception (playground). JSON never includes the code.
+**Do not put codes on disk in `smtp` mode.** Request logs are method/path/status only. Successful SMTP logs `mail sent to_domain=…` (the recipient's domain only, not the address) — not the body. `log` mode is the exception (playground). JSON never includes the code.
+
+**Housekeeping.** The API deletes expired session tokens and stale one-time codes at start and hourly (`sweep` log line when it removed rows). Server timeouts: 10 s headers, 30 s request read, 60 s response write, 120 s idle keep-alive.
 
 **Real mailbox later.** Change `SMTP_HOST` / port / username / password / `SMTP_STARTTLS` / `MAIL_FROM`. Gmail app password, Fastmail, or a provider’s SMTP endpoint are env-only. Do not point production SMTP at `@vynno.local` seed addresses — those exist only on `vynno_dev` and will bounce on a public MX. Seed/reset insert users without mail; forgot-password **does** email them if SMTP is up.
 

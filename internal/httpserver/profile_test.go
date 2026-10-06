@@ -143,6 +143,12 @@ func TestAvatarUploadReplaceDeleteAndPublicGet(t *testing.T) {
 	if img.Header().Get("Content-Type") != "image/jpeg" {
 		t.Fatalf("content-type = %q", img.Header().Get("Content-Type"))
 	}
+	if img.Header().Get("X-Content-Type-Options") != "nosniff" {
+		t.Fatalf("nosniff = %q", img.Header().Get("X-Content-Type-Options"))
+	}
+	if img.Header().Get("Content-Security-Policy") != "default-src 'none'; sandbox" {
+		t.Fatalf("csp = %q", img.Header().Get("Content-Security-Policy"))
+	}
 	got, _ := io.ReadAll(img.Body)
 	if !bytes.Equal(got, jpegMagic) {
 		t.Fatalf("bytes mismatch")
