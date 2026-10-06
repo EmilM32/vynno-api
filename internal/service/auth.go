@@ -170,11 +170,11 @@ func (s *Service) emailChallengeSendable(ctx context.Context, email, purpose str
 		return err
 	}
 	if domain.OTPSendCooldownActive(ch.SentAt, now) {
-		return domain.ErrRateLimited()
+		return domain.ErrRateLimitedAfter(domain.OTPSendCooldownRemaining(ch.SentAt, now))
 	}
-	_, sendCount := domain.AdvanceSendWindow(ch.SendWindowStart, ch.SendCount, now)
+	windowStart, sendCount := domain.AdvanceSendWindow(ch.SendWindowStart, ch.SendCount, now)
 	if domain.OTPSendLimited(sendCount) {
-		return domain.ErrRateLimited()
+		return domain.ErrRateLimitedAfter(domain.OTPSendWindowRemaining(windowStart, now))
 	}
 	return nil
 }
@@ -236,12 +236,12 @@ func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string, 
 			SendWindowStart: now,
 		}
 	} else if domain.OTPSendCooldownActive(ch.SentAt, now) {
-		return "", domain.ErrRateLimited()
+		return "", domain.ErrRateLimitedAfter(domain.OTPSendCooldownRemaining(ch.SentAt, now))
 	}
 
 	windowStart, sendCount := domain.AdvanceSendWindow(ch.SendWindowStart, ch.SendCount, now)
 	if domain.OTPSendLimited(sendCount) {
-		return "", domain.ErrRateLimited()
+		return "", domain.ErrRateLimitedAfter(domain.OTPSendWindowRemaining(windowStart, now))
 	}
 
 	code, err := domain.GenerateOTP()
