@@ -60,6 +60,16 @@ func OTPSendCooldownActive(sentAt, now time.Time) bool {
 	return now.Before(sentAt.Add(OTPSendCooldown))
 }
 
+// OTPSendCooldownRemaining is how long until the cooldown started at sentAt ends.
+func OTPSendCooldownRemaining(sentAt, now time.Time) time.Duration {
+	return sentAt.Add(OTPSendCooldown).Sub(now)
+}
+
+// OTPSendWindowRemaining is how long until the hourly send window started at windowStart rolls.
+func OTPSendWindowRemaining(windowStart, now time.Time) time.Duration {
+	return windowStart.Add(OTPSendWindow).Sub(now)
+}
+
 // AdvanceSendWindow resets the hourly window when it has elapsed.
 func AdvanceSendWindow(windowStart time.Time, sendCount int, now time.Time) (time.Time, int) {
 	if now.Sub(windowStart) >= OTPSendWindow {

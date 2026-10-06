@@ -58,6 +58,12 @@ func TestOTPWindows(t *testing.T) {
 	if OTPSendCooldownActive(now, now.Add(60*time.Second)) {
 		t.Fatal("60s should allow a resend")
 	}
+	if got := OTPSendCooldownRemaining(now, now.Add(15*time.Second)); got != 45*time.Second {
+		t.Fatalf("cooldown remaining = %v", got)
+	}
+	if got := OTPSendWindowRemaining(now, now.Add(50*time.Minute)); got != 10*time.Minute {
+		t.Fatalf("window remaining = %v", got)
+	}
 
 	start, count := AdvanceSendWindow(now, 4, now.Add(59*time.Minute))
 	if !start.Equal(now) || count != 4 {

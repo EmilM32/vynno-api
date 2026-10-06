@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/EmilM32/vynno-api/internal/mail"
 )
@@ -161,6 +162,23 @@ func TestChangeEmailHappyPath(t *testing.T) {
 		"email": "alex.new@example.com", "code": code,
 	}, here)
 	assertCode(t, w, http.StatusUnauthorized, "invalid_code")
+}
+
+func TestChangeEmailCodeCooldownSetsRetryAfter(t *testing.T) {
+	r, svc := testAuth(t, mail.Discard())
+	now := time.Date(2026, 9, 30, 12, 0, 0, 0, time.UTC)
+	svc.Now = func() time.Time { return now }
+	auth := withCookie(loginCookie(t, r))
+
+	body := map[string]any{"email": "alex.new@example.com", "password": testPassword}
+	w := doJSON(t, r, http.MethodPost, "/v1/auth/email/code", body, auth)
+	if w.Code != http.StatusNoContent {
+		t.Fatalf("email/code = %d %s", w.Code, w.Body.String())
+	}
+	now = now.Add(20*time.Second + 500*time.Millisecond)
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/email/code", body, auth)
+	assertCode(t, w, http.StatusTooManyRequests, "rate_limited")
+	assertRetryAfter(t, w, "40")
 }
 
 func TestChangeEmailCodeRejected(t *testing.T) {

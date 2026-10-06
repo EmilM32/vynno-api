@@ -3,6 +3,8 @@ package httpserver
 import (
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -207,8 +209,11 @@ func TestRegisterCodeCooldownAndSendCap(t *testing.T) {
 	if w.Code != http.StatusNoContent {
 		t.Fatalf("first send = %d %s", w.Code, w.Body.String())
 	}
+	now = now.Add(15 * time.Second)
 	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "erin@example.com"})
 	assertCode(t, w, http.StatusTooManyRequests, "rate_limited")
+	assertRetryAfter(t, w, "45")
+	now = now.Add(-15 * time.Second)
 
 	for i := 1; i < domain.OTPSendsPerHour; i++ {
 		now = now.Add(domain.OTPSendCooldown)
@@ -220,6 +225,15 @@ func TestRegisterCodeCooldownAndSendCap(t *testing.T) {
 	now = now.Add(domain.OTPSendCooldown)
 	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "erin@example.com"})
 	assertCode(t, w, http.StatusTooManyRequests, "rate_limited")
+	// The hourly window opened with the first send, 5 cooldowns ago.
+	assertRetryAfter(t, w, strconv.Itoa(int((domain.OTPSendWindow-domain.OTPSendsPerHour*domain.OTPSendCooldown)/time.Second)))
+}
+
+func assertRetryAfter(t *testing.T, w *httptest.ResponseRecorder, want string) {
+	t.Helper()
+	if got := w.Header().Get("Retry-After"); got != want {
+		t.Fatalf("Retry-After = %q, want %q", got, want)
+	}
 }
 
 func TestRegisterCodeGuessCap(t *testing.T) {
