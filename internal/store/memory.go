@@ -317,6 +317,32 @@ func (m *Memory) DeleteOtherTokens(_ context.Context, userID uuid.UUID, keepHash
 	return nil
 }
 
+func (m *Memory) DeleteExpiredTokens(_ context.Context, now time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var n int64
+	for hash, tok := range m.tokens {
+		if !tok.ExpiresAt.After(now) {
+			delete(m.tokens, hash)
+			n++
+		}
+	}
+	return n, nil
+}
+
+func (m *Memory) DeleteEmailChallengesExpiredBefore(_ context.Context, cutoff time.Time) (int64, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	var n int64
+	for key, ch := range m.challenges {
+		if ch.ExpiresAt.Before(cutoff) {
+			delete(m.challenges, key)
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (m *Memory) GetEmailChallenge(_ context.Context, email, purpose string) (EmailChallenge, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()

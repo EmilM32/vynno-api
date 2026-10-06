@@ -321,3 +321,81 @@ func firstProjectID(t *testing.T, r http.Handler, auth reqOpt) string {
 	}
 	return projects.Items[0].ID
 }
+
+func TestJSONBodyRequiresJSONContentType(t *testing.T) {
+	r := testRouter(t)
+	body := `{"email":"alexdev@vynno.local","password":"` + testPassword + `"}`
+	for _, ct := range []string{"", "text/plain", "application/x-www-form-urlencoded", "multipart/form-data; boundary=x"} {
+		req := httptest.NewRequest(http.MethodPost, "/v1/auth/login", strings.NewReader(body))
+		if ct != "" {
+			req.Header.Set("Content-Type", ct)
+		}
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, req)
+		assertCode(t, w, http.StatusBadRequest, "invalid_body")
+		if w.Header().Get("Set-Cookie") != "" {
+			t.Fatalf("Content-Type %q signed in", ct)
+		}
+	}
+	w := doRaw(t, r, http.MethodPost, "/v1/auth/login", body, func(req *http.Request) {
+		req.Header.Set("Content-Type", "application/json; charset=utf-8")
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("charset param = %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestJSONBodyOverCapIsRejected(t *testing.T) {
+	r := testRouter(t)
+	big := `{"email":"alexdev@vynno.local","password":"` + strings.Repeat("a", maxJSONBody) + `"}`
+	w := doRaw(t, r, http.MethodPost, "/v1/auth/login", big)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+	if !strings.Contains(w.Body.String(), "too large") {
+		t.Fatalf("body = %s", w.Body.String())
+	}
+}
+
+// Public auth routes have no cookie for checkCSRF to key on. The CORS middleware
+// answers 403 to any request whose Origin is not allowlisted, which is what stops a
+// foreign page from signing a visitor into another account or sending codes.
+func TestPublicAuthRoutesRejectForeignOrigin(t *testing.T) {
+	r := testRouter(t)
+	login := map[string]any{"email": "alexdev@vynno.local", "password": testPassword}
+	for _, origin := range []string{"https://evil.example", "null"} {
+		w := doJSON(t, r, http.MethodPost, "/v1/auth/login", login, withOrigin(origin))
+		if w.Code != http.StatusForbidden || w.Header().Get("Set-Cookie") != "" {
+			t.Fatalf("Origin %q = %d, cookie %q", origin, w.Code, w.Header().Get("Set-Cookie"))
+		}
+	}
+	rec := &mail.Recorder{}
+	r = testRouterWithMailer(t, rec)
+	for _, path := range []string{"/v1/auth/register/code", "/v1/auth/password/forgot"} {
+		w := doJSON(t, r, http.MethodPost, path, map[string]any{"email": "alexdev@vynno.local"}, withOrigin("https://evil.example"))
+		if w.Code != http.StatusForbidden {
+			t.Fatalf("%s = %d", path, w.Code)
+		}
+	}
+	if len(rec.Messages) != 0 {
+		t.Fatalf("foreign origin sent mail: %d", len(rec.Messages))
+	}
+	w := doJSON(t, r, http.MethodPost, "/v1/auth/login", login, withOrigin("http://localhost:5173"))
+	if w.Code != http.StatusOK {
+		t.Fatalf("SPA origin = %d %s", w.Code, w.Body.String())
+	}
+}
+
+func TestSwaggerCannotBeFramed(t *testing.T) {
+	r := testRouter(t)
+	for _, path := range []string{"/swagger/", "/openapi.json"} {
+		w := httptest.NewRecorder()
+		r.ServeHTTP(w, httptest.NewRequest(http.MethodGet, path, nil))
+		if w.Code != http.StatusOK {
+			t.Fatalf("%s = %d", path, w.Code)
+		}
+		if w.Header().Get("X-Frame-Options") != "DENY" ||
+			w.Header().Get("Content-Security-Policy") != "frame-ancestors 'none'" ||
+			w.Header().Get("X-Content-Type-Options") != "nosniff" {
+			t.Fatalf("%s headers = %v", path, w.Header())
+		}
+	}
+}

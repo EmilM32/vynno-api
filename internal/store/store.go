@@ -64,6 +64,8 @@ type Store interface {
 	DeleteTokensByUser(ctx context.Context, userID uuid.UUID) error
 	// DeleteOtherTokens signs out every session of userID except the one with keepHash.
 	DeleteOtherTokens(ctx context.Context, userID uuid.UUID, keepHash string) error
+	// DeleteExpiredTokens removes every token whose expiry is at or before now.
+	DeleteExpiredTokens(ctx context.Context, now time.Time) (int64, error)
 
 	GetEmailChallenge(ctx context.Context, email, purpose string) (EmailChallenge, error)
 	UpsertEmailChallenge(ctx context.Context, ch EmailChallenge) error
@@ -74,6 +76,8 @@ type Store interface {
 	// ConsumeEmailChallenge deletes the challenge if it still holds codeHash and
 	// reports whether it did.
 	ConsumeEmailChallenge(ctx context.Context, email, purpose, codeHash string) (bool, error)
+	// DeleteEmailChallengesExpiredBefore removes challenges whose code expired before cutoff.
+	DeleteEmailChallengesExpiredBefore(ctx context.Context, cutoff time.Time) (int64, error)
 
 	ListProjects(ctx context.Context, userID uuid.UUID, includeArchived bool) ([]domain.Project, error)
 	GetProject(ctx context.Context, userID, id uuid.UUID) (domain.Project, error)

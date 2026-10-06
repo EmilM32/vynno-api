@@ -68,6 +68,8 @@ Unknown route and wrong method: JSON `404` `not_found`.
 
 Body over the BFF 2 MB limit: `413` with envelope code `invalid_body` and message `Request body is too large.` (the BFF emits this).
 
+JSON bodies must be sent with `Content-Type: application/json` (parameters such as `charset` are allowed). Any other or missing type → `400 invalid_body` (`Content-Type must be application/json.`). The API itself caps a JSON body at 64 KiB → `400 invalid_body` (`Request body is too large.`); the avatar upload keeps its own multipart limit.
+
 Wrong JSON type → `400 invalid_body`. Malformed JSON and trailing data → `400 invalid_json`. Unknown fields are rejected on POST and PATCH (`400 invalid_body`). Empty `status` query means no filter.
 
 Example envelope:
@@ -172,7 +174,7 @@ Email change is two steps, like register. `POST /auth/email/code` `{ "email": "<
 
 Cookie flags: `HttpOnly`, `SameSite=Lax`, `Path=/`, `Secure` when the process is configured for HTTPS.
 
-CORS is locked to the SPA origin(s) and allows credentials. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
+CORS is locked to the SPA origin(s) and allows credentials. Any request whose `Origin` is outside the allowlist (SPA origins plus the API's public origin) is answered `403` with an empty body, public routes included. Mutating cookie-backed requests must send an `Origin` (or `Referer`) in that allowlist.
 
 Public: `POST /auth/login`, `POST /auth/register`, `POST /auth/register/code`, `POST /auth/password/forgot`, `POST /auth/password/reset`, `GET /avatars/:id`. Every other `/v1` resource requires a session. `GET /healthz` is outside `/v1` and stays public. Operator Swagger UI (`GET /swagger/`, `GET /openapi.json`) is also outside `/v1` and public on this loopback process.
 
@@ -218,7 +220,7 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 
 `DELETE /me/avatar` when already null is still `200` with `avatarUrl: null`.
 
-`GET /avatars/:id` is public (no cookie). Success is the raw bytes with `Content-Type` from the stored row and `Cache-Control: public, max-age=31536000, immutable`. Unknown id → `404` `{ "error": { "code": "not_found", "message": "…" } }`.
+`GET /avatars/:id` is public (no cookie). Success is the raw bytes with `Content-Type` from the stored row, `Cache-Control: public, max-age=31536000, immutable`, `X-Content-Type-Options: nosniff`, and `Content-Security-Policy: default-src 'none'; sandbox`. Unknown id → `404` `{ "error": { "code": "not_found", "message": "…" } }`.
 
 ### Preferences
 

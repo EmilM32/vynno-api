@@ -74,11 +74,20 @@ func main() {
 		Ready:           db.PingContext,
 	})
 
+	// ReadTimeout covers the largest body (a 2 MiB avatar multipart); WriteTimeout
+	// the slowest handler (bcrypt plus SMTP). IdleTimeout closes parked keep-alives.
 	srv := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           r,
 		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      60 * time.Second,
+		IdleTimeout:       120 * time.Second,
 	}
+
+	sweepCtx, stopSweep := context.WithCancel(context.Background())
+	defer stopSweep()
+	go sweepExpired(sweepCtx, svc)
 
 	errCh := make(chan error, 1)
 	go func() {
@@ -102,6 +111,27 @@ func main() {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("shutdown", "err", err)
 			os.Exit(1)
+		}
+	}
+}
+
+// sweepExpired removes expired session tokens and stale one-time codes at start
+// and then every service.SweepInterval until ctx is cancelled.
+func sweepExpired(ctx context.Context, svc *service.Service) {
+	ticker := time.NewTicker(service.SweepInterval)
+	defer ticker.Stop()
+	for {
+		res, err := svc.SweepExpired(ctx)
+		switch {
+		case err != nil && ctx.Err() == nil:
+			slog.Error("sweep", "err", err)
+		case err == nil && (res.Tokens > 0 || res.Challenges > 0):
+			slog.Info("sweep", "tokens", res.Tokens, "challenges", res.Challenges)
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
 		}
 	}
 }

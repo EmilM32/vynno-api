@@ -32,6 +32,18 @@ func (q *Queries) ConsumeEmailChallenge(ctx context.Context, arg ConsumeEmailCha
 	return result.RowsAffected()
 }
 
+const deleteEmailChallengesExpiredBefore = `-- name: DeleteEmailChallengesExpiredBefore :execrows
+DELETE FROM email_challenges WHERE expires_at < $1
+`
+
+func (q *Queries) DeleteEmailChallengesExpiredBefore(ctx context.Context, expiresAt time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteEmailChallengesExpiredBefore, expiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const getEmailChallenge = `-- name: GetEmailChallenge :one
 SELECT email, purpose, code_hash, expires_at, attempt_count, sent_at, send_count, send_window_start, user_id
 FROM email_challenges

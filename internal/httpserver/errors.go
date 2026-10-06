@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log/slog"
+	"mime"
 	"net/http"
 	"strconv"
 	"strings"
@@ -79,10 +80,25 @@ func statusFor(code string) int {
 	}
 }
 
+// maxJSONBody caps a JSON request body. The largest valid body (a session with a
+// 500-character note) is far below it.
+const maxJSONBody = 64 << 10
+
+// decodeJSON reads one JSON object into dest. The body must be declared
+// application/json, so a cross-site form or no-cors fetch (text/plain) cannot
+// reach a handler, and it is capped at maxJSONBody before decoding.
 func decodeJSON(c *gin.Context, dest any) error {
+	if !isJSONContentType(c.GetHeader("Content-Type")) {
+		return domain.ErrInvalidBody("Content-Type must be application/json.")
+	}
+	c.Request.Body = http.MaxBytesReader(c.Writer, c.Request.Body, maxJSONBody)
 	dec := json.NewDecoder(c.Request.Body)
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(dest); err != nil {
+		var maxErr *http.MaxBytesError
+		if errors.As(err, &maxErr) {
+			return domain.ErrInvalidBody("Request body is too large.")
+		}
 		if errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF) {
 			return domain.ErrInvalidJSON()
 		}
@@ -114,4 +130,9 @@ func decodeJSON(c *gin.Context, dest any) error {
 		return domain.ErrInvalidJSON()
 	}
 	return nil
+}
+
+func isJSONContentType(raw string) bool {
+	mt, _, err := mime.ParseMediaType(raw)
+	return err == nil && mt == "application/json"
 }

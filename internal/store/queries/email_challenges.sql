@@ -33,3 +33,6 @@ RETURNING email, purpose, code_hash, expires_at, attempt_count, sent_at, send_co
 -- Deletes the challenge only while it still holds the code that was compared.
 DELETE FROM email_challenges
 WHERE email = $1 AND purpose = $2 AND code_hash = $3;
+
+-- name: DeleteEmailChallengesExpiredBefore :execrows
+DELETE FROM email_challenges WHERE expires_at < $1;

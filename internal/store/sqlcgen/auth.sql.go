@@ -30,6 +30,18 @@ func (q *Queries) DeleteAuthTokensByUser(ctx context.Context, userID uuid.UUID) 
 	return err
 }
 
+const deleteExpiredAuthTokens = `-- name: DeleteExpiredAuthTokens :execrows
+DELETE FROM auth_tokens WHERE expires_at <= $1
+`
+
+func (q *Queries) DeleteExpiredAuthTokens(ctx context.Context, expiresAt time.Time) (int64, error) {
+	result, err := q.db.ExecContext(ctx, deleteExpiredAuthTokens, expiresAt)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected()
+}
+
 const deleteOtherAuthTokens = `-- name: DeleteOtherAuthTokens :exec
 DELETE FROM auth_tokens WHERE user_id = $1 AND token_hash <> $2
 `
