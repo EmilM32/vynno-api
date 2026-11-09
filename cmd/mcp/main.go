@@ -88,10 +88,10 @@ func runToken() int {
 	}
 	defer func() { _ = db.Close() }()
 
-	email := strings.TrimSpace(os.Getenv("VYNno_MCP_EMAIL"))
-	password := os.Getenv("VYNno_MCP_PASSWORD")
+	email := strings.TrimSpace(mcpEnv("EMAIL"))
+	password := mcpEnv("PASSWORD")
 	if email == "" || password == "" {
-		fmt.Fprintln(os.Stderr, "VYNno_MCP_EMAIL and VYNNO_MCP_PASSWORD are required")
+		fmt.Fprintln(os.Stderr, "VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD are required")
 		return 1
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -131,17 +131,26 @@ func open() (*sql.DB, *store.Postgres, *service.Service, error) {
 	return db, pg, service.New(pg, nil), nil
 }
 
+// mcpEnv reads VYNNO_MCP_<name>. Earlier releases read the misspelled
+// VYNno_MCP_<name>, so an existing .env with that spelling still works.
+func mcpEnv(name string) string {
+	if v := os.Getenv("VYNNO_MCP_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("VYNno_MCP_" + name)
+}
+
 func sessionToken() (string, error) {
-	token := strings.TrimSpace(os.Getenv("VYNno_MCP_TOKEN"))
+	token := strings.TrimSpace(mcpEnv("TOKEN"))
 	if token == "" || strings.Contains(token, "${") {
-		return "", errors.New("VYNno_MCP_TOKEN is required in .env or the environment. Set VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, run `go run ./cmd/mcp token`, and paste the printed value")
+		return "", errors.New("VYNNO_MCP_TOKEN is required in .env or the environment. Set VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, run `go run ./cmd/mcp token`, and paste the printed value")
 	}
 	return token, nil
 }
 
 func authFailure(err error) string {
 	if de, ok := domain.AsError(err); ok && de.Code == domain.CodeUnauthorized {
-		return "VYNno_MCP_TOKEN was rejected (missing, expired, or revoked)"
+		return "VYNNO_MCP_TOKEN was rejected (missing, expired, or revoked)"
 	}
 	return "could not check VYNNO_MCP_TOKEN: " + err.Error()
 }

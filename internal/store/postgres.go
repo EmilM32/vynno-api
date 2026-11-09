@@ -708,7 +708,8 @@ func mapUnique(err error) error {
 		case "users_email_key":
 			return domain.ErrEmailInUse()
 		}
-		return domain.ErrCodeInUse()
+		// An unmapped constraint is a server bug, not a project code clash:
+		// return it as it is so the handler logs it and answers 500.
 	}
 	return err
 }

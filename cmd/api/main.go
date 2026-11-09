@@ -36,6 +36,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = db.Close() }()
+	// Postgres defaults to 100 connections and database/sql to no cap at all.
+	// One host runs the API, the playground, and the MCP against the same server.
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxLifetime(time.Hour)
 
 	if err := db.Ping(); err != nil {
 		slog.Error("database ping", "err", err)

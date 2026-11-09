@@ -1,4 +1,4 @@
-# Local read-only MCP. The session token lives in .env (VYNno_MCP_TOKEN), which
+# Local read-only MCP. The session token lives in .env (VYNNO_MCP_TOKEN), which
 # cmd/mcp loads. Do not put the token in this file. See docs/adr/0016-readonly-mcp.md.
 
 [mcp_servers.vynno]

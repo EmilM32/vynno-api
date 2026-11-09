@@ -101,13 +101,13 @@ golangci-lint run ./...
 
 `cmd/mcp` is a local MCP server an agent can use to read **one account's** projects and sessions. It is not part of `/v1`. The account is a Vynno session token ([ADR-0016](./docs/adr/0016-readonly-mcp.md)): the same secret the API accepts as `Authorization: Bearer`. Tools have no email argument, and every query is limited to that token's user.
 
-Postgres must be up (`./scripts/start` or Compose). Set `VYNno_MCP_EMAIL` and `VYNno_MCP_PASSWORD` in `.env` (see `.env.example`), then from the repo root:
+Postgres must be up (`./scripts/start` or Compose). Set `VYNNO_MCP_EMAIL` and `VYNNO_MCP_PASSWORD` in `.env` (see `.env.example`), then from the repo root:
 
 ```sh
 go run ./cmd/mcp token
 ```
 
-Paste the printed line into `.env` as `VYNno_MCP_TOKEN`. That file is gitignored. The token lasts 30 days. Password reset revokes it. `.grok/config.toml` starts `go run ./cmd/mcp`, which reads `.env`. `./scripts/build` also writes `bin/vynno-mcp`.
+Paste the printed line into `.env` as `VYNNO_MCP_TOKEN`. That file is gitignored. The token lasts 30 days. Password reset revokes it. `.grok/config.toml` starts `go run ./cmd/mcp`, which reads `.env`. `./scripts/build` also writes `bin/vynno-mcp`.
 
 ## Documentation
 
