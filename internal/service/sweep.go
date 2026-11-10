@@ -26,6 +26,7 @@ type SweepResult struct {
 // Expired rows are already refused on use; this only keeps the tables from growing.
 func (s *Service) SweepExpired(ctx context.Context) (SweepResult, error) {
 	now := s.Now()
+	s.Limiter.Sweep(now, s.longestLimitWindow())
 	tokens, err := s.Store.DeleteExpiredTokens(ctx, now)
 	if err != nil {
 		return SweepResult{}, err
@@ -35,4 +36,10 @@ func (s *Service) SweepExpired(ctx context.Context) (SweepResult, error) {
 		return SweepResult{Tokens: tokens}, err
 	}
 	return SweepResult{Tokens: tokens, Challenges: challenges}, nil
+}
+
+// longestLimitWindow is the longest window any limiter key is counted over. A key
+// with no event that recent is empty for every cap and can be dropped.
+func (s *Service) longestLimitWindow() time.Duration {
+	return max(s.Limits.LoginWindow, s.Limits.SendWindow, s.Limits.GuessIPWindow, s.Limits.GuessEmailWindow)
 }

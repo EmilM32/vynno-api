@@ -2,7 +2,7 @@
 
 **Status:** Living — canonical copy. The frontend `docs/api-contract.md` is generated from this file by `scripts/sync-contract`.  
 **Snapshot date:** 2026-08-14  
-**Last updated:** 2026-09-30  
+**Last updated:** 2026-11-10  
 **Amended:** Profile writes + public avatar GET; user-defined activity types ([ADR-0012](./adr/0012-activity-types.md)); session edit / delete / manual entry; session list cursor pagination ([ADR-0014](./adr/0014-session-list-pagination.md)); email login identifier; register confirmation + password reset ([ADR-0015](./adr/0015-outbound-email.md)); account preferences ([ADR-0017](./adr/0017-account-prefs.md)); signed-in password and email change ([ADR-0008](./adr/0008-authentication.md) amendment 2026-09-30); day totals ([ADR-0018](./adr/0018-day-totals.md))
 
 This is the wire format the SvelteKit app already speaks. Implement these resources. Do not extend this file without a contract amendment ([working-agreement.md](./working-agreement.md) §6).
@@ -60,7 +60,7 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
-`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. A wrong current password on `/auth/password/change` or `/auth/email/code` counts as a login failure for that account's email and the client IP. 5 `register/code`, `password/forgot`, or `email/code` sends / 10 min per client IP; the 6th is 429 and sends no mail. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
+`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. A wrong current password on `/auth/password/change` or `/auth/email/code` counts as a login failure for that account's email and the client IP. 5 `register/code`, `password/forgot`, or `email/code` sends / 10 min per client IP; the 6th is 429 and sends no mail. `password/forgot` counts every accepted request toward that cap, whether or not the address has an account. Wrong one-time codes on `register`, `password/reset`, and `email/change` are also capped across resends: 20 / 15 min per client IP and 10 / 24 h per email and purpose; past either cap the request is 429 even with the right code, and a right code does not count. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
 
 `internal_error` is 500 for unhandled faults (not `invalid_body`).
 
@@ -150,7 +150,7 @@ Emails are stored NFC, lowercased, domain in IDNA punycode. NFC and NFD are one 
 
 `rememberMe: true` (default) sets cookie `Max-Age` to 30 days. `false` sets a session cookie (cleared when the browser quits). The server still expires the token after 30 days.
 
-Password reset is also two steps. `POST /auth/password/forgot` always returns `204` for a well-formed email (including unknown addresses) and sends a code only when the account exists. `POST /auth/password/reset` sets a new password and revokes every session for that user. It does not set a cookie; the user logs in afterwards.
+Password reset is also two steps. `POST /auth/password/forgot` always returns `204` for a well-formed email (including unknown addresses) and sends a code only when the account exists. The response does not confirm delivery: the mail is sent after the response, and a mail failure is not reported. Cooldown and send caps answer `429` the same way for known and unknown addresses. `POST /auth/password/reset` sets a new password, revokes every session for that user, and mails a notice to the account. It does not set a cookie; the user logs in afterwards.
 
 `ResetPasswordDto`:
 
@@ -158,7 +158,7 @@ Password reset is also two steps. `POST /auth/password/forgot` always returns `2
 { "email": "alex@example.com", "code": "123456", "password": "a-new-long-enough-secret" }
 ```
 
-Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required; concurrent guesses share the same 5. A spent challenge keeps its cooldown and send count. A resend replaces the previous code. Operator seed/reset accounts skip this flow.
+Wrong, expired, or already-used `code` is `401 invalid_code` (do not distinguish those cases). Send cooldown, send cap, or too many guesses is `429 rate_limited`. Cooldown is 60 seconds per email+purpose; 5 sends per hour; 5 guesses then the challenge is spent and a new send is required; concurrent guesses share the same 5. A spent challenge keeps its cooldown and send count. A resend replaces the previous code. A resend does not reset the per-client and per-email guess caps above. Operator seed/reset accounts skip this flow.
 
 Signed in, the password and the email can change without the reset flow. Each keeps the caller's session and deletes every **other** session token for the account.
 

@@ -18,6 +18,10 @@ type Service struct {
 	NewID   func() uuid.UUID
 	Limiter *ratelimit.Limiter
 	Limits  AuthLimits
+	// Async runs work that must not hold up or influence the response (the password
+	// reset mail). nil runs it inline, which is what tests want. cmd/api sets
+	// Background.Go.
+	Async func(fn func(ctx context.Context))
 }
 
 func New(st store.Store, m mail.Mailer) *Service {
@@ -32,6 +36,16 @@ func New(st store.Store, m mail.Mailer) *Service {
 		Limiter: ratelimit.New(),
 		Limits:  DefaultAuthLimits(),
 	}
+}
+
+// runAsync hands fn to Async, or runs it inline when Async is nil. fn gets a
+// context that outlives the request.
+func (s *Service) runAsync(ctx context.Context, fn func(ctx context.Context)) {
+	if s.Async == nil {
+		fn(context.WithoutCancel(ctx))
+		return
+	}
+	s.Async(fn)
 }
 
 // inTx runs fn with a copy of the service whose Store is one transaction: the

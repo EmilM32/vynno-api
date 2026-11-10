@@ -67,6 +67,10 @@ func main() {
 	}
 
 	svc := service.New(store.NewPostgres(db), mailer)
+	// The password reset mail leaves after the response, so its timing and its
+	// failures are the same for a real account and an unknown address.
+	background := &service.Background{}
+	svc.Async = background.Go
 	if cfg.RateLimitMode == "relaxed" {
 		svc.Limits = service.RelaxedAuthLimits()
 		slog.Warn("auth rate limits relaxed", "database", "vynno_dev")
@@ -117,6 +121,9 @@ func main() {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("shutdown", "err", err)
 			os.Exit(1)
+		}
+		if !background.Wait(shutdownCtx) {
+			slog.Warn("shutdown: background mail did not finish")
 		}
 	}
 }

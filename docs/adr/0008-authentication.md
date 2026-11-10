@@ -113,6 +113,29 @@ Backlog AUTH-EXT asked for a logged-in password change and a change-email flow. 
 
 Email is no longer "not writable after register". It is not writable on `PATCH /me`; this flow is the only way to change it.
 
+## Amendment (2026-11-10) — code guessing, uniform forgot, auth log
+
+A review found three gaps in the flows above.
+
+1. **A resend bought more guesses.** The five-guess cap is per challenge, and a resend starts a new one, so an attacker could make 25 guesses an hour against someone else's reset code (5 sends × 5 guesses). Wrong codes are now also counted across resends, in the same in-memory limiter as the login caps: **20 / 15 min per client IP** and **10 / 24 h per email and purpose**, on `register`, `password/reset`, and `email/change`. Past either cap the answer is `429 rate_limited` even for the right code. A right code gives its slot back. At 10 a day a six-digit code is guessed with about 0.4% probability per year of sustained attack, down from about 20%.
+2. **Forgot told a real account from an unknown address.** With the per-IP send cap used up, a real account answered `429` and an unknown address `204`; a real account also waited for SMTP and returned `500` when SMTP was down. Both cases now do the same work: per-email cooldown, per-IP send cap (every accepted request counts), and a stored challenge. The mail for a real account is sent after the response, and its failure is logged, not returned.
+3. **Nothing recorded an attack.** The service now logs one `auth` line per sign-in, credential change, rejected password or code, and rate limit, with `event`, `client_ip`, and `user_id` when the account is known. It never logs an email, a password, a code, or a token.
+
+Also:
+
+- **Password reset mails a notice** to the account, like password change does. Best effort.
+- **A store failure during login is `500`**, not `invalid_credentials`, and does not count as a failed attempt.
+- **The limiter forgets idle keys.** Keys come from client addresses and submitted emails; the hourly sweep drops those with no event inside the longest window (24 h).
+- `RATE_LIMIT_MODE=relaxed` lifts the per-IP guess cap with the other per-IP caps. The per-email cap stays.
+
+Accepted tradeoffs:
+
+- The guess caps live in process memory, like the login caps: a restart clears them, and they are not shared between processes. One API process serves one host ([ADR-0011](./0011-local-production-host.md)).
+- Whoever knows an address can keep its reset locked by guessing wrong ten times a day. They could already do that by using up the five sends an hour. The owner's signed-in password change is not affected.
+- `POST /auth/register/code` still answers `409 email_in_use` for a taken address, before any cap. Register has to tell the user the address is taken; hiding it needs a different flow (mail the existing owner instead) and a contract change. Not decided here.
+
+No new routes, fields, or error codes. The contract text for the caps and for forgot is updated.
+
 ## Related
 
 - [../prd.md](../prd.md)

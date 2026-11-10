@@ -82,7 +82,7 @@ func (s *Server) register(c *gin.Context) {
 		Code:        body.Code,
 		DisplayName: body.DisplayName,
 		RememberMe:  body.RememberMe,
-	})
+	}, c.ClientIP())
 	if err != nil {
 		writeError(c, err)
 		return
@@ -114,7 +114,7 @@ func (s *Server) resetPassword(c *gin.Context) {
 		Email:    body.Email,
 		Code:     body.Code,
 		Password: body.Password,
-	}); err != nil {
+	}, c.ClientIP()); err != nil {
 		writeError(c, err)
 		return
 	}
@@ -190,7 +190,7 @@ func (s *Server) changeEmail(c *gin.Context) {
 	p, err := s.userSvc(c).ChangeEmail(c.Request.Context(), service.ChangeEmailInput{
 		Email: body.Email,
 		Code:  body.Code,
-	}, sessionFromRequest(c))
+	}, sessionFromRequest(c), c.ClientIP())
 	if err != nil {
 		writeError(c, err)
 		return

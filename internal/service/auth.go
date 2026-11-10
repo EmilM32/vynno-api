@@ -8,6 +8,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"sync"
 	"time"
 
@@ -27,6 +28,12 @@ type AuthLimits struct {
 	LoginIPFails    int
 	SendWindow      time.Duration
 	SendIPLimit     int
+	// Wrong one-time codes. The per-challenge cap (domain.OTPMaxAttempts) resets on
+	// every resend; these two do not, so resending does not buy more guesses.
+	GuessIPWindow    time.Duration
+	GuessIPFails     int
+	GuessEmailWindow time.Duration
+	GuessEmailFails  int
 }
 
 // DefaultAuthLimits are the production caps.
@@ -37,6 +44,11 @@ func DefaultAuthLimits() AuthLimits {
 		LoginIPFails:    30,
 		SendWindow:      10 * time.Minute,
 		SendIPLimit:     5,
+
+		GuessIPWindow:    15 * time.Minute,
+		GuessIPFails:     20,
+		GuessEmailWindow: 24 * time.Hour,
+		GuessEmailFails:  10,
 	}
 }
 
@@ -46,6 +58,7 @@ func RelaxedAuthLimits() AuthLimits {
 	l := DefaultAuthLimits()
 	l.LoginIPFails = 10000
 	l.SendIPLimit = 10000
+	l.GuessIPFails = 10000
 	return l
 }
 
@@ -122,42 +135,54 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email, clientIP strin
 	})
 }
 
+// RequestPasswordReset answers the same way, after the same work, whether or not
+// the address has an account: the per-email cooldown, the per-client send cap, and
+// the stored challenge are identical. Only a real account gets mail, and that mail
+// is sent off the request path, so neither the response time nor an SMTP failure
+// tells the caller which case it was.
 func (s *Service) RequestPasswordReset(ctx context.Context, email, clientIP string) error {
 	normalized, err := domain.NormalizeEmail(email)
 	if err != nil {
 		return err
 	}
-	_, err = s.Store.GetAccountByEmail(ctx, normalized)
+	now := s.Now()
+	if err := s.emailChallengeSendable(ctx, normalized, domain.PurposePasswordReset, now); err != nil {
+		s.authEvent(ctx, slog.LevelWarn, "password_reset_request_limited", clientIP, uuid.Nil)
+		return err
+	}
+	if err := s.allowSend(clientIP, now); err != nil {
+		s.authEvent(ctx, slog.LevelWarn, "password_reset_request_limited", clientIP, uuid.Nil)
+		return err
+	}
+	acc, err := s.Store.GetAccountByEmail(ctx, normalized)
+	known := err == nil
 	if err != nil {
 		var de *domain.Error
 		if !errors.As(err, &de) || de.Code != domain.CodeNotFound {
 			return err
 		}
-		// Unknown addresses do not send mail and do not consume the client-IP cap.
-		// The per-email challenge is still issued so cooldown matches a real account.
-		_, err = s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset, uuid.Nil)
-		return err
-	}
-	now := s.Now()
-	if err := s.emailChallengeSendable(ctx, normalized, domain.PurposePasswordReset, now); err != nil {
-		return err
-	}
-	if err := s.allowSend(clientIP, now); err != nil {
-		return err
 	}
 	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposePasswordReset, uuid.Nil)
 	if err != nil {
 		return err
 	}
 	s.Limiter.Hit(sendIPKey(clientIP), now, s.Limits.SendWindow)
-	return s.Mailer.Send(ctx, mail.Message{
-		To:      normalized,
-		Subject: "Your Vynno password reset code",
-		Text: fmt.Sprintf(
-			"Your Vynno password reset code is %s.\n\nIt expires in 15 minutes. If you did not request this, ignore this message.\n",
-			code,
-		),
+	if !known {
+		s.authEvent(ctx, slog.LevelInfo, "password_reset_requested_unknown_email", clientIP, uuid.Nil)
+		return nil
+	}
+	s.authEvent(ctx, slog.LevelInfo, "password_reset_requested", clientIP, acc.ID)
+	s.runAsync(ctx, func(ctx context.Context) {
+		s.sendNotice(ctx, mail.Message{
+			To:      normalized,
+			Subject: "Your Vynno password reset code",
+			Text: fmt.Sprintf(
+				"Your Vynno password reset code is %s.\n\nIt expires in 15 minutes. If you did not request this, ignore this message.\n",
+				code,
+			),
+		})
 	})
+	return nil
 }
 
 func (s *Service) emailChallengeSendable(ctx context.Context, email, purpose string, now time.Time) error {
@@ -187,6 +212,10 @@ func (s *Service) allowSend(clientIP string, now time.Time) error {
 	return nil
 }
 
+func guessIPKey(ip string) string { return "guess-ip:" + ip }
+func guessEmailKey(purpose, email string) string {
+	return "guess-email:" + purpose + ":" + email
+}
 func loginEmailKey(email string) string { return "login-email:" + email }
 func loginIPKey(ip string) string       { return "login-ip:" + ip }
 func sendIPKey(ip string) string        { return "send-ip:" + ip }
@@ -263,7 +292,7 @@ func (s *Service) issueOTPChallenge(ctx context.Context, email, purpose string, 
 	return code, nil
 }
 
-func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, error) {
+func (s *Service) Register(ctx context.Context, in RegisterInput, clientIP string) (AuthResult, error) {
 	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return AuthResult{}, err
@@ -293,7 +322,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 		return AuthResult{}, domain.ErrEmailInUse()
 	}
 
-	if err := s.consumeEmailChallenge(ctx, email, domain.PurposeRegister, code, uuid.Nil); err != nil {
+	if err := s.consumeEmailChallenge(ctx, email, domain.PurposeRegister, code, uuid.Nil, clientIP); err != nil {
 		return AuthResult{}, err
 	}
 
@@ -321,6 +350,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 	if err != nil {
 		return AuthResult{}, err
 	}
+	s.authEvent(ctx, slog.LevelInfo, "register", clientIP, userID)
 	return s.issueToken(ctx, userID, domain.RememberMe(in.RememberMe))
 }
 
@@ -330,7 +360,7 @@ type ResetPasswordInput struct {
 	Password string
 }
 
-func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) error {
+func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput, clientIP string) error {
 	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return err
@@ -343,7 +373,7 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	if err != nil {
 		return err
 	}
-	if err := s.consumeEmailChallenge(ctx, email, domain.PurposePasswordReset, code, uuid.Nil); err != nil {
+	if err := s.consumeEmailChallenge(ctx, email, domain.PurposePasswordReset, code, uuid.Nil, clientIP); err != nil {
 		return err
 	}
 	acc, err := s.Store.GetAccountByEmail(ctx, email)
@@ -360,12 +390,23 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	}
 	// The new password and the sign-out are one unit: a reset that leaves the old
 	// sessions alive would not lock out whoever had them.
-	return s.inTx(ctx, func(tx *Service) error {
+	err = s.inTx(ctx, func(tx *Service) error {
 		if err := tx.Store.SetAccountCredentials(ctx, acc.ID, acc.Email, string(hash)); err != nil {
 			return err
 		}
 		return tx.Store.DeleteTokensByUser(ctx, acc.ID)
 	})
+	if err != nil {
+		return err
+	}
+	s.authEvent(ctx, slog.LevelInfo, "password_reset", clientIP, acc.ID)
+	s.sendNotice(ctx, mail.Message{
+		To:      acc.Email,
+		Subject: "Your Vynno password was reset",
+		Text: "The password for your Vynno account was just reset with a code sent to this address. Every device was signed out.\n\n" +
+			"If you did not do this, someone else can read this mailbox: reset the password again and secure the mailbox.\n",
+	})
+	return nil
 }
 
 // consumeEmailChallenge spends a matching code. The guess is reserved in the store
@@ -373,17 +414,42 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 // OTPMaxAttempts comparisons against one challenge. A challenge bound to another
 // account, or one already spent, reads as no challenge and does not count a guess.
 // A spent challenge stays in place so its send cooldown and hourly cap still hold.
-func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, code string, userID uuid.UUID) error {
+//
+// A resend starts a new challenge with a fresh set of guesses, so wrong codes are
+// also counted per client and per email+purpose in the limiter, across resends.
+// Both slots are reserved before the comparison and given back when the code was
+// right; the email slot is also given back when there was no challenge to guess at.
+func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, code string, userID uuid.UUID, clientIP string) error {
+	now := s.Now()
+	ipKey, emailKey := guessIPKey(clientIP), guessEmailKey(purpose, email)
+	if ok, retry := s.Limiter.Reserve(emailKey, now, s.Limits.GuessEmailFails, s.Limits.GuessEmailWindow); !ok {
+		s.authEvent(ctx, slog.LevelWarn, "code_guess_limited_email", clientIP, userID, "purpose", purpose)
+		return domain.ErrRateLimitedAfter(retry)
+	}
+	if ok, retry := s.Limiter.Reserve(ipKey, now, s.Limits.GuessIPFails, s.Limits.GuessIPWindow); !ok {
+		s.Limiter.Release(emailKey, now)
+		s.authEvent(ctx, slog.LevelWarn, "code_guess_limited_client", clientIP, userID, "purpose", purpose)
+		return domain.ErrRateLimitedAfter(retry)
+	}
+	release := func() {
+		s.Limiter.Release(emailKey, now)
+		s.Limiter.Release(ipKey, now)
+	}
+
 	ch, err := s.Store.ReserveChallengeGuess(ctx, email, purpose, userID, domain.OTPMaxAttempts)
 	if err != nil {
 		var de *domain.Error
 		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
+			s.Limiter.Release(emailKey, now)
+			s.authEvent(ctx, slog.LevelWarn, "code_rejected", clientIP, userID, "purpose", purpose)
 			return domain.ErrInvalidCode()
 		}
+		release()
 		return err
 	}
-	if domain.OTPExpired(ch.ExpiresAt, s.Now()) ||
+	if domain.OTPExpired(ch.ExpiresAt, now) ||
 		subtle.ConstantTimeCompare([]byte(ch.CodeHash), []byte(hashToken(code))) != 1 {
+		s.authEvent(ctx, slog.LevelWarn, "code_rejected", clientIP, userID, "purpose", purpose)
 		if domain.OTPGuessesSpent(ch.AttemptCount) {
 			return domain.ErrRateLimited()
 		}
@@ -393,8 +459,10 @@ func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, cod
 	// or a resend that replaced it, leaves nothing to delete.
 	consumed, err := s.Store.ConsumeEmailChallenge(ctx, email, purpose, ch.CodeHash)
 	if err != nil {
+		release()
 		return err
 	}
+	release()
 	if !consumed {
 		return domain.ErrInvalidCode()
 	}
@@ -408,9 +476,11 @@ func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (Au
 	}
 	now := s.Now()
 	if retry, limited := s.reserveLoginAttempt(email, clientIP, now); limited {
+		s.authEvent(ctx, slog.LevelWarn, "login_limited", clientIP, uuid.Nil)
 		return AuthResult{}, domain.ErrRateLimitedAfter(retry)
 	}
 	if _, err := domain.NormalizePassword(in.Password); err != nil {
+		s.authEvent(ctx, slog.LevelWarn, "login_failed", clientIP, uuid.Nil)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	acc, err := s.Store.GetAccountByEmail(ctx, email)
@@ -418,19 +488,25 @@ func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (Au
 		var de *domain.Error
 		if errors.As(err, &de) && de.Code == domain.CodeNotFound {
 			_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
+			s.authEvent(ctx, slog.LevelWarn, "login_failed", clientIP, uuid.Nil)
 			return AuthResult{}, domain.ErrInvalidCredentials()
 		}
+		// The store failed, so nothing was learned about the password. Report the
+		// failure as it is (500, logged) instead of blaming the credentials.
 		s.releaseLoginAttempt(email, clientIP, now)
-		return AuthResult{}, domain.ErrInvalidCredentials()
+		return AuthResult{}, err
 	}
 	if acc.PasswordHash == "" {
 		_ = comparePassword(dummyPasswordHash(), []byte(in.Password))
+		s.authEvent(ctx, slog.LevelWarn, "login_failed", clientIP, acc.ID)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	if err := comparePassword([]byte(acc.PasswordHash), []byte(in.Password)); err != nil {
+		s.authEvent(ctx, slog.LevelWarn, "login_failed", clientIP, acc.ID)
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	s.loginSucceeded(email, clientIP, now)
+	s.authEvent(ctx, slog.LevelInfo, "login", clientIP, acc.ID)
 	return s.issueToken(ctx, acc.ID, domain.RememberMe(in.RememberMe))
 }
 

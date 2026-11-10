@@ -119,7 +119,7 @@ func TestRegisterIsAllOrNothing(t *testing.T) {
 		if err := broken.RequestRegisterCode(ctx, email, "203.0.113.1"); err != nil {
 			t.Fatal(err)
 		}
-		_, err := broken.Register(ctx, RegisterInput{Email: email, Password: "long-enough-pw", Code: lastCode(t, rec)})
+		_, err := broken.Register(ctx, RegisterInput{Email: email, Password: "long-enough-pw", Code: lastCode(t, rec)}, "203.0.113.9")
 		if !errors.Is(err, errInjected) {
 			t.Fatalf("register = %v, want the injected failure", err)
 		}
@@ -133,7 +133,7 @@ func TestRegisterIsAllOrNothing(t *testing.T) {
 		if err := svc.RequestRegisterCode(ctx, email, "203.0.113.1"); err != nil {
 			t.Fatalf("new code after the failure: %v", err)
 		}
-		res, err := svc.Register(ctx, RegisterInput{Email: email, Password: "long-enough-pw", Code: lastCode(t, rec)})
+		res, err := svc.Register(ctx, RegisterInput{Email: email, Password: "long-enough-pw", Code: lastCode(t, rec)}, "203.0.113.9")
 		if err != nil {
 			t.Fatalf("retry: %v", err)
 		}
@@ -185,7 +185,7 @@ func TestCredentialChangesAreAllOrNothing(t *testing.T) {
 		if err := broken.RequestPasswordReset(ctx, email, ip); err != nil {
 			t.Fatal(err)
 		}
-		err = broken.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: lastCode(t, rec), Password: newPW})
+		err = broken.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: lastCode(t, rec), Password: newPW}, "203.0.113.9")
 		if !errors.Is(err, errInjected) {
 			t.Fatalf("reset = %v", err)
 		}
@@ -201,7 +201,7 @@ func TestCredentialChangesAreAllOrNothing(t *testing.T) {
 		if err := broken.ForUser(userID).RequestEmailChange(ctx, RequestEmailChangeInput{Email: newEmail, Password: oldPW}, ip); err != nil {
 			t.Fatal(err)
 		}
-		_, err = broken.ForUser(userID).ChangeEmail(ctx, ChangeEmailInput{Email: newEmail, Code: lastCode(t, rec)}, login.Token)
+		_, err = broken.ForUser(userID).ChangeEmail(ctx, ChangeEmailInput{Email: newEmail, Code: lastCode(t, rec)}, login.Token, ip)
 		if !errors.Is(err, errInjected) {
 			t.Fatalf("change email = %v", err)
 		}
@@ -212,7 +212,7 @@ func TestCredentialChangesAreAllOrNothing(t *testing.T) {
 		if err := good.RequestPasswordReset(ctx, email, ip); err != nil {
 			t.Fatal(err)
 		}
-		if err := good.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: lastCode(t, rec), Password: newPW}); err != nil {
+		if err := good.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: lastCode(t, rec), Password: newPW}, "203.0.113.9"); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := good.ResolveToken(ctx, login.Token); codeOf(err) != domain.CodeUnauthorized {
