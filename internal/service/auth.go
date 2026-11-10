@@ -302,20 +302,23 @@ func (s *Service) Register(ctx context.Context, in RegisterInput) (AuthResult, e
 		return AuthResult{}, err
 	}
 	userID := s.NewID()
-	if err := s.Store.CreateAccount(ctx, store.Account{
-		ID: userID, Email: email, PasswordHash: string(hash),
-	}); err != nil {
-		return AuthResult{}, err
-	}
-	profile := domain.Profile{
-		DisplayName: display,
-	}
-	if err := s.Store.CreateProfile(ctx, userID, profile); err != nil {
-		return AuthResult{}, err
-	}
-	if _, err := s.ForUser(userID).CreateProject(ctx, CreateProjectInput{
-		Name: "Personal", Color: "#3b82f6",
-	}); err != nil {
+	// Account, profile, and first project are one unit: a failure part-way must not
+	// leave an address that is taken but cannot sign in.
+	err = s.inTx(ctx, func(tx *Service) error {
+		if err := tx.Store.CreateAccount(ctx, store.Account{
+			ID: userID, Email: email, PasswordHash: string(hash),
+		}); err != nil {
+			return err
+		}
+		if err := tx.Store.CreateProfile(ctx, userID, domain.Profile{DisplayName: display}); err != nil {
+			return err
+		}
+		_, err := tx.ForUser(userID).CreateProject(ctx, CreateProjectInput{
+			Name: "Personal", Color: "#3b82f6",
+		})
+		return err
+	})
+	if err != nil {
 		return AuthResult{}, err
 	}
 	return s.issueToken(ctx, userID, domain.RememberMe(in.RememberMe))
@@ -355,10 +358,14 @@ func (s *Service) ResetPassword(ctx context.Context, in ResetPasswordInput) erro
 	if err != nil {
 		return err
 	}
-	if err := s.Store.SetAccountCredentials(ctx, acc.ID, acc.Email, string(hash)); err != nil {
-		return err
-	}
-	return s.Store.DeleteTokensByUser(ctx, acc.ID)
+	// The new password and the sign-out are one unit: a reset that leaves the old
+	// sessions alive would not lock out whoever had them.
+	return s.inTx(ctx, func(tx *Service) error {
+		if err := tx.Store.SetAccountCredentials(ctx, acc.ID, acc.Email, string(hash)); err != nil {
+			return err
+		}
+		return tx.Store.DeleteTokensByUser(ctx, acc.ID)
+	})
 }
 
 // consumeEmailChallenge spends a matching code. The guess is reserved in the store

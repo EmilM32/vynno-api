@@ -1,91 +1,34 @@
-package store
+package store_test
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
-	"net/url"
 	"os"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
+	"github.com/EmilM32/vynno-api/internal/store"
+	"github.com/EmilM32/vynno-api/internal/store/storetest"
 	"github.com/google/uuid"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pressly/goose/v3"
 )
 
-// testDatabaseEnv names a Postgres server the tests may use. They never touch a
-// database that already exists there: each call to newTestPostgres creates its
-// own vynno_test_<random> database, migrates it from zero, and drops it.
-const testDatabaseEnv = "TEST_DATABASE_URL"
-
-// newTestPostgres returns a Postgres store on a fresh, fully migrated database.
-// Without TEST_DATABASE_URL the test is skipped, except in CI, where a missing
-// server must not pass silently.
-func newTestPostgres(t *testing.T) (*Postgres, *sql.DB) {
-	t.Helper()
-	raw := os.Getenv(testDatabaseEnv)
-	if raw == "" {
-		if os.Getenv("CI") != "" {
-			t.Fatalf("%s is required in CI", testDatabaseEnv)
-		}
-		t.Skipf("%s is not set; skipping Postgres tests", testDatabaseEnv)
-	}
-	base, err := url.Parse(raw)
-	if err != nil {
-		t.Fatalf("%s: %v", testDatabaseEnv, err)
-	}
-
-	admin, err := sql.Open("pgx", raw)
-	if err != nil {
-		t.Fatalf("open admin: %v", err)
-	}
-	name := "vynno_test_" + strings.ReplaceAll(uuid.NewString(), "-", "")
-	if _, err := admin.Exec("CREATE DATABASE " + name); err != nil {
-		_ = admin.Close()
-		t.Fatalf("create database: %v", err)
-	}
-
-	scoped := *base
-	scoped.Path = "/" + name
-	db, err := sql.Open("pgx", scoped.String())
-	if err != nil {
-		t.Fatalf("open test database: %v", err)
-	}
-	t.Cleanup(func() {
-		_ = db.Close()
-		// name is generated above, never input.
-		if _, err := admin.Exec(fmt.Sprintf("DROP DATABASE IF EXISTS %s WITH (FORCE)", name)); err != nil {
-			t.Errorf("drop database %s: %v", name, err)
-		}
-		_ = admin.Close()
-	})
-	goose.SetLogger(goose.NopLogger())
-	if err := Migrate(db); err != nil {
-		t.Fatalf("migrate from zero: %v", err)
-	}
-	return NewPostgres(db), db
-}
-
 func TestPostgresContract(t *testing.T) {
-	pg, _ := newTestPostgres(t)
+	pg, _ := storetest.NewPostgres(t)
 	runStoreContract(t, pg)
 }
 
 // Migrate is run at every process start, so a second run on a current schema
 // must be a no-op.
 func TestPostgresMigrateTwice(t *testing.T) {
-	_, db := newTestPostgres(t)
-	if err := Migrate(db); err != nil {
+	_, db := storetest.NewPostgres(t)
+	if err := store.Migrate(db); err != nil {
 		t.Fatalf("second migrate: %v", err)
 	}
 	var n int
 	if err := db.QueryRow("SELECT count(*) FROM goose_db_version WHERE is_applied").Scan(&n); err != nil {
 		t.Fatal(err)
 	}
-	entries, err := migrationsFS.ReadDir("migrations")
+	entries, err := os.ReadDir("migrations")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -98,7 +41,7 @@ func TestPostgresMigrateTwice(t *testing.T) {
 // Migration 00014: the database itself refuses a session or a default project
 // that points at another account's rows.
 func TestPostgresOwnerScopedForeignKeys(t *testing.T) {
-	pg, _ := newTestPostgres(t)
+	pg, _ := storetest.NewPostgres(t)
 	ctx := context.Background()
 	alice := contractUser(t, pg)
 	bob := contractUser(t, pg)
@@ -111,48 +54,118 @@ func TestPostgresOwnerScopedForeignKeys(t *testing.T) {
 
 	sess := contractStopped(aliceProject.ID, contractT0, time.Hour)
 	sess.ProjectID = bobProject.ID
-	if _, err := pg.CreateSession(ctx, alice, sess); err == nil {
-		t.Fatal("session on another account's project was stored")
-	}
+	_, err = pg.CreateSession(ctx, alice, sess)
+	wantCode(t, err, domain.CodeNotFound)
 
 	sess = contractStopped(aliceProject.ID, contractT0, time.Hour)
 	sess.ActivityTypeID = &bobType.ID
-	if _, err := pg.CreateSession(ctx, alice, sess); err == nil {
-		t.Fatal("session with another account's activity type was stored")
+	_, err = pg.CreateSession(ctx, alice, sess)
+	wantCode(t, err, domain.CodeNotFound)
+
+	// The same holds for an edit of a stored session.
+	own := contractStopped(aliceProject.ID, contractT0, time.Hour)
+	if _, err := pg.CreateSession(ctx, alice, own); err != nil {
+		t.Fatal(err)
 	}
+	own.ProjectID = bobProject.ID
+	_, err = pg.UpdateSession(ctx, alice, own)
+	wantCode(t, err, domain.CodeNotFound)
 
 	err = pg.SavePrefs(ctx, alice, domain.Prefs{DefaultProjectID: &bobProject.ID})
 	wantCode(t, err, domain.CodeNotFound)
 }
 
-// A project with sessions cannot be hard-deleted even if the service check is
-// skipped or loses a race.
-func TestPostgresProjectWithSessionsIsNotDeleted(t *testing.T) {
-	pg, _ := newTestPostgres(t)
+// A project or activity type with sessions cannot be hard-deleted even if the
+// service check is skipped or loses a race, and the caller gets the contract code.
+func TestPostgresRowsWithSessionsAreNotDeleted(t *testing.T) {
+	pg, _ := storetest.NewPostgres(t)
 	ctx := context.Background()
 	user := contractUser(t, pg)
 	project := contractProject(t, pg, user, "Kept", nil)
 	if _, err := pg.CreateSession(ctx, user, contractStopped(project.ID, contractT0, time.Hour)); err != nil {
 		t.Fatal(err)
 	}
-	if err := pg.DeleteProject(ctx, user, uuid.MustParse(project.ID)); err == nil {
-		t.Fatal("project with sessions was deleted")
-	}
+	err := pg.DeleteProject(ctx, user, uuid.MustParse(project.ID))
+	wantCode(t, err, domain.CodeProjectHasSessions)
 	if _, err := pg.GetProject(ctx, user, uuid.MustParse(project.ID)); err != nil {
 		t.Fatalf("project is gone: %v", err)
+	}
+
+	typ, err := pg.CreateActivityType(ctx, user, domain.ActivityType{ID: uuid.NewString(), Name: "Deep", Color: "#112233"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	tagged := contractStopped(project.ID, contractT0.Add(2*time.Hour), time.Hour)
+	tagged.ActivityTypeID = &typ.ID
+	if _, err := pg.CreateSession(ctx, user, tagged); err != nil {
+		t.Fatal(err)
+	}
+	err = pg.DeleteActivityType(ctx, user, uuid.MustParse(typ.ID))
+	wantCode(t, err, domain.CodeActivityTypeHasSessions)
+}
+
+// LockAccount holds a second transaction for the same account until the first
+// ends, and does not hold one for another account.
+func TestPostgresLockAccountSerializes(t *testing.T) {
+	pg, _ := storetest.NewPostgres(t)
+	ctx := context.Background()
+	user, other := contractUser(t, pg), contractUser(t, pg)
+
+	locked, release, done := make(chan struct{}), make(chan struct{}), make(chan error, 1)
+	go func() {
+		done <- pg.InTx(ctx, func(tx store.Store) error {
+			if err := tx.LockAccount(ctx, user); err != nil {
+				return err
+			}
+			close(locked)
+			<-release
+			return nil
+		})
+	}()
+	<-locked
+
+	if err := pg.InTx(ctx, func(tx store.Store) error { return tx.LockAccount(ctx, other) }); err != nil {
+		t.Fatalf("another account was held back: %v", err)
+	}
+	// A session insert references the user row; the lock must not block it.
+	project := contractProject(t, pg, user, "P", nil)
+	if _, err := pg.CreateSession(ctx, user, contractStopped(project.ID, contractT0, time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+
+	second := make(chan error, 1)
+	go func() {
+		second <- pg.InTx(ctx, func(tx store.Store) error { return tx.LockAccount(ctx, user) })
+	}()
+	select {
+	case err := <-second:
+		t.Fatalf("second lock on the same account did not wait: %v", err)
+	case <-time.After(200 * time.Millisecond):
+	}
+	close(release)
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-second:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("second lock never got through")
 	}
 }
 
 func TestPostgresBootstrap(t *testing.T) {
-	pg, _ := newTestPostgres(t)
+	pg, _ := storetest.NewPostgres(t)
 	ctx := context.Background()
 
 	if _, ok, err := pg.FirstUserID(ctx); err != nil || ok {
 		t.Fatalf("FirstUserID on empty database = %v, %v", ok, err)
 	}
 
-	id := DefaultUserID()
-	if err := pg.Bootstrap(ctx, id, "alexdev@vynno.local", "hash-1", DefaultProfile(), DefaultProject()); err != nil {
+	id := store.DefaultUserID()
+	if err := pg.Bootstrap(ctx, id, "alexdev@vynno.local", "hash-1", store.DefaultProfile(), store.DefaultProject()); err != nil {
 		t.Fatalf("bootstrap: %v", err)
 	}
 	got, ok, err := pg.FirstUserID(ctx)
@@ -160,19 +173,19 @@ func TestPostgresBootstrap(t *testing.T) {
 		t.Fatalf("FirstUserID = %v, %v, %v", got, ok, err)
 	}
 	profile, err := pg.GetProfile(ctx, id)
-	if err != nil || profile.DisplayName != DefaultProfile().DisplayName || profile.Email != "alexdev@vynno.local" {
+	if err != nil || profile.DisplayName != store.DefaultProfile().DisplayName || profile.Email != "alexdev@vynno.local" {
 		t.Fatalf("profile = %+v, %v", profile, err)
 	}
 	projects, err := pg.ListProjects(ctx, id, true)
-	if err != nil || len(projects) != 1 || projects[0].Name != DefaultProject().Name {
+	if err != nil || len(projects) != 1 || projects[0].Name != store.DefaultProject().Name {
 		t.Fatalf("projects = %+v, %v", projects, err)
 	}
 
 	// A second bootstrap keeps the stored password and adds no second account.
-	if err := pg.Bootstrap(ctx, id, "alexdev@vynno.local", "hash-2", DefaultProfile(), DefaultProject()); err != nil {
+	if err := pg.Bootstrap(ctx, id, "alexdev@vynno.local", "hash-2", store.DefaultProfile(), store.DefaultProject()); err != nil {
 		t.Fatal(err)
 	}
-	if err := pg.Bootstrap(ctx, uuid.New(), "other@vynno.local", "hash-3", DefaultProfile(), DefaultProject()); err != nil {
+	if err := pg.Bootstrap(ctx, uuid.New(), "other@vynno.local", "hash-3", store.DefaultProfile(), store.DefaultProject()); err != nil {
 		t.Fatal(err)
 	}
 	acc, err := pg.GetAccountByID(ctx, id)
@@ -186,7 +199,7 @@ func TestPostgresBootstrap(t *testing.T) {
 
 // The read-only MCP queries (internal/store/queries/agentread.sql).
 func TestPostgresAgentRead(t *testing.T) {
-	pg, _ := newTestPostgres(t)
+	pg, _ := storetest.NewPostgres(t)
 	ctx := context.Background()
 	user := contractUser(t, pg)
 	other := contractUser(t, pg)
@@ -224,7 +237,7 @@ func TestPostgresAgentRead(t *testing.T) {
 		t.Fatalf("all projects = %+v, %v", projects, err)
 	}
 
-	all, err := pg.ListAgentSessions(ctx, user, AgentSessionFilter{Limit: 10})
+	all, err := pg.ListAgentSessions(ctx, user, store.AgentSessionFilter{Limit: 10})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,15 +252,15 @@ func TestPostgresAgentRead(t *testing.T) {
 	}
 
 	pid := uuid.MustParse(archived.ID)
-	byProject, err := pg.ListAgentSessions(ctx, user, AgentSessionFilter{ProjectID: &pid, Limit: 10})
+	byProject, err := pg.ListAgentSessions(ctx, user, store.AgentSessionFilter{ProjectID: &pid, Limit: 10})
 	if err != nil || len(byProject) != 1 || byProject[0].ID != second.ID {
 		t.Fatalf("by project = %+v, %v", byProject, err)
 	}
-	stopped, err := pg.ListAgentSessions(ctx, user, AgentSessionFilter{Status: domain.StatusStopped, Limit: 1})
+	stopped, err := pg.ListAgentSessions(ctx, user, store.AgentSessionFilter{Status: domain.StatusStopped, Limit: 1})
 	if err != nil || len(stopped) != 1 || stopped[0].ID != second.ID {
 		t.Fatalf("stopped, limit 1 = %+v, %v", stopped, err)
 	}
-	if _, err := pg.ListAgentSessions(ctx, user, AgentSessionFilter{Limit: AgentSessionLimitMax + 1}); err == nil {
+	if _, err := pg.ListAgentSessions(ctx, user, store.AgentSessionFilter{Limit: store.AgentSessionLimitMax + 1}); err == nil {
 		t.Fatal("limit above the cap was accepted")
 	}
 

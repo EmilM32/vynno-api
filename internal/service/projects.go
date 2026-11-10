@@ -69,6 +69,12 @@ func (s *Service) CreateProject(ctx context.Context, in CreateProjectInput) (dom
 }
 
 func (s *Service) UpdateProject(ctx context.Context, id uuid.UUID, in UpdateProjectInput) (domain.Project, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Project, error) {
+		return tx.updateProject(ctx, id, in)
+	})
+}
+
+func (s *Service) updateProject(ctx context.Context, id uuid.UUID, in UpdateProjectInput) (domain.Project, error) {
 	p, err := s.Store.GetProject(ctx, s.User, id)
 	if err != nil {
 		return domain.Project{}, err
@@ -114,6 +120,12 @@ func (s *Service) UpdateProject(ctx context.Context, id uuid.UUID, in UpdateProj
 }
 
 func (s *Service) ArchiveProject(ctx context.Context, id uuid.UUID) (domain.Project, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Project, error) {
+		return tx.archiveProject(ctx, id)
+	})
+}
+
+func (s *Service) archiveProject(ctx context.Context, id uuid.UUID) (domain.Project, error) {
 	p, err := s.Store.GetProject(ctx, s.User, id)
 	if err != nil {
 		return domain.Project{}, err
@@ -130,6 +142,12 @@ func (s *Service) ArchiveProject(ctx context.Context, id uuid.UUID) (domain.Proj
 }
 
 func (s *Service) RestoreProject(ctx context.Context, id uuid.UUID) (domain.Project, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Project, error) {
+		return tx.restoreProject(ctx, id)
+	})
+}
+
+func (s *Service) restoreProject(ctx context.Context, id uuid.UUID) (domain.Project, error) {
 	p, err := s.Store.GetProject(ctx, s.User, id)
 	if err != nil {
 		return domain.Project{}, err
@@ -142,6 +160,12 @@ func (s *Service) RestoreProject(ctx context.Context, id uuid.UUID) (domain.Proj
 }
 
 func (s *Service) DeleteProject(ctx context.Context, id uuid.UUID) error {
+	return s.inAccountTx(ctx, func(tx *Service) error {
+		return tx.deleteProject(ctx, id)
+	})
+}
+
+func (s *Service) deleteProject(ctx context.Context, id uuid.UUID) error {
 	p, err := s.Store.GetProject(ctx, s.User, id)
 	if err != nil {
 		return err

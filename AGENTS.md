@@ -54,9 +54,9 @@ cp .env.example .env          # static; scripts/start vs scripts/dev select the 
 ./scripts/setup               # git config core.hooksPath .githooks (pre-push: go test ./..., sync-contract --check)
 ./scripts/sync-contract       # write ../vynno docs/api-contract.md + text vectors from this repo (--check for drift)
 go test ./...
-# Store tests also run on Postgres when TEST_DATABASE_URL names a server (CI sets it).
+# Store and service transaction tests also run on Postgres when TEST_DATABASE_URL names a server (CI sets it).
 # They create and drop their own vynno_test_* databases and touch nothing else:
-TEST_DATABASE_URL='postgres://vynno:vynno@localhost:5433/postgres?sslmode=disable' go test ./internal/store/
+TEST_DATABASE_URL='postgres://vynno:vynno@localhost:5433/postgres?sslmode=disable' go test ./internal/store/... ./internal/service/
 gofmt -w .
 golangci-lint run ./...
 sqlc generate                 # after changing internal/store/queries or migrations

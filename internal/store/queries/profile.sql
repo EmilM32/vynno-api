@@ -60,3 +60,8 @@ WHERE id = $1;
 
 -- name: FirstUserID :one
 SELECT id FROM users ORDER BY id LIMIT 1;
+
+-- name: LockUser :one
+-- Held until the transaction ends. NO KEY UPDATE serializes the account's
+-- read-then-write requests without blocking inserts that reference the user.
+SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE;

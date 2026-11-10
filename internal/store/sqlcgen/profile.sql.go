@@ -186,6 +186,19 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) error {
 	return err
 }
 
+const lockUser = `-- name: LockUser :one
+SELECT id FROM users WHERE id = $1 FOR NO KEY UPDATE
+`
+
+// Held until the transaction ends. NO KEY UPDATE serializes the account's
+// read-then-write requests without blocking inserts that reference the user.
+func (q *Queries) LockUser(ctx context.Context, id uuid.UUID) (uuid.UUID, error) {
+	row := q.db.QueryRowContext(ctx, lockUser, id)
+	var id_2 uuid.UUID
+	err := row.Scan(&id_2)
+	return id_2, err
+}
+
 const setProfileAvatarURL = `-- name: SetProfileAvatarURL :exec
 UPDATE profiles
 SET avatar_url = $2

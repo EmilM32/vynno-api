@@ -16,10 +16,40 @@ import (
 type Postgres struct {
 	db *sql.DB
 	q  *sqlcgen.Queries
+	// inTx is true on the Store that InTx hands to its callback; q is then bound
+	// to that transaction.
+	inTx bool
 }
 
 func NewPostgres(db *sql.DB) *Postgres {
 	return &Postgres{db: db, q: sqlcgen.New(db)}
+}
+
+func (p *Postgres) InTx(ctx context.Context, fn func(tx Store) error) error {
+	if p.inTx {
+		return fn(p)
+	}
+	tx, err := p.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	if err := fn(&Postgres{db: p.db, q: p.q.WithTx(tx), inTx: true}); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// withQueries runs fn in a transaction: the caller's, or a new one.
+func (p *Postgres) withQueries(ctx context.Context, fn func(q *sqlcgen.Queries) error) error {
+	return p.InTx(ctx, func(tx Store) error {
+		return fn(tx.(*Postgres).q)
+	})
+}
+
+func (p *Postgres) LockAccount(ctx context.Context, userID uuid.UUID) error {
+	_, err := p.q.LockUser(ctx, userID)
+	return mapNotFound(err)
 }
 
 func (p *Postgres) GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error) {
@@ -55,50 +85,36 @@ func (p *Postgres) ReplaceAvatar(ctx context.Context, userID uuid.UUID, av domai
 	if err != nil {
 		return domain.ErrInvalidBody("invalid id")
 	}
-	tx, err := p.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := p.q.WithTx(tx)
-	if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
-		return err
-	}
-	if err := q.InsertAvatar(ctx, sqlcgen.InsertAvatarParams{
-		ID:          id,
-		UserID:      userID,
-		ContentType: av.ContentType,
-		Bytes:       av.Bytes,
-	}); err != nil {
-		return err
-	}
-	path := domain.AvatarPath(id.String())
-	if err := q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
-		UserID:    userID,
-		AvatarUrl: ptrNullString(&path),
-	}); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return p.withQueries(ctx, func(q *sqlcgen.Queries) error {
+		if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
+			return err
+		}
+		if err := q.InsertAvatar(ctx, sqlcgen.InsertAvatarParams{
+			ID:          id,
+			UserID:      userID,
+			ContentType: av.ContentType,
+			Bytes:       av.Bytes,
+		}); err != nil {
+			return err
+		}
+		path := domain.AvatarPath(id.String())
+		return q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
+			UserID:    userID,
+			AvatarUrl: ptrNullString(&path),
+		})
+	})
 }
 
 func (p *Postgres) DeleteAvatarByUser(ctx context.Context, userID uuid.UUID) error {
-	tx, err := p.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer func() { _ = tx.Rollback() }()
-	q := p.q.WithTx(tx)
-	if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
-		return err
-	}
-	if err := q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
-		UserID:    userID,
-		AvatarUrl: sql.NullString{},
-	}); err != nil {
-		return err
-	}
-	return tx.Commit()
+	return p.withQueries(ctx, func(q *sqlcgen.Queries) error {
+		if err := q.DeleteAvatarByUser(ctx, userID); err != nil {
+			return err
+		}
+		return q.SetProfileAvatarURL(ctx, sqlcgen.SetProfileAvatarURLParams{
+			UserID:    userID,
+			AvatarUrl: sql.NullString{},
+		})
+	})
 }
 
 func (p *Postgres) GetAvatar(ctx context.Context, id uuid.UUID) (domain.Avatar, error) {
@@ -144,8 +160,7 @@ func (p *Postgres) SavePrefs(ctx context.Context, userID uuid.UUID, prefs domain
 		DefaultProjectID: project,
 	})
 	// A project hard-deleted after the service checked it.
-	var pgErr *pgconn.PgError
-	if errors.As(err, &pgErr) && pgErr.Code == "23503" {
+	if isForeignKeyViolation(err) {
 		return domain.ErrNotFound()
 	}
 	return err
@@ -351,7 +366,12 @@ func (p *Postgres) UpdateProject(ctx context.Context, userID uuid.UUID, proj dom
 }
 
 func (p *Postgres) DeleteProject(ctx context.Context, userID, id uuid.UUID) error {
-	return p.q.DeleteProject(ctx, sqlcgen.DeleteProjectParams{UserID: userID, ID: id})
+	err := p.q.DeleteProject(ctx, sqlcgen.DeleteProjectParams{UserID: userID, ID: id})
+	// A session was logged on the project after the service counted none.
+	if isForeignKeyViolation(err) {
+		return domain.ErrProjectHasSessions()
+	}
+	return err
 }
 
 func (p *Postgres) CountActiveProjects(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -430,7 +450,12 @@ func (p *Postgres) UpdateActivityType(ctx context.Context, userID uuid.UUID, a d
 }
 
 func (p *Postgres) DeleteActivityType(ctx context.Context, userID, id uuid.UUID) error {
-	return p.q.DeleteActivityType(ctx, sqlcgen.DeleteActivityTypeParams{UserID: userID, ID: id})
+	err := p.q.DeleteActivityType(ctx, sqlcgen.DeleteActivityTypeParams{UserID: userID, ID: id})
+	// A session took the type after the service counted none.
+	if isForeignKeyViolation(err) {
+		return domain.ErrActivityTypeHasSessions()
+	}
+	return err
 }
 
 func (p *Postgres) CountActivityTypeSessions(ctx context.Context, userID, activityTypeID uuid.UUID) (int, error) {
@@ -540,7 +565,7 @@ func (p *Postgres) CreateSession(ctx context.Context, userID uuid.UUID, s domain
 	}
 	row, err := p.q.InsertSession(ctx, params)
 	if err != nil {
-		return domain.Session{}, mapUnique(err)
+		return domain.Session{}, mapUnique(mapSessionReference(err))
 	}
 	return sessionFromInsert(row), nil
 }
@@ -552,7 +577,7 @@ func (p *Postgres) UpdateSession(ctx context.Context, userID uuid.UUID, s domain
 	}
 	row, err := p.q.UpdateSession(ctx, params)
 	if err != nil {
-		return domain.Session{}, mapNotFound(err)
+		return domain.Session{}, mapNotFound(mapSessionReference(err))
 	}
 	return sessionFromUpdate(row), nil
 }
@@ -581,7 +606,7 @@ func (p *Postgres) TransitionSession(ctx context.Context, userID uuid.UUID, s do
 		return domain.Session{}, domain.ErrInvalidTransition()
 	}
 	if err != nil {
-		return domain.Session{}, err
+		return domain.Session{}, mapSessionReference(err)
 	}
 	return sessionFromRow(row.ID, row.ProjectID, row.Note, row.TicketID, row.ActivityTypeID, row.Status, row.StartedAt, row.EndedAt), nil
 }
@@ -611,14 +636,16 @@ func (p *Postgres) Bootstrap(ctx context.Context, userID uuid.UUID, email, passw
 		if n > 0 {
 			return nil
 		}
-		if err := p.CreateAccount(ctx, Account{ID: userID, Email: email, PasswordHash: passwordHash}); err != nil {
+		return p.InTx(ctx, func(tx Store) error {
+			if err := tx.CreateAccount(ctx, Account{ID: userID, Email: email, PasswordHash: passwordHash}); err != nil {
+				return err
+			}
+			if err := tx.CreateProfile(ctx, userID, profile); err != nil {
+				return err
+			}
+			_, err := tx.CreateProject(ctx, userID, project)
 			return err
-		}
-		if err := p.CreateProfile(ctx, userID, profile); err != nil {
-			return err
-		}
-		_, err = p.CreateProject(ctx, userID, project)
-		return err
+		})
 	}
 	if err != nil {
 		return err
@@ -690,6 +717,21 @@ func updateSessionParams(userID uuid.UUID, s domain.Session) (sqlcgen.UpdateSess
 
 func mapNotFound(err error) error {
 	if errors.Is(err, sql.ErrNoRows) {
+		return domain.ErrNotFound()
+	}
+	return err
+}
+
+func isForeignKeyViolation(err error) bool {
+	var pgErr *pgconn.PgError
+	return errors.As(err, &pgErr) && pgErr.Code == "23503"
+}
+
+// mapSessionReference turns a session write that points at a project or activity
+// type deleted since the service looked it up (or one of another account) into
+// not_found, the answer the lookup itself would have given.
+func mapSessionReference(err error) error {
+	if isForeignKeyViolation(err) {
 		return domain.ErrNotFound()
 	}
 	return err

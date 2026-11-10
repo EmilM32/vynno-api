@@ -45,6 +45,12 @@ func (s *Service) GetActiveSession(ctx context.Context) (domain.Session, error) 
 }
 
 func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domain.Session, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Session, error) {
+		return tx.startSession(ctx, in)
+	})
+}
+
+func (s *Service) startSession(ctx context.Context, in StartSessionInput) (domain.Session, error) {
 	projectID, err := uuid.Parse(in.ProjectID)
 	if err != nil {
 		return domain.Session{}, domain.ErrNotFound()
@@ -85,10 +91,22 @@ func (s *Service) StartSession(ctx context.Context, in StartSessionInput) (domai
 }
 
 func (s *Service) StopSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Session, error) {
+		return tx.stopSession(ctx, id)
+	})
+}
+
+func (s *Service) stopSession(ctx context.Context, id uuid.UUID) (domain.Session, error) {
 	return s.applyTransition(ctx, id, domain.Stop)
 }
 
 func (s *Service) UpdateSession(ctx context.Context, id uuid.UUID, patch domain.SessionPatch) (domain.Session, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Session, error) {
+		return tx.updateSession(ctx, id, patch)
+	})
+}
+
+func (s *Service) updateSession(ctx context.Context, id uuid.UUID, patch domain.SessionPatch) (domain.Session, error) {
 	sess, err := s.Store.GetSession(ctx, s.User, id)
 	if err != nil {
 		return domain.Session{}, err

@@ -24,7 +24,7 @@ jobs:
           --health-retries 5
     env:
       DATABASE_URL: postgres://vynno:vynno@localhost:5432/vynno?sslmode=disable
-      # internal/store tests create and drop their own vynno_test_* databases on this server.
+      # Store and service tests create and drop their own vynno_test_* databases on this server.
       TEST_DATABASE_URL: postgres://vynno:vynno@localhost:5432/postgres?sslmode=disable
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

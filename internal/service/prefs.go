@@ -21,6 +21,12 @@ func (s *Service) GetPrefs(ctx context.Context) (domain.Prefs, error) {
 }
 
 func (s *Service) UpdatePrefs(ctx context.Context, in UpdatePrefsInput) (domain.Prefs, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.Prefs, error) {
+		return tx.updatePrefs(ctx, in)
+	})
+}
+
+func (s *Service) updatePrefs(ctx context.Context, in UpdatePrefsInput) (domain.Prefs, error) {
 	prefs, err := s.Store.GetPrefs(ctx, s.User)
 	if err != nil {
 		return domain.Prefs{}, err

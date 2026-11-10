@@ -1,11 +1,13 @@
-package store
+package store_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/EmilM32/vynno-api/internal/domain"
+	"github.com/EmilM32/vynno-api/internal/store"
 	"github.com/google/uuid"
 )
 
@@ -23,7 +25,7 @@ import (
 //     database collation);
 //   - references to another account's rows (Postgres refuses them, see
 //     TestPostgresOwnerScopedForeignKeys; Memory does not check).
-func runStoreContract(t *testing.T, st Store) {
+func runStoreContract(t *testing.T, st store.Store) {
 	t.Run("accounts", func(t *testing.T) { contractAccounts(t, st) })
 	t.Run("profile and avatar", func(t *testing.T) { contractProfile(t, st) })
 	t.Run("prefs", func(t *testing.T) { contractPrefs(t, st) })
@@ -33,10 +35,11 @@ func runStoreContract(t *testing.T, st Store) {
 	t.Run("activity types", func(t *testing.T) { contractActivityTypes(t, st) })
 	t.Run("sessions", func(t *testing.T) { contractSessions(t, st) })
 	t.Run("session list", func(t *testing.T) { contractSessionList(t, st) })
+	t.Run("transactions", func(t *testing.T) { contractTransactions(t, st) })
 }
 
 func TestMemoryContract(t *testing.T) {
-	runStoreContract(t, NewEmptyMemory())
+	runStoreContract(t, store.NewEmptyMemory())
 }
 
 // contractT0 is a fixed instant with microsecond precision, the finest Postgres keeps.
@@ -55,11 +58,11 @@ func contractEmail() string {
 }
 
 // contractUser creates an account with a profile, as register does.
-func contractUser(t *testing.T, st Store) uuid.UUID {
+func contractUser(t *testing.T, st store.Store) uuid.UUID {
 	t.Helper()
 	ctx := context.Background()
 	id := uuid.New()
-	if err := st.CreateAccount(ctx, Account{ID: id, Email: contractEmail(), PasswordHash: "hash"}); err != nil {
+	if err := st.CreateAccount(ctx, store.Account{ID: id, Email: contractEmail(), PasswordHash: "hash"}); err != nil {
 		t.Fatalf("create account: %v", err)
 	}
 	if err := st.CreateProfile(ctx, id, domain.Profile{DisplayName: "Test"}); err != nil {
@@ -68,7 +71,7 @@ func contractUser(t *testing.T, st Store) uuid.UUID {
 	return id
 }
 
-func contractProject(t *testing.T, st Store, user uuid.UUID, name string, code *string) domain.Project {
+func contractProject(t *testing.T, st store.Store, user uuid.UUID, name string, code *string) domain.Project {
 	t.Helper()
 	p, err := st.CreateProject(context.Background(), user, domain.Project{
 		ID: uuid.NewString(), Name: name, Color: "#3b82f6", Code: code,
@@ -96,11 +99,11 @@ func contractLive(projectID string, start time.Time) domain.Session {
 
 func strPtr(s string) *string { return &s }
 
-func contractAccounts(t *testing.T, st Store) {
+func contractAccounts(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	id := uuid.New()
 	email := contractEmail()
-	if err := st.CreateAccount(ctx, Account{ID: id, Email: email, PasswordHash: "hash-1"}); err != nil {
+	if err := st.CreateAccount(ctx, store.Account{ID: id, Email: email, PasswordHash: "hash-1"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -117,7 +120,7 @@ func contractAccounts(t *testing.T, st Store) {
 	_, err = st.GetAccountByID(ctx, uuid.New())
 	wantCode(t, err, domain.CodeNotFound)
 
-	err = st.CreateAccount(ctx, Account{ID: uuid.New(), Email: email, PasswordHash: "x"})
+	err = st.CreateAccount(ctx, store.Account{ID: uuid.New(), Email: email, PasswordHash: "x"})
 	wantCode(t, err, domain.CodeEmailInUse)
 
 	if taken, err := st.EmailTaken(ctx, email, uuid.Nil); err != nil || !taken {
@@ -143,18 +146,18 @@ func contractAccounts(t *testing.T, st Store) {
 
 	// The old address is free again; another account's address is not.
 	other := uuid.New()
-	if err := st.CreateAccount(ctx, Account{ID: other, Email: email, PasswordHash: "x"}); err != nil {
+	if err := st.CreateAccount(ctx, store.Account{ID: other, Email: email, PasswordHash: "x"}); err != nil {
 		t.Fatalf("reuse of a released address: %v", err)
 	}
 	err = st.SetAccountCredentials(ctx, other, newEmail, "x")
 	wantCode(t, err, domain.CodeEmailInUse)
 }
 
-func contractProfile(t *testing.T, st Store) {
+func contractProfile(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	id := uuid.New()
 	email := contractEmail()
-	if err := st.CreateAccount(ctx, Account{ID: id, Email: email, PasswordHash: "hash"}); err != nil {
+	if err := st.CreateAccount(ctx, store.Account{ID: id, Email: email, PasswordHash: "hash"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := st.CreateProfile(ctx, id, domain.Profile{DisplayName: "Zoë"}); err != nil {
@@ -214,7 +217,7 @@ func contractProfile(t *testing.T, st Store) {
 	}
 }
 
-func contractPrefs(t *testing.T, st Store) {
+func contractPrefs(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 
@@ -255,20 +258,20 @@ func contractPrefs(t *testing.T, st Store) {
 	}
 }
 
-func contractTokens(t *testing.T, st Store) {
+func contractTokens(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 	other := contractUser(t, st)
 	now := contractT0
 
-	mk := func(owner uuid.UUID, expires time.Time) Token {
-		tok := Token{ID: uuid.New(), UserID: owner, TokenHash: uuid.NewString(), ExpiresAt: expires}
+	mk := func(owner uuid.UUID, expires time.Time) store.Token {
+		tok := store.Token{ID: uuid.New(), UserID: owner, TokenHash: uuid.NewString(), ExpiresAt: expires}
 		if err := st.CreateToken(ctx, tok); err != nil {
 			t.Fatal(err)
 		}
 		return tok
 	}
-	gone := func(tok Token) bool {
+	gone := func(tok store.Token) bool {
 		_, err := st.GetTokenByHash(ctx, tok.TokenHash)
 		if err == nil {
 			return false
@@ -313,7 +316,7 @@ func contractTokens(t *testing.T, st Store) {
 	}
 }
 
-func contractChallenges(t *testing.T, st Store) {
+func contractChallenges(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	now := contractT0
 	email := contractEmail()
@@ -321,7 +324,7 @@ func contractChallenges(t *testing.T, st Store) {
 	_, err := st.GetEmailChallenge(ctx, email, domain.PurposeRegister)
 	wantCode(t, err, domain.CodeNotFound)
 
-	ch := EmailChallenge{
+	ch := store.EmailChallenge{
 		Email: email, Purpose: domain.PurposeRegister, CodeHash: "hash-1",
 		ExpiresAt: now.Add(domain.OTPTTL), SentAt: now, SendCount: 1, SendWindowStart: now,
 	}
@@ -373,7 +376,7 @@ func contractChallenges(t *testing.T, st Store) {
 
 	// A change_email challenge is bound to the account that asked.
 	owner, stranger := contractUser(t, st), contractUser(t, st)
-	bound := EmailChallenge{
+	bound := store.EmailChallenge{
 		Email: contractEmail(), Purpose: domain.PurposeChangeEmail, CodeHash: "hash-3",
 		ExpiresAt: now.Add(domain.OTPTTL), SentAt: now, SendCount: 1, SendWindowStart: now, UserID: owner,
 	}
@@ -390,13 +393,13 @@ func contractChallenges(t *testing.T, st Store) {
 	}
 
 	// The sweep cutoff is exclusive: a challenge that expired exactly at it stays.
-	old := EmailChallenge{
+	old := store.EmailChallenge{
 		Email: contractEmail(), Purpose: domain.PurposePasswordReset, CodeHash: "old",
 		ExpiresAt: now.Add(-time.Second), SentAt: now.Add(-time.Hour), SendCount: 1, SendWindowStart: now.Add(-time.Hour),
 	}
 	edge := old
 	edge.Email, edge.ExpiresAt = contractEmail(), now
-	for _, c := range []EmailChallenge{old, edge} {
+	for _, c := range []store.EmailChallenge{old, edge} {
 		if err := st.UpsertEmailChallenge(ctx, c); err != nil {
 			t.Fatal(err)
 		}
@@ -411,7 +414,7 @@ func contractChallenges(t *testing.T, st Store) {
 	}
 }
 
-func contractProjects(t *testing.T, st Store) {
+func contractProjects(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 	other := contractUser(t, st)
@@ -499,7 +502,7 @@ func contractProjects(t *testing.T, st Store) {
 	wantCode(t, err, domain.CodeNotFound)
 }
 
-func contractActivityTypes(t *testing.T, st Store) {
+func contractActivityTypes(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 	other := contractUser(t, st)
@@ -574,7 +577,7 @@ func contractActivityTypes(t *testing.T, st Store) {
 	wantCode(t, err, domain.CodeNotFound)
 }
 
-func contractSessions(t *testing.T, st Store) {
+func contractSessions(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 	other := contractUser(t, st)
@@ -672,7 +675,7 @@ func contractSessions(t *testing.T, st Store) {
 	wantCode(t, err, domain.CodeNotFound)
 }
 
-func contractSessionList(t *testing.T, st Store) {
+func contractSessionList(t *testing.T, st store.Store) {
 	ctx := context.Background()
 	user := contractUser(t, st)
 	project := contractProject(t, st, user, "P", nil)
@@ -682,7 +685,7 @@ func contractSessionList(t *testing.T, st Store) {
 		t.Fatal(err)
 	}
 
-	empty, err := st.ListSessions(ctx, user, nil, SessionWindow{}, 20, "")
+	empty, err := st.ListSessions(ctx, user, nil, store.SessionWindow{}, 20, "")
 	if err != nil || empty.Items == nil || len(empty.Items) != 0 || empty.NextCursor != nil {
 		t.Fatalf("empty page = %+v, %v (items must be an empty list, not nil)", empty, err)
 	}
@@ -704,7 +707,7 @@ func contractSessionList(t *testing.T, st Store) {
 	live := contractLive(project.ID, at(6))
 	add(live)
 
-	all, err := st.ListSessions(ctx, user, nil, SessionWindow{}, 100, "")
+	all, err := st.ListSessions(ctx, user, nil, store.SessionWindow{}, 100, "")
 	if err != nil || len(all.Items) != 8 || all.NextCursor != nil {
 		t.Fatalf("one page = %d items, cursor %v, %v", len(all.Items), all.NextCursor, err)
 	}
@@ -730,7 +733,7 @@ func contractSessionList(t *testing.T, st Store) {
 		if page > 5 {
 			t.Fatal("paging did not end")
 		}
-		res, err := st.ListSessions(ctx, user, nil, SessionWindow{}, 3, cursor)
+		res, err := st.ListSessions(ctx, user, nil, store.SessionWindow{}, 3, cursor)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -754,10 +757,10 @@ func contractSessionList(t *testing.T, st Store) {
 		}
 	}
 
-	_, err = st.ListSessions(ctx, user, nil, SessionWindow{}, 3, "not-a-cursor")
+	_, err = st.ListSessions(ctx, user, nil, store.SessionWindow{}, 3, "not-a-cursor")
 	wantCode(t, err, domain.CodeInvalidQuery)
 
-	count := func(statuses []string, w SessionWindow) int {
+	count := func(statuses []string, w store.SessionWindow) int {
 		t.Helper()
 		res, err := st.ListSessions(ctx, user, statuses, w, 100, "")
 		if err != nil {
@@ -765,30 +768,30 @@ func contractSessionList(t *testing.T, st Store) {
 		}
 		return len(res.Items)
 	}
-	if n := count([]string{domain.StatusActive}, SessionWindow{}); n != 1 {
+	if n := count([]string{domain.StatusActive}, store.SessionWindow{}); n != 1 {
 		t.Fatalf("active = %d, want 1", n)
 	}
-	if n := count([]string{domain.StatusStopped}, SessionWindow{}); n != 7 {
+	if n := count([]string{domain.StatusStopped}, store.SessionWindow{}); n != 7 {
 		t.Fatalf("stopped = %d, want 7", n)
 	}
-	if n := count([]string{domain.StatusActive, domain.StatusStopped}, SessionWindow{}); n != 8 {
+	if n := count([]string{domain.StatusActive, domain.StatusStopped}, store.SessionWindow{}); n != 8 {
 		t.Fatalf("both statuses = %d, want 8", n)
 	}
 
 	// The window is [from, to) by overlap: endedAt > from (or live), startedAt < to.
 	from, to := at(1), at(3)
-	if n := count(nil, SessionWindow{From: &from, To: &to}); n != 4 {
+	if n := count(nil, store.SessionWindow{From: &from, To: &to}); n != 4 {
 		// Hour 0 ends exactly at from (out); hours 1 and 2 (x3) are in; hour 3 starts at to (out).
 		t.Fatalf("window [1h, 3h) = %d, want 4", n)
 	}
-	if n := count(nil, SessionWindow{From: &from}); n != 7 {
+	if n := count(nil, store.SessionWindow{From: &from}); n != 7 {
 		t.Fatalf("from 1h = %d, want 7 (the live session overlaps every from)", n)
 	}
-	if n := count(nil, SessionWindow{To: &to}); n != 5 {
+	if n := count(nil, store.SessionWindow{To: &to}); n != 5 {
 		t.Fatalf("to 3h = %d, want 5", n)
 	}
 	late := at(100)
-	if n := count(nil, SessionWindow{From: &late}); n != 1 {
+	if n := count(nil, store.SessionWindow{From: &late}); n != 1 {
 		t.Fatalf("from far future = %d, want only the live session", n)
 	}
 
@@ -806,5 +809,84 @@ func contractSessionList(t *testing.T, st Store) {
 	none, err := st.ListStoppedSessionsStartedBetween(ctx, user, at(6), at(7))
 	if err != nil || len(none) != 0 {
 		t.Fatalf("the live session was returned as stopped: %+v, %v", none, err)
+	}
+}
+
+func contractTransactions(t *testing.T, st store.Store) {
+	ctx := context.Background()
+	user := contractUser(t, st)
+	keep := contractProject(t, st, user, "keep", nil)
+	boom := errors.New("boom")
+
+	// An error discards every write of the callback, across tables.
+	email := contractEmail()
+	created := uuid.New()
+	tok := store.Token{ID: uuid.New(), UserID: user, TokenHash: uuid.NewString(), ExpiresAt: contractT0.Add(time.Hour)}
+	err := st.InTx(ctx, func(tx store.Store) error {
+		if err := tx.CreateAccount(ctx, store.Account{ID: created, Email: email, PasswordHash: "h"}); err != nil {
+			return err
+		}
+		if err := tx.CreateProfile(ctx, created, domain.Profile{DisplayName: "New"}); err != nil {
+			return err
+		}
+		if err := tx.CreateToken(ctx, tok); err != nil {
+			return err
+		}
+		if err := tx.DeleteProject(ctx, user, uuid.MustParse(keep.ID)); err != nil {
+			return err
+		}
+		// The callback sees its own writes.
+		if _, err := tx.GetAccountByEmail(ctx, email); err != nil {
+			return err
+		}
+		return boom
+	})
+	if !errors.Is(err, boom) {
+		t.Fatalf("InTx error = %v, want the callback's", err)
+	}
+	_, err = st.GetAccountByEmail(ctx, email)
+	wantCode(t, err, domain.CodeNotFound)
+	_, err = st.GetProfile(ctx, created)
+	wantCode(t, err, domain.CodeNotFound)
+	_, err = st.GetTokenByHash(ctx, tok.TokenHash)
+	wantCode(t, err, domain.CodeNotFound)
+	if _, err := st.GetProject(ctx, user, uuid.MustParse(keep.ID)); err != nil {
+		t.Fatalf("deleted project was not restored: %v", err)
+	}
+
+	// nil keeps them, and a nested InTx joins the same transaction.
+	err = st.InTx(ctx, func(tx store.Store) error {
+		if err := tx.CreateAccount(ctx, store.Account{ID: created, Email: email, PasswordHash: "h"}); err != nil {
+			return err
+		}
+		return tx.InTx(ctx, func(inner store.Store) error {
+			return inner.CreateProfile(ctx, created, domain.Profile{DisplayName: "New"})
+		})
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err := st.GetProfile(ctx, created); err != nil || p.DisplayName != "New" || p.Email != email {
+		t.Fatalf("committed profile = %+v, %v", p, err)
+	}
+
+	// A nested failure discards the outer writes too.
+	other := contractEmail()
+	err = st.InTx(ctx, func(tx store.Store) error {
+		if err := tx.CreateAccount(ctx, store.Account{ID: uuid.New(), Email: other, PasswordHash: "h"}); err != nil {
+			return err
+		}
+		return tx.InTx(ctx, func(store.Store) error { return boom })
+	})
+	if !errors.Is(err, boom) {
+		t.Fatalf("nested error = %v", err)
+	}
+	_, err = st.GetAccountByEmail(ctx, other)
+	wantCode(t, err, domain.CodeNotFound)
+
+	err = st.InTx(ctx, func(tx store.Store) error { return tx.LockAccount(ctx, uuid.New()) })
+	wantCode(t, err, domain.CodeNotFound)
+	if err := st.InTx(ctx, func(tx store.Store) error { return tx.LockAccount(ctx, user) }); err != nil {
+		t.Fatal(err)
 	}
 }

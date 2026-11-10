@@ -9,6 +9,7 @@ import (
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/mail"
 	"github.com/EmilM32/vynno-api/internal/store"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -65,10 +66,7 @@ func (s *Service) ChangePassword(ctx context.Context, in ChangePasswordInput, ra
 	if err != nil {
 		return err
 	}
-	if err := s.Store.SetAccountCredentials(ctx, acc.ID, acc.Email, string(hash)); err != nil {
-		return err
-	}
-	if err := s.Store.DeleteOtherTokens(ctx, acc.ID, hashToken(rawToken)); err != nil {
+	if err := s.setCredentials(ctx, acc.ID, acc.Email, string(hash), rawToken); err != nil {
 		return err
 	}
 	s.sendNotice(ctx, mail.Message{
@@ -151,10 +149,7 @@ func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken
 	if taken {
 		return domain.Profile{}, domain.ErrEmailInUse()
 	}
-	if err := s.Store.SetAccountCredentials(ctx, acc.ID, newEmail, acc.PasswordHash); err != nil {
-		return domain.Profile{}, err
-	}
-	if err := s.Store.DeleteOtherTokens(ctx, acc.ID, hashToken(rawToken)); err != nil {
+	if err := s.setCredentials(ctx, acc.ID, newEmail, acc.PasswordHash, rawToken); err != nil {
 		return domain.Profile{}, err
 	}
 	s.sendNotice(ctx, mail.Message{
@@ -167,6 +162,17 @@ func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken
 		),
 	})
 	return s.Store.GetProfile(ctx, acc.ID)
+}
+
+// setCredentials stores the new email and password hash and signs out every
+// session except the caller's, as one unit.
+func (s *Service) setCredentials(ctx context.Context, userID uuid.UUID, email, passwordHash, rawToken string) error {
+	return s.inTx(ctx, func(tx *Service) error {
+		if err := tx.Store.SetAccountCredentials(ctx, userID, email, passwordHash); err != nil {
+			return err
+		}
+		return tx.Store.DeleteOtherTokens(ctx, userID, hashToken(rawToken))
+	})
 }
 
 // sendNotice mails a security notice. The change it reports has already happened,
