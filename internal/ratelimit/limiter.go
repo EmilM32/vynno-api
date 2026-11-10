@@ -80,6 +80,28 @@ func (l *Limiter) Hit(key string, now time.Time, window time.Duration) {
 	l.events[key] = append(kept, now)
 }
 
+// Sweep drops every key whose newest event is older than window. Keys are made
+// from client addresses and submitted emails and are otherwise pruned only when
+// the same key is used again, so without this the map only grows. Pass the
+// longest window any key is counted over.
+func (l *Limiter) Sweep(now time.Time, window time.Duration) {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	cutoff := now.UTC().Add(-window)
+	for key, events := range l.events {
+		if len(events) == 0 || !events[len(events)-1].After(cutoff) {
+			delete(l.events, key)
+		}
+	}
+}
+
+// Len is the number of keys held. Tests use it.
+func (l *Limiter) Len() int {
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	return len(l.events)
+}
+
 // Reset clears every event for key.
 func (l *Limiter) Reset(key string) {
 	l.mu.Lock()

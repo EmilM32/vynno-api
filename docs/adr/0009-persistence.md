@@ -50,6 +50,19 @@ Constraints the choice must satisfy:
 
 The production host is no longer TBD. [ADR-0011](./0011-local-production-host.md) keeps this Compose Postgres as the system of record on the owner’s machine.
 
+## Amendment (2026-11-10)
+
+Writes that belong together are one transaction, and requests that read a row, decide, and write it back are serialized per account.
+
+1. **`Store.InTx`** runs a callback against a Store bound to one Postgres transaction. Register (account, profile, first project), password reset, password change, and email change (credentials plus sign-out) use it, so none of them can stop half-way.
+2. **`Store.LockAccount`** takes `FOR NO KEY UPDATE` on the `users` row inside that transaction. Start, stop, and edit of a session, every project change except create, activity type update and delete, and the prefs update take it first. Two such requests for one account run one after the other. This closes the archive of the last two active projects at once, and an edit that wrote a session back as running after a concurrent stop.
+3. **Foreign keys are the last word on a lost race.** A delete of a project or activity type that gained a session after the count is `project_has_sessions` / `activity_type_has_sessions`. A session that points at a project or activity type deleted since the lookup is `not_found`.
+4. **Tests run on both stores.** `internal/store` and the service transaction tests run against Memory and, with `TEST_DATABASE_URL`, against Postgres. Memory runs one `InTx` callback at a time and restores a snapshot on error.
+
+One-time code guesses stay outside these transactions: the guess counter must be stored even when the request then fails.
+
+No wire change: every code above was already in the contract for its route.
+
 ## Alternatives considered
 
 | Option | Why not |

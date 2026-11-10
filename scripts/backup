@@ -3,9 +3,57 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib.sh"
 
-# Production database vynno only. Does not dump vynno_dev.
+usage() {
+	cat <<'EOF'
+Dump the production database vynno into backups/. Does not dump vynno_dev.
+
+  scripts/backup
+
+The dump holds password hashes, session token hashes, and every email, so
+backups/ and the files in it are readable by you only (0700 / 0600).
+
+BACKUP_KEEP=N keeps the N newest vynno-*.sql dumps and deletes older ones after
+a successful dump. Unset (the default) deletes nothing.
+EOF
+}
+
+for arg in "$@"; do
+	case "$arg" in
+	-h | --help)
+		usage
+		exit 0
+		;;
+	*)
+		die "unknown argument: $arg"
+		;;
+	esac
+done
+
+keep="${BACKUP_KEEP:-}"
+if [[ -n "$keep" && ! "$keep" =~ ^[1-9][0-9]*$ ]]; then
+	die "BACKUP_KEEP must be a positive integer; got $keep"
+fi
+
 ensure_postgres
+umask 077
 mkdir -p "$ROOT/backups"
+chmod 700 "$ROOT/backups"
 out="$ROOT/backups/vynno-$(date +%Y%m%d-%H%M%S).sql"
-"${COMPOSE[@]}" exec -T postgres pg_dump -U vynno --no-owner --no-acl "$PROD_DB" >"$out"
+tmp="$out.partial"
+trap 'rm -f "$tmp"' EXIT
+# A failed or interrupted dump must not leave a file that looks like a backup.
+"${COMPOSE[@]}" exec -T postgres pg_dump -U vynno --no-owner --no-acl "$PROD_DB" >"$tmp"
+[[ -s "$tmp" ]] || die "pg_dump wrote nothing"
+mv "$tmp" "$out"
+trap - EXIT
 echo "$out"
+
+if [[ -n "$keep" ]]; then
+	# Names sort by timestamp, so the newest are last.
+	mapfile -t dumps < <(find "$ROOT/backups" -maxdepth 1 -type f -name 'vynno-*.sql' | sort)
+	extra=$((${#dumps[@]} - keep))
+	for ((i = 0; i < extra; i++)); do
+		rm -f -- "${dumps[$i]}"
+		echo "removed ${dumps[$i]}" >&2
+	done
+fi

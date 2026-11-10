@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"maps"
 	"sort"
 	"strings"
 	"sync"
@@ -31,6 +32,8 @@ type memAccount struct {
 
 // Memory is an in-memory Store for tests. Data is scoped by user.
 type Memory struct {
+	// txMu serializes InTx callbacks; mu guards the maps for a single call.
+	txMu       sync.Mutex
 	mu         sync.Mutex
 	accounts   map[uuid.UUID]*memAccount
 	byName     map[string]uuid.UUID
@@ -75,6 +78,57 @@ func NewMemory(userID uuid.UUID, profile domain.Profile, project domain.Project)
 		avatars:    map[uuid.UUID]memAvatar{},
 		challenges: map[string]EmailChallenge{},
 	}
+}
+
+// memTx is the Store an InTx callback gets: InTx on it joins the open transaction.
+type memTx struct{ *Memory }
+
+func (t memTx) InTx(_ context.Context, fn func(tx Store) error) error { return fn(t) }
+
+// InTx runs one callback at a time and puts the store back as it was when fn
+// returns an error. Calls made outside InTx are not held back by it.
+func (m *Memory) InTx(_ context.Context, fn func(tx Store) error) error {
+	m.txMu.Lock()
+	defer m.txMu.Unlock()
+	m.mu.Lock()
+	snap := m.snapshot()
+	m.mu.Unlock()
+	if err := fn(memTx{m}); err != nil {
+		m.mu.Lock()
+		m.accounts, m.byName, m.tokens, m.avatars, m.challenges =
+			snap.accounts, snap.byName, snap.tokens, snap.avatars, snap.challenges
+		m.mu.Unlock()
+		return err
+	}
+	return nil
+}
+
+// LockAccount only checks the account: InTx already runs one callback at a time.
+func (m *Memory) LockAccount(_ context.Context, userID uuid.UUID) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if _, ok := m.account(userID); !ok {
+		return domain.ErrNotFound()
+	}
+	return nil
+}
+
+// snapshot copies every map. Stored values are replaced, never edited in place,
+// so the copies do not need to go deeper. The caller holds mu.
+func (m *Memory) snapshot() *Memory {
+	out := NewEmptyMemory()
+	for id, a := range m.accounts {
+		cp := *a
+		cp.projects = maps.Clone(a.projects)
+		cp.activityTypes = maps.Clone(a.activityTypes)
+		cp.sessions = maps.Clone(a.sessions)
+		out.accounts[id] = &cp
+	}
+	out.byName = maps.Clone(m.byName)
+	out.tokens = maps.Clone(m.tokens)
+	out.avatars = maps.Clone(m.avatars)
+	out.challenges = maps.Clone(m.challenges)
+	return out
 }
 
 func (m *Memory) account(userID uuid.UUID) (*memAccount, bool) {
@@ -274,6 +328,7 @@ func (m *Memory) EmailTaken(_ context.Context, email string, excludeID uuid.UUID
 func (m *Memory) CreateToken(_ context.Context, tok Token) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	tok.Scope = tokenScope(tok.Scope)
 	m.tokens[tok.TokenHash] = tok
 	return nil
 }

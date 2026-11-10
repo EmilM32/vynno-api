@@ -38,6 +38,9 @@ func TestConcurrentCodeGuessesStayWithinCap(t *testing.T) {
 	}
 
 	const n = 200
+	// This test is about the per-challenge cap in the store. Lift the limiter caps
+	// so all n guesses reach it at once.
+	svc.Limits.GuessEmailFails, svc.Limits.GuessIPFails = n, n
 	var arrive sync.WaitGroup
 	arrive.Add(n)
 	svc.Store = barrierStore{Memory: mem, wg: &arrive}
@@ -55,7 +58,7 @@ func TestConcurrentCodeGuessesStayWithinCap(t *testing.T) {
 		done.Add(1)
 		go func() {
 			defer done.Done()
-			err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: guess, Password: "attacker-pass"})
+			err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: guess, Password: "attacker-pass"}, "203.0.113.9")
 			if err == nil {
 				resets.Add(1)
 			}
@@ -97,7 +100,7 @@ func TestSpentCodeIsRejectedAndKeepsSendCooldown(t *testing.T) {
 		wrong = "111111"
 	}
 	for i := 1; i <= domain.OTPMaxAttempts; i++ {
-		err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: wrong, Password: "new-password"})
+		err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: wrong, Password: "new-password"}, "203.0.113.9")
 		want := domain.CodeInvalidCode
 		if i == domain.OTPMaxAttempts {
 			want = domain.CodeRateLimited
@@ -106,7 +109,7 @@ func TestSpentCodeIsRejectedAndKeepsSendCooldown(t *testing.T) {
 			t.Fatalf("guess %d = %v, want %s", i, err, want)
 		}
 	}
-	err = svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "new-password"})
+	err = svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "new-password"}, "203.0.113.9")
 	if codeOf(err) != domain.CodeInvalidCode {
 		t.Fatalf("right code after the cap = %v", err)
 	}
@@ -127,10 +130,10 @@ func TestCodeIsSingleUse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "new-password"}); err != nil {
+	if err := svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "new-password"}, "203.0.113.9"); err != nil {
 		t.Fatal(err)
 	}
-	err = svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "other-password"})
+	err = svc.ResetPassword(ctx, ResetPasswordInput{Email: email, Code: code, Password: "other-password"}, "203.0.113.9")
 	if codeOf(err) != domain.CodeInvalidCode {
 		t.Fatalf("second use = %v", err)
 	}

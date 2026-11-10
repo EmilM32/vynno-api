@@ -1,9 +1,9 @@
 -- name: InsertAuthToken :exec
-INSERT INTO auth_tokens (id, user_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4);
+INSERT INTO auth_tokens (id, user_id, token_hash, expires_at, scope)
+VALUES ($1, $2, $3, $4, $5);
 
 -- name: GetAuthTokenByHash :one
-SELECT id, user_id, token_hash, expires_at
+SELECT id, user_id, token_hash, expires_at, scope
 FROM auth_tokens
 WHERE token_hash = $1;
 

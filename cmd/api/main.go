@@ -36,6 +36,12 @@ func main() {
 		os.Exit(1)
 	}
 	defer func() { _ = db.Close() }()
+	// Postgres defaults to 100 connections and database/sql to no cap at all.
+	// One host runs the API, the playground, and the MCP against the same server.
+	db.SetMaxOpenConns(20)
+	db.SetMaxIdleConns(5)
+	db.SetConnMaxIdleTime(5 * time.Minute)
+	db.SetConnMaxLifetime(time.Hour)
 
 	if err := db.Ping(); err != nil {
 		slog.Error("database ping", "err", err)
@@ -61,6 +67,10 @@ func main() {
 	}
 
 	svc := service.New(store.NewPostgres(db), mailer)
+	// The password reset mail leaves after the response, so its timing and its
+	// failures are the same for a real account and an unknown address.
+	background := &service.Background{}
+	svc.Async = background.Go
 	if cfg.RateLimitMode == "relaxed" {
 		svc.Limits = service.RelaxedAuthLimits()
 		slog.Warn("auth rate limits relaxed", "database", "vynno_dev")
@@ -111,6 +121,9 @@ func main() {
 		if err := srv.Shutdown(shutdownCtx); err != nil {
 			slog.Error("shutdown", "err", err)
 			os.Exit(1)
+		}
+		if !background.Wait(shutdownCtx) {
+			slog.Warn("shutdown: background mail did not finish")
 		}
 	}
 }

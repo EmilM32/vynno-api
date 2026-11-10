@@ -36,6 +36,14 @@ A client-supplied URL is hotlinking (SSRF if we fetch it, broken images if the r
 - Public GET means anyone with the UUID can load the image. Treat the URL as unguessable, not classified.
 - Amends [ADR-0008](./0008-authentication.md) decision 6: one more public `/v1` GET.
 
+## Amendment (2026-11-10) — no GPS position in a public file
+
+`GET /v1/avatars/:id` is public and the bytes are stored as uploaded, so a phone photo published the place it was taken.
+
+`PUT /me/avatar` now answers `400 invalid_body` when the file's EXIF block has a GPS directory with a latitude or longitude, or its XMP packet has `GPSLatitude` / `GPSLongitude` (JPEG, PNG, WebP). A GPS directory with only a version tag is accepted. The file is still not decoded as an image.
+
+Refusing was chosen over stripping the metadata: stripping also removes the orientation tag, so the server would have to rotate pixels and re-encode, and WebP has no encoder in the standard library. Other metadata (camera model, timestamps) is still stored as uploaded. Avatars stored before this change are not rescanned.
+
 ## Alternatives considered
 
 | Option | Why not |

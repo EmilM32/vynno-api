@@ -50,6 +50,12 @@ func (s *Service) CreateActivityType(ctx context.Context, in CreateActivityTypeI
 }
 
 func (s *Service) UpdateActivityType(ctx context.Context, id uuid.UUID, in UpdateActivityTypeInput) (domain.ActivityType, error) {
+	return lockedResult(ctx, s, func(tx *Service) (domain.ActivityType, error) {
+		return tx.updateActivityType(ctx, id, in)
+	})
+}
+
+func (s *Service) updateActivityType(ctx context.Context, id uuid.UUID, in UpdateActivityTypeInput) (domain.ActivityType, error) {
 	a, err := s.Store.GetActivityType(ctx, s.User, id)
 	if err != nil {
 		return domain.ActivityType{}, err
@@ -79,6 +85,12 @@ func (s *Service) UpdateActivityType(ctx context.Context, id uuid.UUID, in Updat
 }
 
 func (s *Service) DeleteActivityType(ctx context.Context, id uuid.UUID) error {
+	return s.inAccountTx(ctx, func(tx *Service) error {
+		return tx.deleteActivityType(ctx, id)
+	})
+}
+
+func (s *Service) deleteActivityType(ctx context.Context, id uuid.UUID) error {
 	if _, err := s.Store.GetActivityType(ctx, s.User, id); err != nil {
 		return err
 	}

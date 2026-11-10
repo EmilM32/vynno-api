@@ -9,6 +9,7 @@ import (
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/mail"
 	"github.com/EmilM32/vynno-api/internal/store"
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -36,12 +37,15 @@ type ChangeEmailInput struct {
 // cookie cannot be used to guess the password.
 func (s *Service) verifyAccountPassword(acc store.Account, password, clientIP string, now time.Time) error {
 	if retry, limited := s.reserveLoginAttempt(acc.Email, clientIP, now); limited {
+		s.authEvent(context.Background(), slog.LevelWarn, "password_check_limited", clientIP, acc.ID)
 		return domain.ErrRateLimitedAfter(retry)
 	}
 	if _, err := domain.NormalizePassword(password); err != nil || acc.PasswordHash == "" {
+		s.authEvent(context.Background(), slog.LevelWarn, "password_check_failed", clientIP, acc.ID)
 		return domain.ErrInvalidCredentials()
 	}
 	if err := comparePassword([]byte(acc.PasswordHash), []byte(password)); err != nil {
+		s.authEvent(context.Background(), slog.LevelWarn, "password_check_failed", clientIP, acc.ID)
 		return domain.ErrInvalidCredentials()
 	}
 	s.loginSucceeded(acc.Email, clientIP, now)
@@ -65,12 +69,10 @@ func (s *Service) ChangePassword(ctx context.Context, in ChangePasswordInput, ra
 	if err != nil {
 		return err
 	}
-	if err := s.Store.SetAccountCredentials(ctx, acc.ID, acc.Email, string(hash)); err != nil {
+	if err := s.setCredentials(ctx, acc.ID, acc.Email, string(hash), rawToken); err != nil {
 		return err
 	}
-	if err := s.Store.DeleteOtherTokens(ctx, acc.ID, hashToken(rawToken)); err != nil {
-		return err
-	}
+	s.authEvent(ctx, slog.LevelInfo, "password_changed", clientIP, acc.ID)
 	s.sendNotice(ctx, mail.Message{
 		To:      acc.Email,
 		Subject: "Your Vynno password was changed",
@@ -126,7 +128,7 @@ func (s *Service) RequestEmailChange(ctx context.Context, in RequestEmailChangeI
 }
 
 // ChangeEmail switches the sign-in email once the code sent to it is confirmed.
-func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken string) (domain.Profile, error) {
+func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken, clientIP string) (domain.Profile, error) {
 	newEmail, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return domain.Profile{}, err
@@ -139,7 +141,7 @@ func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken
 	if err != nil {
 		return domain.Profile{}, err
 	}
-	if err := s.consumeEmailChallenge(ctx, newEmail, domain.PurposeChangeEmail, code, acc.ID); err != nil {
+	if err := s.consumeEmailChallenge(ctx, newEmail, domain.PurposeChangeEmail, code, acc.ID, clientIP); err != nil {
 		return domain.Profile{}, err
 	}
 	// Someone may have registered the address since the code was sent. The unique
@@ -151,12 +153,10 @@ func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken
 	if taken {
 		return domain.Profile{}, domain.ErrEmailInUse()
 	}
-	if err := s.Store.SetAccountCredentials(ctx, acc.ID, newEmail, acc.PasswordHash); err != nil {
+	if err := s.setCredentials(ctx, acc.ID, newEmail, acc.PasswordHash, rawToken); err != nil {
 		return domain.Profile{}, err
 	}
-	if err := s.Store.DeleteOtherTokens(ctx, acc.ID, hashToken(rawToken)); err != nil {
-		return domain.Profile{}, err
-	}
+	s.authEvent(ctx, slog.LevelInfo, "email_changed", clientIP, acc.ID)
 	s.sendNotice(ctx, mail.Message{
 		To:      acc.Email,
 		Subject: "Your Vynno sign-in email was changed",
@@ -169,10 +169,34 @@ func (s *Service) ChangeEmail(ctx context.Context, in ChangeEmailInput, rawToken
 	return s.Store.GetProfile(ctx, acc.ID)
 }
 
-// sendNotice mails a security notice. The change it reports has already happened,
-// so a mail failure is logged instead of failing the request.
+// setCredentials stores the new email and password hash and signs out every
+// session except the caller's, as one unit.
+func (s *Service) setCredentials(ctx context.Context, userID uuid.UUID, email, passwordHash, rawToken string) error {
+	return s.inTx(ctx, func(tx *Service) error {
+		if err := tx.Store.SetAccountCredentials(ctx, userID, email, passwordHash); err != nil {
+			return err
+		}
+		return tx.Store.DeleteOtherTokens(ctx, userID, hashToken(rawToken))
+	})
+}
+
+// sendNotice mails a message whose failure must not fail the request: a security
+// notice for a change that has already happened, or the password reset code, whose
+// delivery the response must not reveal. The failure is logged.
 func (s *Service) sendNotice(ctx context.Context, msg mail.Message) {
 	if err := s.Mailer.Send(ctx, msg); err != nil {
-		slog.WarnContext(ctx, "security notice mail failed", "subject", msg.Subject, "err", err)
+		slog.WarnContext(ctx, "mail failed", "subject", msg.Subject, "err", err)
 	}
+}
+
+// authEvent writes one line per sign-in, credential change, rejected attempt, and
+// rate limit, so an operator can see guessing in logs/api.log. It carries the
+// client address and, when the account is known, its id. It never carries an
+// email, a password, a code, or a token.
+func (s *Service) authEvent(ctx context.Context, level slog.Level, event, clientIP string, userID uuid.UUID, attrs ...any) {
+	args := []any{"event", event, "client_ip", clientIP}
+	if userID != uuid.Nil {
+		args = append(args, "user_id", userID.String())
+	}
+	slog.Log(ctx, level, "auth", append(args, attrs...)...)
 }

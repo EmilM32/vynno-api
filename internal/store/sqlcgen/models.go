@@ -26,6 +26,7 @@ type AuthToken struct {
 	TokenHash string
 	CreatedAt time.Time
 	ExpiresAt time.Time
+	Scope     string
 }
 
 type Avatar struct {

@@ -1,10 +1,10 @@
 // Command mcp is a local stdio MCP server. It reads one account's focus history.
-// The account is the Vynno session token in VYNNO_MCP_TOKEN (the same secret the
-// API accepts as Authorization: Bearer or the vynno_session cookie).
+// The account is the token in VYNNO_MCP_TOKEN. It is stored in auth_tokens like a
+// session, with scope "mcp": this process accepts it and the HTTP API does not.
 //
 //	go run ./cmd/mcp token
 //
-// checks VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, inserts a session row, and prints
+// checks VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, inserts a token row, and prints
 // the raw token once on stdout. Put that line in .env as VYNNO_MCP_TOKEN.
 package main
 
@@ -60,7 +60,7 @@ func runServer() int {
 	defer func() { _ = db.Close() }()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	if _, err := svc.ResolveToken(ctx, token); err != nil {
+	if _, err := svc.ResolveMCPToken(ctx, token); err != nil {
 		slog.Error(authFailure(err))
 		return 1
 	}
@@ -68,7 +68,7 @@ func runServer() int {
 	tools := &agentread.Tools{
 		Read: pg,
 		Resolve: func(ctx context.Context) (uuid.UUID, error) {
-			return svc.ResolveToken(ctx, token)
+			return svc.ResolveMCPToken(ctx, token)
 		},
 	}
 	server := mcp.NewServer(&mcp.Implementation{Name: "vynno", Version: "v1.0.0"}, nil)
@@ -88,15 +88,15 @@ func runToken() int {
 	}
 	defer func() { _ = db.Close() }()
 
-	email := strings.TrimSpace(os.Getenv("VYNno_MCP_EMAIL"))
-	password := os.Getenv("VYNno_MCP_PASSWORD")
+	email := strings.TrimSpace(mcpEnv("EMAIL"))
+	password := mcpEnv("PASSWORD")
 	if email == "" || password == "" {
-		fmt.Fprintln(os.Stderr, "VYNno_MCP_EMAIL and VYNNO_MCP_PASSWORD are required")
+		fmt.Fprintln(os.Stderr, "VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD are required")
 		return 1
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	res, err := svc.Login(ctx, service.LoginInput{Email: email, Password: password}, "127.0.0.1")
+	res, err := svc.IssueMCPToken(ctx, service.LoginInput{Email: email, Password: password}, "127.0.0.1")
 	if err != nil {
 		if de, ok := domain.AsError(err); ok && de.Code == domain.CodeInvalidCredentials {
 			fmt.Fprintln(os.Stderr, "invalid email or password")
@@ -105,7 +105,7 @@ func runToken() int {
 		fmt.Fprintln(os.Stderr, "could not issue a token")
 		return 1
 	}
-	fmt.Fprintln(os.Stderr, "issued a 30-day session token; put it in .env as VYNNO_MCP_TOKEN. Password reset revokes it.")
+	fmt.Fprintln(os.Stderr, "issued a 30-day MCP token; put it in .env as VYNNO_MCP_TOKEN. Only the local MCP accepts it. A password reset or change revokes it.")
 	if _, err := fmt.Fprintln(os.Stdout, res.Token); err != nil {
 		return 1
 	}
@@ -131,17 +131,26 @@ func open() (*sql.DB, *store.Postgres, *service.Service, error) {
 	return db, pg, service.New(pg, nil), nil
 }
 
+// mcpEnv reads VYNNO_MCP_<name>. Earlier releases read the misspelled
+// VYNno_MCP_<name>, so an existing .env with that spelling still works.
+func mcpEnv(name string) string {
+	if v := os.Getenv("VYNNO_MCP_" + name); v != "" {
+		return v
+	}
+	return os.Getenv("VYNno_MCP_" + name)
+}
+
 func sessionToken() (string, error) {
-	token := strings.TrimSpace(os.Getenv("VYNno_MCP_TOKEN"))
+	token := strings.TrimSpace(mcpEnv("TOKEN"))
 	if token == "" || strings.Contains(token, "${") {
-		return "", errors.New("VYNno_MCP_TOKEN is required in .env or the environment. Set VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, run `go run ./cmd/mcp token`, and paste the printed value")
+		return "", errors.New("VYNNO_MCP_TOKEN is required in .env or the environment. Set VYNNO_MCP_EMAIL and VYNNO_MCP_PASSWORD, run `go run ./cmd/mcp token`, and paste the printed value")
 	}
 	return token, nil
 }
 
 func authFailure(err error) string {
 	if de, ok := domain.AsError(err); ok && de.Code == domain.CodeUnauthorized {
-		return "VYNno_MCP_TOKEN was rejected (missing, expired, or revoked)"
+		return "VYNNO_MCP_TOKEN was rejected (missing, expired, or revoked)"
 	}
 	return "could not check VYNNO_MCP_TOKEN: " + err.Error()
 }

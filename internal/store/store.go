@@ -15,12 +15,21 @@ type Account struct {
 	PasswordHash string
 }
 
-// Token is a hashed session. The raw secret is not stored.
+// Token scopes. The HTTP API accepts only ScopeSession. ScopeMCP is issued by
+// `cmd/mcp token` and is good for the local read-only MCP alone.
+const (
+	ScopeSession = "session"
+	ScopeMCP     = "mcp"
+)
+
+// Token is a hashed session. The raw secret is not stored. An empty Scope is
+// stored as ScopeSession.
 type Token struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	TokenHash string
 	ExpiresAt time.Time
+	Scope     string
 }
 
 // EmailChallenge is a one-time code. Register and password reset are keyed by
@@ -40,6 +49,16 @@ type EmailChallenge struct {
 
 // Store is the persistence port. Postgres is the system of record; Memory is a test double.
 type Store interface {
+	// InTx runs fn against a Store whose writes commit together when fn returns
+	// nil and are all discarded when it returns an error. Calling InTx on the
+	// Store passed to fn joins the same transaction.
+	InTx(ctx context.Context, fn func(tx Store) error) error
+	// LockAccount makes the rest of the transaction exclusive for userID: another
+	// transaction that locks the same account waits until this one ends. Use it
+	// before a read that a later write in the same InTx depends on. not_found when
+	// the account does not exist. Outside InTx it holds nothing.
+	LockAccount(ctx context.Context, userID uuid.UUID) error
+
 	GetProfile(ctx context.Context, userID uuid.UUID) (domain.Profile, error)
 	CreateProfile(ctx context.Context, userID uuid.UUID, p domain.Profile) error
 	UpdateProfileDisplayName(ctx context.Context, userID uuid.UUID, displayName string) error

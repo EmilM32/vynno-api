@@ -123,7 +123,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(v1, http.MethodPost, "/auth/password/forgot", s.requestPasswordReset, op{
 		Summary:     "Request password reset code",
-		Description: "Always 204 for a well-formed email. Sends a 6-digit code only when the account exists.",
+		Description: "Always 204 for a well-formed email. Sends a 6-digit code only when the account exists. The mail is sent after the response; delivery is not confirmed.",
 		Tags:        []string{"Auth"},
 		Public:      true,
 		Body:        passwordForgotBody{},
@@ -133,7 +133,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(v1, http.MethodPost, "/auth/password/reset", s.resetPassword, op{
 		Summary:     "Reset password",
-		Description: "Sets a new password and revokes every session for that user. 204 empty. No cookie; log in afterwards.",
+		Description: "Sets a new password, revokes every session for that user, and mails a notice. 204 empty. No cookie; log in afterwards. Wrong codes are capped per client and per email across resends.",
 		Tags:        []string{"Auth"},
 		Public:      true,
 		Body:        resetPasswordBody{},
@@ -198,7 +198,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPut, "/me/avatar", s.putMeAvatar, op{
 		Summary:     "Upload avatar",
-		Description: "multipart field file. jpeg, png, or webp. Max 1 MiB (magic bytes).",
+		Description: "multipart field file. jpeg, png, or webp. Max 1 MiB (magic bytes). A file with a GPS position in its metadata is invalid_body.",
 		Tags:        []string{"Profile"},
 		Multipart:   "file",
 		Success:     profileDTO{},

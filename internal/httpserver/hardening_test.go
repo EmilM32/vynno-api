@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/mail"
+	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -54,7 +56,9 @@ func TestRegisterCodeIPCapDoesNotSend(t *testing.T) {
 	if len(rec.Messages) != 0 {
 		t.Fatalf("mail before a real send: %d", len(rec.Messages))
 	}
-	for i := 1; i <= 5; i++ {
+	// The email_in_use answer used one of the client's five slots; a malformed
+	// address did not.
+	for i := 1; i <= 4; i++ {
 		w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{
 			"email": "cap" + strconv.Itoa(i) + "@example.com",
 		})
@@ -62,13 +66,16 @@ func TestRegisterCodeIPCapDoesNotSend(t *testing.T) {
 			t.Fatalf("send %d = %d %s", i, w.Code, w.Body.String())
 		}
 	}
-	if len(rec.Messages) != 5 {
+	if len(rec.Messages) != 4 {
 		t.Fatalf("mail = %d", len(rec.Messages))
 	}
-	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "cap6@example.com"})
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "cap5@example.com"})
 	assertCode(t, w, http.StatusTooManyRequests, "rate_limited")
-	if len(rec.Messages) != 5 {
-		t.Fatalf("6th sent mail: %d", len(rec.Messages))
+	// Past the cap a taken address answers like a free one.
+	taken := doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "alexdev@vynno.local"})
+	assertCode(t, taken, http.StatusTooManyRequests, "rate_limited")
+	if len(rec.Messages) != 4 {
+		t.Fatalf("mail sent past the cap: %d", len(rec.Messages))
 	}
 	if w.Header().Get("Retry-After") == "" {
 		t.Fatal("missing Retry-After")
@@ -397,5 +404,31 @@ func TestSwaggerCannotBeFramed(t *testing.T) {
 			w.Header().Get("X-Content-Type-Options") != "nosniff" {
 			t.Fatalf("%s headers = %v", path, w.Header())
 		}
+	}
+}
+
+// A token issued for the local MCP is not a session: every /v1 route refuses it,
+// as a Bearer value and as the cookie.
+func TestMCPTokenIsNotAnAPISession(t *testing.T) {
+	r, svc := testAuth(t, nil)
+	res, err := svc.IssueMCPToken(context.Background(), service.LoginInput{
+		Email: "alexdev@vynno.local", Password: testPassword,
+	}, "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := doJSON(t, r, http.MethodGet, "/v1/me", nil, withBearer(res.Token))
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/logout", nil, withBearer(res.Token))
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: res.Token})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assertCode(t, rec, http.StatusUnauthorized, "unauthorized")
+
+	if _, err := svc.ResolveMCPToken(context.Background(), res.Token); err != nil {
+		t.Fatalf("the refused requests must not revoke the token: %v", err)
 	}
 }

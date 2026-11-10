@@ -57,7 +57,7 @@ func (q *Queries) DeleteOtherAuthTokens(ctx context.Context, arg DeleteOtherAuth
 }
 
 const getAuthTokenByHash = `-- name: GetAuthTokenByHash :one
-SELECT id, user_id, token_hash, expires_at
+SELECT id, user_id, token_hash, expires_at, scope
 FROM auth_tokens
 WHERE token_hash = $1
 `
@@ -67,6 +67,7 @@ type GetAuthTokenByHashRow struct {
 	UserID    uuid.UUID
 	TokenHash string
 	ExpiresAt time.Time
+	Scope     string
 }
 
 func (q *Queries) GetAuthTokenByHash(ctx context.Context, tokenHash string) (GetAuthTokenByHashRow, error) {
@@ -77,13 +78,14 @@ func (q *Queries) GetAuthTokenByHash(ctx context.Context, tokenHash string) (Get
 		&i.UserID,
 		&i.TokenHash,
 		&i.ExpiresAt,
+		&i.Scope,
 	)
 	return i, err
 }
 
 const insertAuthToken = `-- name: InsertAuthToken :exec
-INSERT INTO auth_tokens (id, user_id, token_hash, expires_at)
-VALUES ($1, $2, $3, $4)
+INSERT INTO auth_tokens (id, user_id, token_hash, expires_at, scope)
+VALUES ($1, $2, $3, $4, $5)
 `
 
 type InsertAuthTokenParams struct {
@@ -91,6 +93,7 @@ type InsertAuthTokenParams struct {
 	UserID    uuid.UUID
 	TokenHash string
 	ExpiresAt time.Time
+	Scope     string
 }
 
 func (q *Queries) InsertAuthToken(ctx context.Context, arg InsertAuthTokenParams) error {
@@ -99,6 +102,7 @@ func (q *Queries) InsertAuthToken(ctx context.Context, arg InsertAuthTokenParams
 		arg.UserID,
 		arg.TokenHash,
 		arg.ExpiresAt,
+		arg.Scope,
 	)
 	return err
 }

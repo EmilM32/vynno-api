@@ -33,6 +33,11 @@ func (s *Service) ReplaceAvatar(ctx context.Context, data []byte) (domain.Profil
 	if err != nil {
 		return domain.Profile{}, err
 	}
+	// The avatar URL is public. A photo that says where it was taken is refused
+	// rather than published or silently rewritten.
+	if domain.AvatarHasLocation(data, ct) {
+		return domain.Profile{}, domain.ErrInvalidBody("Avatar contains GPS location data. Remove the location from the photo and upload it again.")
+	}
 	id := s.NewID()
 	if err := s.Store.ReplaceAvatar(ctx, s.User, domain.Avatar{
 		ID:          id.String(),
