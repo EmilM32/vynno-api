@@ -16,3 +16,8 @@ updates:
     directory: /
     schedule:
       interval: weekly
+    ignore:
+      # A new Postgres major cannot start on the pgdata volume of the old one: it
+      # is a planned move (scripts/backup, new volume, scripts/restore), not a PR.
+      - dependency-name: postgres
+        update-types: ["version-update:semver-major"]
