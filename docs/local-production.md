@@ -145,6 +145,8 @@ Playwright in the SPA repo talks to playground `:8081` (that repo’s `.env.deve
 
 Dump and restore are database `vynno` only. Avatars are BYTEA, so they are in the dump. Restore stops the API first.
 
+A dump holds password hashes, session token hashes, and every email. `scripts/backup` makes `backups/` mode `0700` and each dump `0600`, and writes a dump under its final name only after `pg_dump` succeeded. `BACKUP_KEEP=14 ./scripts/backup` keeps the 14 newest dumps and deletes older ones; without `BACKUP_KEEP` nothing is deleted. Dumps made before this change keep their old permissions: `chmod 600 backups/*.sql`.
+
 ## If login fails
 
 1. Browser URL is `https://vynno.localhost`, not `http://vynno.localhost`, `http://127.0.0.1`, `http://localhost:3000`, or `http://vynno.localhost:27180`.

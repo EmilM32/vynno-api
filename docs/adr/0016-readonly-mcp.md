@@ -13,7 +13,7 @@ The HTTP API already isolates accounts by the session token ([0008](./0008-authe
 ## Decision
 
 1. **Local stdio MCP** in `cmd/mcp`, built with `github.com/modelcontextprotocol/go-sdk/mcp`. Grok launches it from `.grok/config.toml`. Logs go to stderr.
-2. **Same session token as the API.** `VYNNO_MCP_TOKEN` is the opaque secret accepted as `Authorization: Bearer` or the `vynno_session` cookie. The server hashes it and loads `auth_tokens`. A missing, unknown, or expired token refuses the process, and every tool resolves the token again.
+2. **Same token table as the API.** `VYNNO_MCP_TOKEN` is an opaque secret stored like a session (since the 2026-11-10 amendment with scope `mcp`, which `/v1` refuses). The server hashes it and loads `auth_tokens`. A missing, unknown, or expired token refuses the process, and every tool resolves the token again.
 3. **One account per process.** Tool arguments have no email and no user id. Queries take the user id from the token and include `user_id` in the `WHERE` clause. `vynno_whoami` returns that account's email and display name.
 4. **Issuing a token is local.** `go run ./cmd/mcp token` reads `VYNNO_MCP_EMAIL` and `VYNNO_MCP_PASSWORD` from the environment or `.env`, runs the same login check as `POST /v1/auth/login`, and prints a new session token once. The operator stores it as `VYNNO_MCP_TOKEN` in `.env` (gitignored). It is not an HTTP route and it is not in the JSON contract. Password reset deletes every token for the account, including this one.
 5. **Read-only.** Tools list projects, list sessions, read the live session, and summarize a time window. They do not start, stop, patch, or delete. Summary totals are computed here; `/v1` does not grow an aggregate endpoint.
@@ -43,6 +43,17 @@ The HTTP API already isolates accounts by the session token ([0008](./0008-authe
 - Each `token` run inserts another `auth_tokens` row, same as another login.
 - The MCP process holds the raw token in memory for as long as Grok keeps it running.
 - Switching accounts means a new token and a new process.
+
+## Amendment (2026-11-10) — the MCP token is not an API session
+
+Decision 2 made `VYNNO_MCP_TOKEN` a full session: the same value worked as `Authorization: Bearer` on `/v1`. The MCP only reads, but a copy of that token from `.env` could start and delete sessions, change the password, and move the account to another email.
+
+1. **`auth_tokens.scope`** is `session` or `mcp` (migration 00015; existing rows are `session`).
+2. **`go run ./cmd/mcp token` issues scope `mcp`.** The HTTP API accepts only `session` tokens and answers `401 unauthorized` to an `mcp` token, as a cookie or as Bearer, exactly as it does to an unknown token. It does not revoke it.
+3. **The MCP accepts both scopes.** A token issued before this amendment is a `session` token and keeps working until it expires. Run `go run ./cmd/mcp token` again to replace it with an `mcp` one; signing that old token out is `POST /v1/auth/logout` with it as Bearer, or a password change.
+4. Lifetime (30 days), hashing, and revocation are unchanged: logout of all sessions by password reset, and password or email change from another session, delete the MCP token too.
+
+The read-only guarantee no longer rests on the MCP's tool list alone. No wire change: `scope` is not in any DTO.
 
 ## Alternatives considered
 

@@ -342,3 +342,52 @@ func TestBackgroundWaitsForJobs(t *testing.T) {
 	}
 	<-ran
 }
+
+// The token `cmd/mcp token` prints is for the MCP only: the HTTP API's check
+// refuses it, so leaking it gives read access to the history and nothing else.
+func TestMCPTokenIsRefusedByTheAPI(t *testing.T) {
+	ctx := context.Background()
+	svc, mem, _, _ := hardeningService(t)
+	const email, password, ip = "agent@example.com", "right-password", "127.0.0.1"
+	addAccount(t, mem, email, password)
+	acc, err := mem.GetAccountByEmail(ctx, email)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	mcp, err := svc.IssueMCPToken(ctx, LoginInput{Email: email, Password: password}, ip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ResolveToken(ctx, mcp.Token); codeOf(err) != domain.CodeUnauthorized {
+		t.Fatalf("API check of an MCP token = %v, want unauthorized", err)
+	}
+	if id, err := svc.ResolveMCPToken(ctx, mcp.Token); err != nil || id != acc.ID {
+		t.Fatalf("MCP check of an MCP token = %v, %v", id, err)
+	}
+
+	// A session token still works for both, so a token issued before scopes
+	// existed keeps the MCP running.
+	session, err := svc.Login(ctx, LoginInput{Email: email, Password: password}, ip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ResolveToken(ctx, session.Token); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ResolveMCPToken(ctx, session.Token); err != nil {
+		t.Fatal(err)
+	}
+
+	// The wrong password issues nothing, and a password change revokes the MCP token.
+	if _, err := svc.IssueMCPToken(ctx, LoginInput{Email: email, Password: "wrong-password"}, ip); codeOf(err) != domain.CodeInvalidCredentials {
+		t.Fatalf("wrong password = %v", err)
+	}
+	err = svc.ForUser(acc.ID).ChangePassword(ctx, ChangePasswordInput{CurrentPassword: password, NewPassword: "another-password"}, session.Token, ip)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ResolveMCPToken(ctx, mcp.Token); codeOf(err) != domain.CodeUnauthorized {
+		t.Fatalf("MCP token after a password change = %v, want unauthorized", err)
+	}
+}

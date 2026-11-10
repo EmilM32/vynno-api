@@ -351,7 +351,7 @@ func (s *Service) Register(ctx context.Context, in RegisterInput, clientIP strin
 		return AuthResult{}, err
 	}
 	s.authEvent(ctx, slog.LevelInfo, "register", clientIP, userID)
-	return s.issueToken(ctx, userID, domain.RememberMe(in.RememberMe))
+	return s.issueToken(ctx, userID, domain.RememberMe(in.RememberMe), store.ScopeSession)
 }
 
 type ResetPasswordInput struct {
@@ -470,6 +470,16 @@ func (s *Service) consumeEmailChallenge(ctx context.Context, email, purpose, cod
 }
 
 func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (AuthResult, error) {
+	return s.login(ctx, in, clientIP, store.ScopeSession)
+}
+
+// IssueMCPToken checks the password like Login and returns a token that only the
+// local read-only MCP accepts. The HTTP API refuses it.
+func (s *Service) IssueMCPToken(ctx context.Context, in LoginInput, clientIP string) (AuthResult, error) {
+	return s.login(ctx, in, clientIP, store.ScopeMCP)
+}
+
+func (s *Service) login(ctx context.Context, in LoginInput, clientIP, scope string) (AuthResult, error) {
 	email, err := domain.NormalizeEmail(in.Email)
 	if err != nil {
 		return AuthResult{}, domain.ErrInvalidCredentials()
@@ -506,8 +516,8 @@ func (s *Service) Login(ctx context.Context, in LoginInput, clientIP string) (Au
 		return AuthResult{}, domain.ErrInvalidCredentials()
 	}
 	s.loginSucceeded(email, clientIP, now)
-	s.authEvent(ctx, slog.LevelInfo, "login", clientIP, acc.ID)
-	return s.issueToken(ctx, acc.ID, domain.RememberMe(in.RememberMe))
+	s.authEvent(ctx, slog.LevelInfo, "login", clientIP, acc.ID, "scope", scope)
+	return s.issueToken(ctx, acc.ID, domain.RememberMe(in.RememberMe), scope)
 }
 
 func (s *Service) Logout(ctx context.Context, rawToken string) error {
@@ -517,7 +527,19 @@ func (s *Service) Logout(ctx context.Context, rawToken string) error {
 	return s.Store.DeleteTokenByHash(ctx, hashToken(rawToken))
 }
 
+// ResolveToken is the HTTP API's check: the cookie or Bearer value must be a live
+// session token. A token issued for the MCP is refused like an unknown one.
 func (s *Service) ResolveToken(ctx context.Context, rawToken string) (uuid.UUID, error) {
+	return s.resolveToken(ctx, rawToken, false)
+}
+
+// ResolveMCPToken is the local MCP's check. It accepts an MCP token, and also a
+// session token, which is what `cmd/mcp token` printed before scopes existed.
+func (s *Service) ResolveMCPToken(ctx context.Context, rawToken string) (uuid.UUID, error) {
+	return s.resolveToken(ctx, rawToken, true)
+}
+
+func (s *Service) resolveToken(ctx context.Context, rawToken string, allowMCP bool) (uuid.UUID, error) {
 	if rawToken == "" {
 		return uuid.Nil, domain.ErrUnauthorized()
 	}
@@ -533,10 +555,13 @@ func (s *Service) ResolveToken(ctx context.Context, rawToken string) (uuid.UUID,
 		_ = s.Store.DeleteTokenByHash(ctx, tok.TokenHash)
 		return uuid.Nil, domain.ErrUnauthorized()
 	}
+	if tok.Scope != store.ScopeSession && (!allowMCP || tok.Scope != store.ScopeMCP) {
+		return uuid.Nil, domain.ErrUnauthorized()
+	}
 	return tok.UserID, nil
 }
 
-func (s *Service) issueToken(ctx context.Context, userID uuid.UUID, remember bool) (AuthResult, error) {
+func (s *Service) issueToken(ctx context.Context, userID uuid.UUID, remember bool, scope string) (AuthResult, error) {
 	raw, err := randomToken()
 	if err != nil {
 		return AuthResult{}, err
@@ -546,6 +571,7 @@ func (s *Service) issueToken(ctx context.Context, userID uuid.UUID, remember boo
 		UserID:    userID,
 		TokenHash: hashToken(raw),
 		ExpiresAt: s.Now().Add(TokenTTL),
+		Scope:     scope,
 	}); err != nil {
 		return AuthResult{}, err
 	}

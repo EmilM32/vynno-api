@@ -212,7 +212,15 @@ func (p *Postgres) CreateToken(ctx context.Context, tok Token) error {
 		UserID:    tok.UserID,
 		TokenHash: tok.TokenHash,
 		ExpiresAt: tok.ExpiresAt,
+		Scope:     tokenScope(tok.Scope),
 	})
+}
+
+func tokenScope(scope string) string {
+	if scope == "" {
+		return ScopeSession
+	}
+	return scope
 }
 
 func (p *Postgres) GetTokenByHash(ctx context.Context, hash string) (Token, error) {
@@ -220,7 +228,7 @@ func (p *Postgres) GetTokenByHash(ctx context.Context, hash string) (Token, erro
 	if err != nil {
 		return Token{}, mapNotFound(err)
 	}
-	return Token{ID: row.ID, UserID: row.UserID, TokenHash: row.TokenHash, ExpiresAt: row.ExpiresAt}, nil
+	return Token{ID: row.ID, UserID: row.UserID, TokenHash: row.TokenHash, ExpiresAt: row.ExpiresAt, Scope: row.Scope}, nil
 }
 
 func (p *Postgres) DeleteTokenByHash(ctx context.Context, hash string) error {

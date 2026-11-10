@@ -282,8 +282,19 @@ func contractTokens(t *testing.T, st store.Store) {
 
 	a := mk(user, now.Add(time.Hour))
 	got, err := st.GetTokenByHash(ctx, a.TokenHash)
-	if err != nil || got.ID != a.ID || got.UserID != user || !got.ExpiresAt.Equal(a.ExpiresAt) {
-		t.Fatalf("token = %+v, %v", got, err)
+	if err != nil || got.ID != a.ID || got.UserID != user || !got.ExpiresAt.Equal(a.ExpiresAt) ||
+		got.Scope != store.ScopeSession {
+		t.Fatalf("token = %+v, %v (an unset scope is a session)", got, err)
+	}
+	scoped := store.Token{ID: uuid.New(), UserID: user, TokenHash: uuid.NewString(), ExpiresAt: now.Add(time.Hour), Scope: store.ScopeMCP}
+	if err := st.CreateToken(ctx, scoped); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.GetTokenByHash(ctx, scoped.TokenHash); err != nil || got.Scope != store.ScopeMCP {
+		t.Fatalf("mcp token = %+v, %v", got, err)
+	}
+	if err := st.DeleteTokenByHash(ctx, scoped.TokenHash); err != nil {
+		t.Fatal(err)
 	}
 	if err := st.DeleteTokenByHash(ctx, a.TokenHash); err != nil {
 		t.Fatal(err)

@@ -1,6 +1,7 @@
 package httpserver
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -13,6 +14,7 @@ import (
 
 	"github.com/EmilM32/vynno-api/internal/domain"
 	"github.com/EmilM32/vynno-api/internal/mail"
+	"github.com/EmilM32/vynno-api/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
@@ -397,5 +399,31 @@ func TestSwaggerCannotBeFramed(t *testing.T) {
 			w.Header().Get("X-Content-Type-Options") != "nosniff" {
 			t.Fatalf("%s headers = %v", path, w.Header())
 		}
+	}
+}
+
+// A token issued for the local MCP is not a session: every /v1 route refuses it,
+// as a Bearer value and as the cookie.
+func TestMCPTokenIsNotAnAPISession(t *testing.T) {
+	r, svc := testAuth(t, nil)
+	res, err := svc.IssueMCPToken(context.Background(), service.LoginInput{
+		Email: "alexdev@vynno.local", Password: testPassword,
+	}, "127.0.0.1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := doJSON(t, r, http.MethodGet, "/v1/me", nil, withBearer(res.Token))
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/logout", nil, withBearer(res.Token))
+	assertCode(t, w, http.StatusUnauthorized, "unauthorized")
+
+	req := httptest.NewRequest(http.MethodGet, "/v1/me", nil)
+	req.AddCookie(&http.Cookie{Name: sessionCookie, Value: res.Token})
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assertCode(t, rec, http.StatusUnauthorized, "unauthorized")
+
+	if _, err := svc.ResolveMCPToken(context.Background(), res.Token); err != nil {
+		t.Fatalf("the refused requests must not revoke the token: %v", err)
 	}
 }

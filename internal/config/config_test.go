@@ -18,6 +18,7 @@ func requiredEnv(t *testing.T) {
 	t.Setenv("SMTP_USERNAME", "")
 	t.Setenv("SMTP_PASSWORD", "")
 	t.Setenv("SMTP_STARTTLS", "")
+	t.Setenv("SMTP_ALLOW_PLAINTEXT", "")
 	t.Setenv("MAIL_FROM", "")
 	t.Setenv("MAIL_FROM_NAME", "")
 	t.Setenv("TRUSTED_PROXIES", "")
@@ -316,5 +317,44 @@ func TestLoadRateLimitMode(t *testing.T) {
 	t.Setenv("RATE_LIMIT_MODE", "off")
 	if _, err := Load(); err == nil {
 		t.Fatal("unknown mode should fail")
+	}
+}
+
+// A remote SMTP host without STARTTLS would carry the SMTP password and every
+// one-time code in clear text, so the process refuses to start.
+func TestLoadSMTPRefusesPlaintextToRemoteHost(t *testing.T) {
+	for _, tc := range []struct {
+		host, startTLS, allow string
+		wantErr               bool
+	}{
+		{"127.0.0.1", "", "", false},
+		{"localhost", "", "", false},
+		{"mail.localhost", "", "", false},
+		{"::1", "", "", false},
+		{"[::1]", "", "", false},
+		{"smtp.example.com", "", "", true},
+		{"192.168.1.20", "false", "", true},
+		{"localhost.example.com", "", "", true},
+		{"smtp.example.com", "true", "", false},
+		{"192.168.1.20", "", "true", false},
+	} {
+		requiredEnv(t)
+		t.Setenv("MAIL_MODE", "smtp")
+		t.Setenv("MAIL_FROM", "vynno@example.com")
+		t.Setenv("SMTP_HOST", tc.host)
+		t.Setenv("SMTP_STARTTLS", tc.startTLS)
+		t.Setenv("SMTP_ALLOW_PLAINTEXT", tc.allow)
+		_, err := Load()
+		if (err != nil) != tc.wantErr {
+			t.Errorf("host %q starttls %q allow %q: err = %v, wantErr %v", tc.host, tc.startTLS, tc.allow, err, tc.wantErr)
+		}
+	}
+
+	// Other mail modes never dial, so the host does not matter.
+	requiredEnv(t)
+	t.Setenv("MAIL_MODE", "log")
+	t.Setenv("SMTP_HOST", "smtp.example.com")
+	if _, err := Load(); err != nil {
+		t.Fatalf("MAIL_MODE=log with a remote host: %v", err)
 	}
 }

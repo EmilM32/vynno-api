@@ -328,6 +328,7 @@ func (m *Memory) EmailTaken(_ context.Context, email string, excludeID uuid.UUID
 func (m *Memory) CreateToken(_ context.Context, tok Token) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+	tok.Scope = tokenScope(tok.Scope)
 	m.tokens[tok.TokenHash] = tok
 	return nil
 }

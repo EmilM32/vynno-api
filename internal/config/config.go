@@ -48,7 +48,8 @@ type Mail struct {
 // PUBLIC_API_ORIGIN are required. BOOTSTRAP_PASSWORD is optional here (playground
 // seed/reset require it in cmd/devdata). LOG_FORMAT is "text" or "json" (default text).
 // MAIL_MODE is smtp, log, or discard (empty is discard). smtp requires SMTP_HOST
-// and MAIL_FROM. RATE_LIMIT_MODE is strict (default) or relaxed; relaxed is
+// and MAIL_FROM, and SMTP_STARTTLS=true unless SMTP_HOST is this machine or
+// SMTP_ALLOW_PLAINTEXT=true. RATE_LIMIT_MODE is strict (default) or relaxed; relaxed is
 // refused unless DATABASE_URL targets the playground database.
 func Load() (Config, error) {
 	if err := loadDotEnv(".env"); err != nil {
@@ -168,6 +169,12 @@ func parseMail() (Mail, error) {
 		if from == "" {
 			return Mail{}, fmt.Errorf("MAIL_FROM is required when MAIL_MODE=smtp")
 		}
+		// Without STARTTLS the SMTP password, every one-time code, and every
+		// address cross the network in clear text. That is fine for a catcher on
+		// this machine and nowhere else.
+		if !boolEnv("SMTP_STARTTLS") && !isLoopbackHost(host) && !boolEnv("SMTP_ALLOW_PLAINTEXT") {
+			return Mail{}, fmt.Errorf("SMTP_HOST %q is not on this machine: set SMTP_STARTTLS=true (or SMTP_ALLOW_PLAINTEXT=true to send codes and the SMTP password unencrypted)", host)
+		}
 	}
 	return Mail{
 		Mode:     mode,
@@ -179,6 +186,17 @@ func parseMail() (Mail, error) {
 		From:     from,
 		FromName: strings.TrimSpace(os.Getenv("MAIL_FROM_NAME")),
 	}, nil
+}
+
+// isLoopbackHost reports whether an SMTP host name is this machine: localhost,
+// a *.localhost name (RFC 6761), or a loopback IP.
+func isLoopbackHost(host string) bool {
+	h := strings.ToLower(strings.TrimSuffix(host, "."))
+	if h == "localhost" || strings.HasSuffix(h, ".localhost") {
+		return true
+	}
+	ip := net.ParseIP(strings.Trim(h, "[]"))
+	return ip != nil && ip.IsLoopback()
 }
 
 func parseMailMode(raw string) (string, error) {

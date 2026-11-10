@@ -37,6 +37,14 @@ The API runs on the owner’s machine ([0011-local-production-host.md](./0011-lo
 - `log` mode prints secrets by design. It is not a production setting.
 - SPF/DKIM/bounce handling is the SMTP provider’s job. This process will not interpret DSNs.
 
+## Amendment (2026-11-10) — no clear-text SMTP off this machine
+
+`SMTP_STARTTLS=false` meant no TLS at all, also with `SMTP_USERNAME` set and a remote `SMTP_HOST`. The SMTP password, every one-time code, and every recipient address would then cross the network in clear text.
+
+`MAIL_MODE=smtp` now fails boot when `SMTP_STARTTLS` is not true and `SMTP_HOST` is not this machine (`localhost`, a `*.localhost` name, or a loopback IP). Mailpit on `127.0.0.1:1025` is unaffected. `SMTP_ALLOW_PLAINTEXT=true` turns the check off for a relay on a network the operator trusts.
+
+The password reset mail is sent after the response ([0008](./0008-authentication.md) amendment 2026-11-10); every other mail is still sent on the request path.
+
 ## Alternatives considered
 
 | Option | Why not |

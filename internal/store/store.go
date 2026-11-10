@@ -15,12 +15,21 @@ type Account struct {
 	PasswordHash string
 }
 
-// Token is a hashed session. The raw secret is not stored.
+// Token scopes. The HTTP API accepts only ScopeSession. ScopeMCP is issued by
+// `cmd/mcp token` and is good for the local read-only MCP alone.
+const (
+	ScopeSession = "session"
+	ScopeMCP     = "mcp"
+)
+
+// Token is a hashed session. The raw secret is not stored. An empty Scope is
+// stored as ScopeSession.
 type Token struct {
 	ID        uuid.UUID
 	UserID    uuid.UUID
 	TokenHash string
 	ExpiresAt time.Time
+	Scope     string
 }
 
 // EmailChallenge is a one-time code. Register and password reset are keyed by
