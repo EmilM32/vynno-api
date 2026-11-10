@@ -60,7 +60,7 @@ Creates return **`201`**. Other successful writes return **`200`** with the upda
 
 `invalid_response` and `http_error` are **not** codes this server should emit. Always send the envelope on failure so the client does not fall back to `http_error`.
 
-`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. A wrong current password on `/auth/password/change` or `/auth/email/code` counts as a login failure for that account's email and the client IP. 5 `register/code`, `password/forgot`, or `email/code` sends / 10 min per client IP; the 6th is 429 and sends no mail. `password/forgot` counts every accepted request toward that cap, whether or not the address has an account. Wrong one-time codes on `register`, `password/reset`, and `email/change` are also capped across resends: 20 / 15 min per client IP and 10 / 24 h per email and purpose; past either cap the request is 429 even with the right code, and a right code does not count. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
+`rate_limited` (429) covers login failure caps, register/reset send cooldown, send cap, too many guesses, and too many requests from one client. `POST /auth/login` lists `rate_limited`. 429 responses include `Retry-After` (seconds). 10 failures / 15 min per email (11th is 429 even if the password is then correct, until the window passes; success resets that counter). 30 failures / 15 min per client IP. A wrong current password on `/auth/password/change` or `/auth/email/code` counts as a login failure for that account's email and the client IP. 5 `register/code`, `password/forgot`, or `email/code` sends / 10 min per client IP; the 6th is 429 and sends no mail. `password/forgot` counts every accepted request toward that cap, whether or not the address has an account, and a `409 email_in_use` from `register/code` counts too, so one client cannot test addresses in bulk. Wrong one-time codes on `register`, `password/reset`, and `email/change` are also capped across resends: 20 / 15 min per client IP and 10 / 24 h per email and purpose; past either cap the request is 429 even with the right code, and a right code does not count. Client IP is taken from `X-Forwarded-For` only when the TCP peer is a trusted proxy.
 
 `internal_error` is 500 for unhandled faults (not `invalid_body`).
 
@@ -217,6 +217,7 @@ There is no `handle`. Chrome shows `displayName` if non-empty, otherwise the raw
 - Max decoded size: 1 MiB
 - Replace deletes the previous row (if any), inserts a new UUID, updates `avatarUrl`, returns `ProfileDto`
 - Missing part, empty file, unknown type, or oversize → `invalid_body`
+- A file whose EXIF or XMP metadata holds a GPS position → `invalid_body` (`Avatar contains GPS location data. …`). The avatar URL is public; the server does not rewrite the file. An image drawn through a canvas has no such metadata
 
 `DELETE /me/avatar` when already null is still `200` with `avatarUrl: null`.
 

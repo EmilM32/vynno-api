@@ -56,7 +56,9 @@ func TestRegisterCodeIPCapDoesNotSend(t *testing.T) {
 	if len(rec.Messages) != 0 {
 		t.Fatalf("mail before a real send: %d", len(rec.Messages))
 	}
-	for i := 1; i <= 5; i++ {
+	// The email_in_use answer used one of the client's five slots; a malformed
+	// address did not.
+	for i := 1; i <= 4; i++ {
 		w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{
 			"email": "cap" + strconv.Itoa(i) + "@example.com",
 		})
@@ -64,13 +66,16 @@ func TestRegisterCodeIPCapDoesNotSend(t *testing.T) {
 			t.Fatalf("send %d = %d %s", i, w.Code, w.Body.String())
 		}
 	}
-	if len(rec.Messages) != 5 {
+	if len(rec.Messages) != 4 {
 		t.Fatalf("mail = %d", len(rec.Messages))
 	}
-	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "cap6@example.com"})
+	w = doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "cap5@example.com"})
 	assertCode(t, w, http.StatusTooManyRequests, "rate_limited")
-	if len(rec.Messages) != 5 {
-		t.Fatalf("6th sent mail: %d", len(rec.Messages))
+	// Past the cap a taken address answers like a free one.
+	taken := doJSON(t, r, http.MethodPost, "/v1/auth/register/code", map[string]any{"email": "alexdev@vynno.local"})
+	assertCode(t, taken, http.StatusTooManyRequests, "rate_limited")
+	if len(rec.Messages) != 4 {
+		t.Fatalf("mail sent past the cap: %d", len(rec.Messages))
 	}
 	if w.Header().Get("Retry-After") == "" {
 		t.Fatal("missing Retry-After")

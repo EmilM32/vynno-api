@@ -198,7 +198,7 @@ func NewRouter(svc *service.Service, opts Options) *gin.Engine {
 	})
 	s.route(authed, http.MethodPut, "/me/avatar", s.putMeAvatar, op{
 		Summary:     "Upload avatar",
-		Description: "multipart field file. jpeg, png, or webp. Max 1 MiB (magic bytes).",
+		Description: "multipart field file. jpeg, png, or webp. Max 1 MiB (magic bytes). A file with a GPS position in its metadata is invalid_body.",
 		Tags:        []string{"Profile"},
 		Multipart:   "file",
 		Success:     profileDTO{},

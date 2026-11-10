@@ -106,18 +106,28 @@ func (s *Service) RequestRegisterCode(ctx context.Context, email, clientIP strin
 	if err != nil {
 		return err
 	}
+	now := s.Now()
 	taken, err := s.Store.EmailTaken(ctx, normalized, uuid.Nil)
 	if err != nil {
 		return err
 	}
 	if taken {
+		// "This address has an account" is an answer worth asking for in bulk, so
+		// it is paid for from the same per-client cap as a send. Past the cap a
+		// taken address answers 429, as a free one does.
+		if err := s.allowSend(clientIP, now); err != nil {
+			s.authEvent(ctx, slog.LevelWarn, "register_code_limited", clientIP, uuid.Nil)
+			return err
+		}
+		s.Limiter.Hit(sendIPKey(clientIP), now, s.Limits.SendWindow)
+		s.authEvent(ctx, slog.LevelInfo, "register_code_email_in_use", clientIP, uuid.Nil)
 		return domain.ErrEmailInUse()
 	}
-	now := s.Now()
 	if err := s.emailChallengeSendable(ctx, normalized, domain.PurposeRegister, now); err != nil {
 		return err
 	}
 	if err := s.allowSend(clientIP, now); err != nil {
+		s.authEvent(ctx, slog.LevelWarn, "register_code_limited", clientIP, uuid.Nil)
 		return err
 	}
 	code, err := s.issueOTPChallenge(ctx, normalized, domain.PurposeRegister, uuid.Nil)

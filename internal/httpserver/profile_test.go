@@ -191,3 +191,48 @@ func TestAvatarUploadReplaceDeleteAndPublicGet(t *testing.T) {
 	r.ServeHTTP(unknown, req)
 	assertCode(t, unknown, http.StatusNotFound, "not_found")
 }
+
+// A photo that carries a GPS position is refused: the avatar URL is public.
+func TestAvatarWithGPSPositionIsRefused(t *testing.T) {
+	r := testRouter(t)
+	auth := withCookie(loginCookie(t, r))
+
+	// JPEG: SOI, one APP1 "Exif" segment, SOS, EOI. The EXIF block is
+	// little-endian TIFF with IFD0 -> GPS directory -> GPSLatitude.
+	tiff := []byte{
+		'I', 'I', 42, 0, 8, 0, 0, 0, // header, IFD0 at 8
+		1, 0, // IFD0: one entry
+		0x25, 0x88, 4, 0, 1, 0, 0, 0, 26, 0, 0, 0, // GPSInfo -> offset 26
+		0, 0, 0, 0, // no next IFD
+		1, 0, // GPS directory: one entry
+		2, 0, 5, 0, 3, 0, 0, 0, 0, 0, 0, 0, // GPSLatitude
+		0, 0, 0, 0,
+	}
+	payload := append([]byte("Exif\x00\x00"), tiff...)
+	photo := []byte{0xff, 0xd8, 0xff, 0xe1, 0, byte(len(payload) + 2)}
+	photo = append(photo, payload...)
+	photo = append(photo, 0xff, 0xda, 0, 2, 0xff, 0xd9)
+
+	w := doMultipart(t, r, "/v1/me/avatar", "file", "me.jpg", photo, auth)
+	assertCode(t, w, http.StatusBadRequest, "invalid_body")
+	if !strings.Contains(w.Body.String(), "GPS location") {
+		t.Fatalf("message = %s", w.Body.String())
+	}
+	w = doJSON(t, r, http.MethodGet, "/v1/me", nil, auth)
+	var p profileDTO
+	if err := json.Unmarshal(w.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.AvatarURL != nil {
+		t.Fatalf("avatarUrl = %v after a refused upload", *p.AvatarURL)
+	}
+
+	// The same photo without the GPS directory is stored.
+	tiff[8] = 0 // IFD0 has no entries
+	clean := append([]byte{0xff, 0xd8, 0xff, 0xe1, 0, byte(len(payload) + 2)}, append([]byte("Exif\x00\x00"), tiff...)...)
+	clean = append(clean, 0xff, 0xda, 0, 2, 0xff, 0xd9)
+	w = doMultipart(t, r, "/v1/me/avatar", "file", "me.jpg", clean, auth)
+	if w.Code != http.StatusOK {
+		t.Fatalf("PUT avatar without GPS = %d %s", w.Code, w.Body.String())
+	}
+}

@@ -132,7 +132,9 @@ Accepted tradeoffs:
 
 - The guess caps live in process memory, like the login caps: a restart clears them, and they are not shared between processes. One API process serves one host ([ADR-0011](./0011-local-production-host.md)).
 - Whoever knows an address can keep its reset locked by guessing wrong ten times a day. They could already do that by using up the five sends an hour. The owner's signed-in password change is not affected.
-- `POST /auth/register/code` still answers `409 email_in_use` for a taken address, before any cap. Register has to tell the user the address is taken; hiding it needs a different flow (mail the existing owner instead) and a contract change. Not decided here.
+- `POST /auth/register/code` still answers `409 email_in_use` for a taken address. Register has to tell the user the address is taken; hiding it needs a different flow (mail the existing owner instead) and a contract change.
+
+**Decided the same day:** `register/code` keeps `409 email_in_use`. The answer now counts toward the per-IP send cap (5 / 10 min). Past the cap a taken address answers `429` like a free one, so one client gets at most five such answers per window.
 
 No new routes, fields, or error codes. The contract text for the caps and for forgot is updated.
 

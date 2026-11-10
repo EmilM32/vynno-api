@@ -391,3 +391,29 @@ func TestMCPTokenIsRefusedByTheAPI(t *testing.T) {
 		t.Fatalf("MCP token after a password change = %v, want unauthorized", err)
 	}
 }
+
+// "This address has an account" costs a slot of the per-client send cap, so one
+// client cannot ask about addresses in bulk; past the cap it learns nothing.
+func TestRegisterCodeEmailInUseIsCappedPerClient(t *testing.T) {
+	ctx := context.Background()
+	svc, mem, rec, _ := hardeningService(t)
+	const ip = "203.0.113.100"
+	for i := 0; i < svc.Limits.SendIPLimit+1; i++ {
+		addAccount(t, mem, fmt.Sprintf("taken%d@example.com", i), "some-password")
+	}
+	for i := 0; i < svc.Limits.SendIPLimit; i++ {
+		err := svc.RequestRegisterCode(ctx, fmt.Sprintf("taken%d@example.com", i), ip)
+		if codeOf(err) != domain.CodeEmailInUse {
+			t.Fatalf("taken %d = %v, want email_in_use", i, err)
+		}
+	}
+	retryAfter(t, svc.RequestRegisterCode(ctx, fmt.Sprintf("taken%d@example.com", svc.Limits.SendIPLimit), ip))
+	retryAfter(t, svc.RequestRegisterCode(ctx, "free@example.com", ip))
+	if len(rec.Messages) != 0 {
+		t.Fatalf("mail sent: %+v", rec.Messages)
+	}
+	// Another client is not affected.
+	if err := svc.RequestRegisterCode(ctx, "free@example.com", "203.0.113.101"); err != nil {
+		t.Fatal(err)
+	}
+}
