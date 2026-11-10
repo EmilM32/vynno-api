@@ -212,11 +212,16 @@ func TestRegisteredToolsDoNotAcceptAnAccount(t *testing.T) {
 		}
 	}
 
-	if _, err := session.CallTool(ctx, &mcp.CallToolParams{
+	// The SDK refuses arguments outside the schema before the handler runs. Up to
+	// go-sdk 1.4 that was a JSON-RPC error; from 1.8 it is a tool result with
+	// isError set, as the MCP spec asks. Either is a refusal. What must hold is
+	// that the call named no account and read nothing.
+	rejected, err := session.CallTool(ctx, &mcp.CallToolParams{
 		Name:      "vynno_whoami",
 		Arguments: map[string]any{"email": "other@example.com"},
-	}); err == nil || !strings.Contains(err.Error(), "additional properties") {
-		t.Fatalf("email argument was accepted: %v", err)
+	})
+	if msg := refusal(rejected, err); !strings.Contains(msg, "additional properties") {
+		t.Fatalf("email argument was accepted: result %+v, err %v", rejected, err)
 	}
 	if len(fake.seen) != 0 {
 		t.Fatalf("rejected call still read the database: %v", fake.seen)
@@ -232,4 +237,22 @@ func TestRegisteredToolsDoNotAcceptAnAccount(t *testing.T) {
 	if len(fake.seen) != 1 || fake.seen[0] != owner {
 		t.Fatalf("seen = %v", fake.seen)
 	}
+}
+
+// refusal returns the error text of a refused tool call, whether the SDK sent it
+// as a protocol error or as a tool result with isError set, and "" otherwise.
+func refusal(res *mcp.CallToolResult, err error) string {
+	if err != nil {
+		return err.Error()
+	}
+	if res == nil || !res.IsError {
+		return ""
+	}
+	var b strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			b.WriteString(tc.Text)
+		}
+	}
+	return b.String()
 }
